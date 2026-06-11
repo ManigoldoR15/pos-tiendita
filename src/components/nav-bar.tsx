@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Package, Tag, ShoppingCart, Receipt, Wallet, LogOut } from 'lucide-react'
+import { Home, Package, Tag, ShoppingCart, Receipt, Wallet, ClipboardList, LogOut } from 'lucide-react'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -11,6 +11,7 @@ const LINKS = [
   { href: '/', label: 'Inicio', Icon: Home },
   { href: '/pos', label: 'POS', Icon: ShoppingCart },
   { href: '/corte', label: 'Caja', Icon: Wallet },
+  { href: '/ventas', label: 'Ventas', Icon: ClipboardList },
   { href: '/gastos', label: 'Gastos', Icon: Receipt },
   { href: '/productos', label: 'Productos', Icon: Package },
   { href: '/categorias', label: 'Categorías', Icon: Tag },

@@ -4,54 +4,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { formatMXN } from '@/lib/dinero'
+import { getRango, PERIODOS, type Periodo } from '@/lib/periodo'
 import { cn } from '@/lib/utils'
-
-type Periodo = 'hoy' | 'semana' | 'mes' | 'rango'
-
-function getRango(p: string, desde?: string, hasta?: string) {
-  const ahora = new Date()
-
-  if (p === 'semana') {
-    const ini = new Date(ahora)
-    ini.setDate(ahora.getDate() - 6)
-    ini.setHours(0, 0, 0, 0)
-    return {
-      start: ini.toISOString(),
-      end: ahora.toISOString(),
-      startDate: ini.toISOString().split('T')[0],
-      endDate: ahora.toISOString().split('T')[0],
-    }
-  }
-
-  if (p === 'mes') {
-    const ini = new Date(ahora.getFullYear(), ahora.getMonth(), 1)
-    return {
-      start: ini.toISOString(),
-      end: ahora.toISOString(),
-      startDate: ini.toISOString().split('T')[0],
-      endDate: ahora.toISOString().split('T')[0],
-    }
-  }
-
-  if (p === 'rango' && desde && hasta) {
-    return {
-      start: new Date(desde + 'T00:00:00').toISOString(),
-      end: new Date(hasta + 'T23:59:59.999').toISOString(),
-      startDate: desde,
-      endDate: hasta,
-    }
-  }
-
-  // hoy (default)
-  const ini = new Date(ahora)
-  ini.setHours(0, 0, 0, 0)
-  return {
-    start: ini.toISOString(),
-    end: ahora.toISOString(),
-    startDate: ini.toISOString().split('T')[0],
-    endDate: ahora.toISOString().split('T')[0],
-  }
-}
 
 export default async function DashboardPage({
   searchParams,
@@ -116,12 +70,6 @@ export default async function DashboardPage({
   const maxUnidades = topUnidades[0]?.unidades ?? 1
   const maxMonto = topMonto[0]?.monto ?? 1
 
-  const PERIODOS: { label: string; value: Periodo }[] = [
-    { label: 'Hoy', value: 'hoy' },
-    { label: 'Semana', value: 'semana' },
-    { label: 'Mes', value: 'mes' },
-    { label: 'Rango', value: 'rango' },
-  ]
 
   return (
     <div className="space-y-6">
