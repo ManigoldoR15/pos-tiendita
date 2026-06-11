@@ -1,10 +1,11 @@
 import Link from 'next/link'
-import { ShoppingCart, Receipt, TrendingUp, TrendingDown, Package } from 'lucide-react'
+import { ShoppingCart, Receipt, TrendingUp, TrendingDown, Package, AlertTriangle } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { formatMXN } from '@/lib/dinero'
 import { getRango, PERIODOS, type Periodo } from '@/lib/periodo'
+import { STOCK_MINIMO } from '@/lib/constantes'
 import { cn } from '@/lib/utils'
 
 export default async function DashboardPage({
@@ -21,7 +22,7 @@ export default async function DashboardPage({
   const rango = getRango(periodo, desde, hasta)
   const supabase = await createClient()
 
-  const [{ data: ventas }, { data: gastos }, { data: items }] = await Promise.all([
+  const [{ data: ventas }, { data: gastos }, { data: items }, { count: numStockBajo }] = await Promise.all([
     supabase
       .from('ventas')
       .select('total')
@@ -45,6 +46,14 @@ export default async function DashboardPage({
       .eq('ventas.estado', 'completada')
       .gte('ventas.created_at', rango.start)
       .lte('ventas.created_at', rango.end),
+
+    supabase
+      .from('productos')
+      .select('*', { count: 'exact', head: true })
+      .eq('negocio_id', negocio.id)
+      .eq('activo', true)
+      .lte('existencias', STOCK_MINIMO)
+      .gt('existencias', 0),
   ])
 
   // KPIs
@@ -169,6 +178,21 @@ export default async function DashboardPage({
           color={utilidad >= 0 ? 'green' : 'red'}
         />
       </div>
+
+      {/* Alerta stock bajo */}
+      {(numStockBajo ?? 0) > 0 && (
+        <Link
+          href="/productos?alerta=bajo"
+          className="flex items-center gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium text-orange-700 hover:bg-orange-100 transition-colors"
+        >
+          <AlertTriangle className="h-5 w-5 shrink-0 text-orange-500" />
+          <span>
+            <strong>{numStockBajo}</strong>{' '}
+            {numStockBajo === 1 ? 'producto tiene' : 'productos tienen'} stock bajo (≤ {STOCK_MINIMO} unidades)
+          </span>
+          <span className="ml-auto text-orange-500">Ver →</span>
+        </Link>
+      )}
 
       {/* Top productos */}
       {topUnidades.length > 0 ? (

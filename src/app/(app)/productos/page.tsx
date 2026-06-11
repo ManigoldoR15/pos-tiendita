@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Pencil, Plus } from 'lucide-react'
+import { Pencil, Plus, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { formatMXN } from '@/lib/dinero'
+import { STOCK_MINIMO } from '@/lib/constantes'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { eliminarProductoAction } from './actions'
@@ -11,9 +12,10 @@ import { eliminarProductoAction } from './actions'
 export default async function ProductosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ categoria?: string }>
+  searchParams: Promise<{ categoria?: string; alerta?: string }>
 }) {
-  const { categoria: categoriaFiltro } = await searchParams
+  const { categoria: categoriaFiltro, alerta } = await searchParams
+  const soloStockBajo = alerta === 'bajo'
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
   const supabase = await createClient()
@@ -31,9 +33,11 @@ export default async function ProductosPage({
       .order('nombre'),
   ])
 
-  const productosFiltrados = categoriaFiltro
-    ? productos?.filter((p) => p.categoria_id === categoriaFiltro)
-    : productos
+  const productosFiltrados = productos?.filter((p) => {
+    if (categoriaFiltro && p.categoria_id !== categoriaFiltro) return false
+    if (soloStockBajo && !(p.existencias > 0 && p.existencias <= STOCK_MINIMO)) return false
+    return true
+  })
 
   return (
     <div>
@@ -47,36 +51,42 @@ export default async function ProductosPage({
         </Button>
       </div>
 
-      {/* Filtro por categoría */}
-      {categorias && categorias.length > 0 && (
-        <div className="mb-6 flex flex-wrap gap-2">
+      {/* Filtros */}
+      <div className="mb-6 flex flex-wrap gap-2">
+        <Link
+          href="/productos"
+          className={cn(
+            'rounded-full border px-3 py-1 text-sm font-medium transition-colors',
+            !categoriaFiltro && !soloStockBajo ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+          )}
+        >
+          Todos
+        </Link>
+        <Link
+          href="/productos?alerta=bajo"
+          className={cn(
+            'flex items-center gap-1 rounded-full border px-3 py-1 text-sm font-medium transition-colors',
+            soloStockBajo
+              ? 'border-orange-400 bg-orange-500 text-white'
+              : 'border-orange-300 text-orange-600 hover:bg-orange-50',
+          )}
+        >
+          <AlertTriangle className="h-3.5 w-3.5" />
+          Stock bajo
+        </Link>
+        {categorias?.map((cat) => (
           <Link
-            href="/productos"
+            key={cat.id}
+            href={`/productos?categoria=${cat.id}`}
             className={cn(
               'rounded-full border px-3 py-1 text-sm font-medium transition-colors',
-              !categoriaFiltro
-                ? 'bg-primary text-primary-foreground'
-                : 'hover:bg-accent',
+              categoriaFiltro === cat.id ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
             )}
           >
-            Todos
+            {cat.nombre}
           </Link>
-          {categorias.map((cat) => (
-            <Link
-              key={cat.id}
-              href={`/productos?categoria=${cat.id}`}
-              className={cn(
-                'rounded-full border px-3 py-1 text-sm font-medium transition-colors',
-                categoriaFiltro === cat.id
-                  ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-accent',
-              )}
-            >
-              {cat.nombre}
-            </Link>
-          ))}
-        </div>
-      )}
+        ))}
+      </div>
 
       {/* Grilla de productos */}
       {productosFiltrados && productosFiltrados.length > 0 ? (

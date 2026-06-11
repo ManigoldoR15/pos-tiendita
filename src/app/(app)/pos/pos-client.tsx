@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ShoppingCart, Plus, Minus, Trash2, CheckCircle, Search, X } from 'lucide-react'
+import { ShoppingCart, Plus, Minus, Trash2, CheckCircle, Search, X, AlertTriangle } from 'lucide-react'
+import { STOCK_MINIMO } from '@/lib/constantes'
 import { Button } from '@/components/ui/button'
 import { formatMXN, textoCentavos } from '@/lib/dinero'
 import { cn } from '@/lib/utils'
@@ -216,6 +217,12 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
                     </p>
                     {sinStock && (
                       <p className="mt-1 text-xs font-medium text-destructive">Agotado</p>
+                    )}
+                    {!sinStock && producto.existencias <= STOCK_MINIMO && (
+                      <p className="mt-1 flex items-center gap-0.5 text-xs font-medium text-orange-600">
+                        <AlertTriangle className="h-3 w-3" />
+                        {producto.existencias} u.
+                      </p>
                     )}
                   </button>
                 )

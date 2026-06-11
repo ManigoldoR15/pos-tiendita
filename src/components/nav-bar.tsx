@@ -18,7 +18,13 @@ const LINKS = [
   { href: '/configuracion', label: 'Config', Icon: Settings },
 ]
 
-export default function NavBar({ negocioNombre }: { negocioNombre: string }) {
+export default function NavBar({
+  negocioNombre,
+  stockBajo = 0,
+}: {
+  negocioNombre: string
+  stockBajo?: number
+}) {
   const pathname = usePathname()
 
   return (
@@ -30,12 +36,13 @@ export default function NavBar({ negocioNombre }: { negocioNombre: string }) {
           {LINKS.map(({ href, label, Icon }) => {
             const active =
               href === '/' ? pathname === '/' : pathname.startsWith(href)
+            const showBadge = href === '/productos' && stockBajo > 0
             return (
               <Link
                 key={href}
                 href={href}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  'relative flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                   active
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
@@ -43,6 +50,11 @@ export default function NavBar({ negocioNombre }: { negocioNombre: string }) {
               >
                 <Icon className="h-4 w-4" />
                 <span className="hidden sm:inline">{label}</span>
+                {showBadge && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
+                    {stockBajo > 9 ? '9+' : stockBajo}
+                  </span>
+                )}
               </Link>
             )
           })}
