@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ShoppingCart, Plus, Minus, Trash2, CheckCircle } from 'lucide-react'
+import { ShoppingCart, Plus, Minus, Trash2, CheckCircle, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatMXN, textoCentavos } from '@/lib/dinero'
 import { cn } from '@/lib/utils'
@@ -33,6 +33,7 @@ type Props = {
 
 export default function PosClient({ productos, categorias, metodosPago }: Props) {
   const [carrito, setCarrito] = useState<ItemCarrito[]>([])
+  const [busqueda, setBusqueda] = useState('')
   const [categoriaActiva, setCategoriaActiva] = useState<string | null>(null)
   const [modalAbierto, setModalAbierto] = useState(false)
   const [metodoPagoId, setMetodoPagoId] = useState(metodosPago[0]?.id ?? '')
@@ -41,13 +42,13 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
   const [errorVenta, setErrorVenta] = useState<string | null>(null)
   const [ventaExitosa, setVentaExitosa] = useState(false)
 
-  const productosFiltrados = useMemo(
-    () =>
-      categoriaActiva
-        ? productos.filter((p) => p.categoria_id === categoriaActiva)
-        : productos,
-    [productos, categoriaActiva],
-  )
+  const productosFiltrados = useMemo(() => {
+    const q = busqueda.trim().toLowerCase()
+    if (q) return productos.filter((p) => p.nombre.toLowerCase().includes(q))
+    return categoriaActiva
+      ? productos.filter((p) => p.categoria_id === categoriaActiva)
+      : productos
+  }, [productos, categoriaActiva, busqueda])
 
   const total = carrito.reduce((s, i) => s + i.precio * i.cantidad, 0)
   const pagoEnCentavos = textoCentavos(pagoRecibido)
@@ -127,8 +128,28 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
     <div className="flex h-[calc(100svh-8rem)] gap-4">
       {/* ── Grilla de productos ── */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {/* Filtro categorías */}
-        {categorias.length > 0 && (
+        {/* Búsqueda */}
+        <div className="relative mb-3 shrink-0">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar producto…"
+            className="w-full rounded-xl border bg-background py-2.5 pl-9 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {busqueda && (
+            <button
+              onClick={() => setBusqueda('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Filtro categorías — oculto mientras se busca */}
+        {categorias.length > 0 && !busqueda && (
           <div className="mb-4 flex shrink-0 flex-wrap gap-2">
             <button
               onClick={() => setCategoriaActiva(null)}
@@ -159,7 +180,11 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
         <div className="flex-1 overflow-y-auto">
           {productosFiltrados.length === 0 ? (
             <p className="mt-12 text-center text-muted-foreground">
-              {categoriaActiva ? 'No hay productos en esta categoría.' : 'No hay productos activos.'}
+              {busqueda
+                ? `Sin resultados para "${busqueda}".`
+                : categoriaActiva
+                ? 'No hay productos en esta categoría.'
+                : 'No hay productos activos.'}
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
