@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Package, Tag, LogOut } from 'lucide-react'
+import { Home, Package, Tag, ShoppingCart, LogOut } from 'lucide-react'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 const LINKS = [
   { href: '/', label: 'Inicio', Icon: Home },
+  { href: '/pos', label: 'POS', Icon: ShoppingCart },
   { href: '/productos', label: 'Productos', Icon: Package },
   { href: '/categorias', label: 'Categorías', Icon: Tag },
 ]
