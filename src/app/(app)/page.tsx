@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ShoppingCart, Package, Tag } from 'lucide-react'
+import { ShoppingCart, Package, Tag, Receipt } from 'lucide-react'
 import { getNegocioActual } from '@/lib/negocio'
 
 export default async function DashboardPage() {
@@ -20,6 +20,14 @@ export default async function DashboardPage() {
       </Link>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <Link
+          href="/gastos/nuevo"
+          className="flex flex-col items-center justify-center gap-3 rounded-xl border bg-card p-6 text-center shadow-sm transition-colors hover:bg-accent"
+        >
+          <Receipt className="h-10 w-10 text-primary" />
+          <span className="text-base font-semibold">Registrar gasto</span>
+        </Link>
+
         <Link
           href="/productos"
           className="flex flex-col items-center justify-center gap-3 rounded-xl border bg-card p-6 text-center shadow-sm transition-colors hover:bg-accent"
