@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { formatMXN } from '@/lib/dinero'
+import BotonAnular from './boton-anular'
 
 export default async function DetalleVentaPage({
   params,
@@ -141,6 +142,15 @@ export default async function DetalleVentaPage({
         <div className="rounded-xl border bg-card px-4 py-3 text-sm text-muted-foreground">
           <span className="font-medium text-foreground">Nota: </span>
           {venta.notas}
+        </div>
+      )}
+
+      {venta.estado === 'completada' && (
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-4">
+          <p className="mb-3 text-sm text-muted-foreground">
+            Anular devolverá las unidades al inventario.
+          </p>
+          <BotonAnular ventaId={venta.id} />
         </div>
       )}
     </div>
