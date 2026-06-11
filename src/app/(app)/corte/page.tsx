@@ -1,5 +1,6 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { CheckCircle, Clock, TrendingUp, Wallet } from 'lucide-react'
+import { CheckCircle, Clock, Printer, TrendingUp, Wallet } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { formatMXN } from '@/lib/dinero'
@@ -131,6 +132,13 @@ export default async function CortePage() {
                 <span className="ml-auto text-xs text-muted-foreground">
                   {ultimoCerrado.fecha_cierre ? fmtFecha(ultimoCerrado.fecha_cierre) : ''}
                 </span>
+                <Link
+                  href={`/corte/${ultimoCerrado.id}/imprimir`}
+                  className="flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium hover:bg-accent transition-colors"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  Imprimir
+                </Link>
               </div>
 
               <div className="grid grid-cols-3 gap-3 border-t pt-3">

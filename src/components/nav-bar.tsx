@@ -22,7 +22,7 @@ export default function NavBar({ negocioNombre }: { negocioNombre: string }) {
   const pathname = usePathname()
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background">
+    <header className="sticky top-0 z-40 border-b bg-background print:hidden">
       <div className="mx-auto max-w-5xl px-4 h-14 flex items-center justify-between gap-4">
         <span className="font-bold text-sm truncate max-w-[150px]">{negocioNombre}</span>
 

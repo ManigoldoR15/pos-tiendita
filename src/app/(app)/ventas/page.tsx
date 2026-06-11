@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Printer } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { formatMXN } from '@/lib/dinero'
@@ -38,6 +38,17 @@ export default async function VentasPage({
   return (
     <div className="space-y-5">
       <h1 className="text-2xl font-bold">Historial de ventas</h1>
+
+      {/* Cabecera con botón reporte */}
+      <div className="flex items-center gap-3">
+        <Link
+          href={`/ventas/reporte?p=${periodo}${desde ? `&desde=${desde}` : ''}${hasta ? `&hasta=${hasta}` : ''}`}
+          className="ml-auto flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
+        >
+          <Printer className="h-4 w-4" />
+          Imprimir reporte
+        </Link>
+      </div>
 
       {/* Filtro periodo */}
       <div className="flex flex-wrap items-center gap-2">
