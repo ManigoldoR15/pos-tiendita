@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 
 export type Negocio = {
@@ -5,7 +6,7 @@ export type Negocio = {
   nombre: string
 }
 
-export async function getNegocioActual(): Promise<Negocio | null> {
+export const getNegocioActual = cache(async function (): Promise<Negocio | null> {
   const supabase = await createClient()
 
   const {
@@ -27,4 +28,4 @@ export async function getNegocioActual(): Promise<Negocio | null> {
   if (Array.isArray(negocio)) return null
 
   return negocio as Negocio
-}
+})

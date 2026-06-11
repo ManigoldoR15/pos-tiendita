@@ -44,9 +44,71 @@
     "errorVacio": "Escribe el nombre de tu negocio",
     "errorGeneral": "No se pudo crear el negocio. Intenta de nuevo."
   },
+  "nav": {
+    "inicio": "Inicio",
+    "productos": "Productos",
+    "categorias": "Categorías",
+    "salir": "Salir"
+  },
   "dashboard": {
+    "titulo": "Inicio",
     "saludo": "Hola, {nombre}",
-    "botonCerrarSesion": "Cerrar sesión"
+    "productos": "Productos",
+    "categorias": "Categorías"
+  },
+  "productos": {
+    "titulo": "Productos",
+    "nuevo": "Nuevo producto",
+    "sinProductos": "No tienes productos aún. ¡Agrega el primero!",
+    "filtroTodos": "Todos",
+    "sinCategoria": "Sin categoría",
+    "stock": "Stock: {cantidad}",
+    "stockAgotado": "Agotado",
+    "inactivo": "Inactivo",
+    "editar": "Editar",
+    "eliminar": "Eliminar",
+    "confirmarEliminar": "¿Eliminar este producto?",
+    "formulario": {
+      "tituloNuevo": "Nuevo producto",
+      "tituloEditar": "Editar producto",
+      "nombre": "Nombre",
+      "nombrePlaceholder": "Ej: Coca-Cola 600ml",
+      "precio": "Precio (MXN)",
+      "precioPlaceholder": "0.00",
+      "categoria": "Categoría",
+      "categoriaSinAsignar": "Sin categoría",
+      "stock": "Stock actual",
+      "descripcion": "Descripción (opcional)",
+      "descripcionPlaceholder": "Descripción del producto",
+      "activo": "Producto activo",
+      "guardar": "Guardar producto",
+      "guardando": "Guardando...",
+      "cancelar": "Cancelar",
+      "errorNombre": "Escribe el nombre del producto",
+      "errorPrecio": "Escribe un precio válido",
+      "errorGeneral": "No se pudo guardar el producto. Intenta de nuevo."
+    }
+  },
+  "categorias": {
+    "titulo": "Categorías",
+    "nueva": "Nueva categoría",
+    "sinCategorias": "No tienes categorías. ¡Agrega la primera!",
+    "productos": "{n} producto(s)",
+    "editar": "Editar",
+    "guardar": "Guardar",
+    "cancelar": "Cancelar",
+    "eliminar": "Eliminar",
+    "formulario": {
+      "nombre": "Nombre",
+      "nombrePlaceholder": "Ej: Bebidas",
+      "agregar": "Agregar",
+      "agregando": "Agregando...",
+      "tituloEditar": "Editar categoría",
+      "guardar": "Guardar cambios",
+      "guardando": "Guardando...",
+      "errorNombre": "Escribe el nombre de la categoría",
+      "errorGeneral": "No se pudo guardar. Intenta de nuevo."
+    }
   },
   "logout": {
     "cargando": "Cerrando sesión..."
