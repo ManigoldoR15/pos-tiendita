@@ -1,0 +1,82 @@
+'use client'
+
+import { useActionState } from 'react'
+import Link from 'next/link'
+import { loginAction, type AuthState } from '@/app/actions/auth'
+import { Button } from '@/components/ui/button'
+import { useTranslations } from 'next-intl'
+
+export default function LoginPage() {
+  const t = useTranslations('login')
+  const [state, action, pending] = useActionState<AuthState, FormData>(
+    loginAction,
+    null,
+  )
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm space-y-6">
+        <div className="space-y-1 text-center">
+          <h1 className="text-2xl font-bold tracking-tight">{t('titulo')}</h1>
+          <p className="text-sm text-muted-foreground">{t('subtitulo')}</p>
+        </div>
+
+        <form action={action} className="space-y-4">
+          {state?.error && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {state.error}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <label htmlFor="email" className="block text-sm font-medium">
+              {t('correo')}
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              placeholder={t('correoPlaceholder')}
+              className="w-full rounded-lg border border-input bg-background px-3 py-3 text-base outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="contrasena" className="block text-sm font-medium">
+              {t('contrasena')}
+            </label>
+            <input
+              id="contrasena"
+              name="contrasena"
+              type="password"
+              autoComplete="current-password"
+              required
+              placeholder={t('contrasenaPlaceholder')}
+              className="w-full rounded-lg border border-input bg-background px-3 py-3 text-base outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+            />
+          </div>
+
+          <Button
+            type="submit"
+            disabled={pending}
+            className="h-12 w-full text-base"
+          >
+            {pending ? t('cargando') : t('botonEntrar')}
+          </Button>
+        </form>
+
+        <p className="text-center text-sm text-muted-foreground">
+          {t('noTieneCuenta')}{' '}
+          <Link
+            href="/registro"
+            className="font-medium text-foreground underline underline-offset-4"
+          >
+            {t('linkRegistro')}
+          </Link>
+        </p>
+      </div>
+    </div>
+  )
+}

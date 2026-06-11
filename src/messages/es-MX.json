@@ -1,0 +1,54 @@
+{
+  "app": {
+    "nombre": "POS Tiendita"
+  },
+  "login": {
+    "titulo": "Bienvenido",
+    "subtitulo": "Entra a tu cuenta para continuar",
+    "correo": "Correo electrónico",
+    "correoPlaceholder": "tucorreo@ejemplo.com",
+    "contrasena": "Contraseña",
+    "contrasenaPlaceholder": "Tu contraseña",
+    "botonEntrar": "Entrar",
+    "cargando": "Entrando...",
+    "errorCredenciales": "Correo o contraseña incorrectos",
+    "errorGeneral": "Ocurrió un error. Intenta de nuevo.",
+    "noTieneCuenta": "¿No tienes cuenta?",
+    "linkRegistro": "Regístrate aquí"
+  },
+  "registro": {
+    "titulo": "Crea tu cuenta",
+    "subtitulo": "Es gratis para empezar",
+    "correo": "Correo electrónico",
+    "correoPlaceholder": "tucorreo@ejemplo.com",
+    "contrasena": "Contraseña",
+    "contrasenaPlaceholder": "Mínimo 6 caracteres",
+    "confirmarContrasena": "Confirmar contraseña",
+    "confirmarContrasenaPlaceholder": "Repite tu contraseña",
+    "botonRegistrar": "Crear cuenta",
+    "cargando": "Creando cuenta...",
+    "errorContrasenaNoCoincide": "Las contraseñas no coinciden",
+    "errorContrasenaCorta": "La contraseña debe tener al menos 6 caracteres",
+    "errorCorreoExistente": "Ese correo ya está registrado",
+    "errorGeneral": "No se pudo crear la cuenta. Intenta de nuevo.",
+    "yaTieneCuenta": "¿Ya tienes cuenta?",
+    "linkLogin": "Entra aquí"
+  },
+  "crearNegocio": {
+    "titulo": "¿Cómo se llama tu negocio?",
+    "subtitulo": "Este nombre aparecerá en tus reportes y tickets",
+    "nombreLabel": "Nombre del negocio",
+    "nombrePlaceholder": "Ej: Tienda La Lupita",
+    "botonCrear": "Crear mi negocio",
+    "cargando": "Creando tu negocio...",
+    "errorVacio": "Escribe el nombre de tu negocio",
+    "errorGeneral": "No se pudo crear el negocio. Intenta de nuevo."
+  },
+  "dashboard": {
+    "saludo": "Hola, {nombre}",
+    "botonCerrarSesion": "Cerrar sesión"
+  },
+  "logout": {
+    "cargando": "Cerrando sesión..."
+  }
+}
