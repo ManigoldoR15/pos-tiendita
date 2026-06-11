@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Package, Tag, ShoppingCart, Receipt, Wallet, ClipboardList, LogOut } from 'lucide-react'
+import { Home, Package, Tag, ShoppingCart, Receipt, Wallet, ClipboardList, LogOut, Settings } from 'lucide-react'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,7 @@ const LINKS = [
   { href: '/gastos', label: 'Gastos', Icon: Receipt },
   { href: '/productos', label: 'Productos', Icon: Package },
   { href: '/categorias', label: 'Categorías', Icon: Tag },
+  { href: '/configuracion', label: 'Config', Icon: Settings },
 ]
 
 export default function NavBar({ negocioNombre }: { negocioNombre: string }) {
