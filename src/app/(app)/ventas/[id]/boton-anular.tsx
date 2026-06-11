@@ -1,28 +1,30 @@
 'use client'
 
-import { useTransition, useState } from 'react'
+import { useState } from 'react'
 import { anularVentaAction } from './actions'
 import { Button } from '@/components/ui/button'
 import { XCircle } from 'lucide-react'
 
 export default function BotonAnular({ ventaId }: { ventaId: string }) {
-  const [pending, startTransition] = useTransition()
+  const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
 
-  function handleClick() {
+  async function handleClick() {
     if (!confirming) {
       setConfirming(true)
       return
     }
     setError(null)
-    startTransition(async () => {
-      const result = await anularVentaAction(ventaId)
-      if (result && 'error' in result) {
-        setError(result.error)
-        setConfirming(false)
-      }
-    })
+    setPending(true)
+    const result = await anularVentaAction(ventaId)
+    if ('error' in result) {
+      setError(result.error)
+      setConfirming(false)
+      setPending(false)
+    } else {
+      window.location.reload()
+    }
   }
 
   return (

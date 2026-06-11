@@ -1,11 +1,10 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 
-export async function anularVentaAction(ventaId: string): Promise<{ error: string } | void> {
+export async function anularVentaAction(ventaId: string): Promise<{ error: string } | { ok: true }> {
   const negocio = await getNegocioActual()
   if (!negocio) return { error: 'No hay negocio activo' }
 
@@ -17,5 +16,5 @@ export async function anularVentaAction(ventaId: string): Promise<{ error: strin
   revalidatePath(`/ventas/${ventaId}`)
   revalidatePath('/ventas')
   revalidatePath('/')
-  redirect(`/ventas/${ventaId}`)
+  return { ok: true }
 }
