@@ -1,9 +1,12 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { getRolActual } from '@/lib/rol'
 import FormNombre from './form-nombre'
 import FormMetodoPago from './form-metodo-pago'
+import FormEmpleado from './form-empleado'
 import { toggleMetodoPagoAction, eliminarMetodoPagoAction } from './actions'
+import { cambiarRolEmpleadoAction, eliminarEmpleadoAction } from './actions-empleados'
 import { Button } from '@/components/ui/button'
 import { Trash2 } from 'lucide-react'
 
@@ -12,15 +15,26 @@ export default async function ConfiguracionPage() {
   if (!negocio) redirect('/crear-negocio')
 
   const supabase = await createClient()
-  const { data: metodos } = await supabase
-    .from('metodos_pago')
-    .select('id, nombre, activo')
-    .eq('negocio_id', negocio.id)
-    .order('nombre')
+  const [{ data: metodos }, rolActual] = await Promise.all([
+    supabase
+      .from('metodos_pago')
+      .select('id, nombre, activo')
+      .eq('negocio_id', negocio.id)
+      .order('nombre'),
+    getRolActual(),
+  ])
+
+  type Miembro = { user_id: string; email: string; rol: string; created_at: string }
+  let miembros: Miembro[] = []
+  if (rolActual === 'dueno') {
+    const { data } = await supabase.rpc('get_miembros_negocio', { p_negocio_id: negocio.id })
+    miembros = (data as Miembro[]) ?? []
+  }
 
   return (
     <div className="mx-auto max-w-lg space-y-8">
       <h1 className="text-2xl font-bold">Configuración</h1>
+
 
       {/* — Negocio ———————————————————————— */}
       <section className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
@@ -81,6 +95,62 @@ export default async function ConfiguracionPage() {
           <FormMetodoPago />
         </div>
       </section>
+
+      {/* — Empleados (solo dueño) ——————————————— */}
+      {rolActual === 'dueno' && (
+        <section className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
+          <h2 className="font-semibold text-base">Equipo</h2>
+
+          <ul className="divide-y -mx-5">
+            {miembros.map((m) => (
+              <li key={m.user_id} className="flex items-center gap-3 px-5 py-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{m.email}</p>
+                </div>
+
+                {m.rol === 'dueno' ? (
+                  <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+                    Dueño
+                  </span>
+                ) : (
+                  <>
+                    <form action={cambiarRolEmpleadoAction}>
+                      <input type="hidden" name="user_id" value={m.user_id} />
+                      <select
+                        name="rol"
+                        defaultValue={m.rol}
+                        onChange={(e) => (e.target.form as HTMLFormElement).requestSubmit()}
+                        className="rounded-lg border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        <option value="empleado">Empleado</option>
+                        <option value="administrador">Administrador</option>
+                      </select>
+                    </form>
+
+                    <form action={eliminarEmpleadoAction}>
+                      <input type="hidden" name="user_id" value={m.user_id} />
+                      <Button
+                        type="submit"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        title="Quitar del equipo"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </form>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+
+          <div className="space-y-1.5">
+            <p className="text-sm text-muted-foreground">Agregar empleado</p>
+            <FormEmpleado />
+          </div>
+        </section>
+      )}
     </div>
   )
 }
