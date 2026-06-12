@@ -1,12 +1,14 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Download } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { getRolActual } from '@/lib/rol'
 import { formatMXN } from '@/lib/dinero'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { eliminarGastoAction } from './actions'
+import { hoyMX } from '@/lib/fecha'
 
 export default async function GastosPage({
   searchParams,
@@ -17,10 +19,15 @@ export default async function GastosPage({
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
 
-  // Primer y último día del mes actual
-  const hoy = new Date()
-  const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0]
-  const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().split('T')[0]
+  const rolActual = await getRolActual()
+  // Admins and employees can only see business expenses
+  const puedeVerPersonal = rolActual === 'dueno'
+
+  const hoy = hoyMX()
+  const primerDia = hoy.substring(0, 8) + '01'
+  const [year, month] = hoy.split('-').map(Number)
+  const ultimoDia = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' })
+    .format(new Date(Date.UTC(year, month, 0)))
 
   const supabase = await createClient()
   const { data: gastos } = await supabase
@@ -37,22 +44,30 @@ export default async function GastosPage({
   const totalPersonal = todos.filter((g) => g.es_personal).reduce((s, g) => s + g.monto, 0)
 
   const gastosFiltrados =
-    tipo === 'negocio'
-      ? todos.filter((g) => !g.es_personal)
-      : tipo === 'personal'
-        ? todos.filter((g) => g.es_personal)
-        : todos
+    !puedeVerPersonal ? todos.filter((g) => !g.es_personal)
+    : tipo === 'negocio' ? todos.filter((g) => !g.es_personal)
+    : tipo === 'personal' ? todos.filter((g) => g.es_personal)
+    : todos
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Gastos</h1>
-        <Button asChild>
-          <Link href="/gastos/nuevo">
-            <Plus className="h-4 w-4" />
-            Nuevo gasto
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <a
+            href="/api/export/gastos"
+            className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            Excel
+          </a>
+          <Button asChild>
+            <Link href="/gastos/nuevo">
+              <Plus className="h-4 w-4" />
+              Nuevo gasto
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Resumen del mes */}
@@ -76,7 +91,7 @@ export default async function GastosPage({
         {[
           { label: 'Todos', value: undefined },
           { label: 'Negocio', value: 'negocio' },
-          { label: 'Personal', value: 'personal' },
+          ...(puedeVerPersonal ? [{ label: 'Personal', value: 'personal' as string | undefined }] : []),
         ].map(({ label, value }) => (
           <Link
             key={label}
@@ -106,7 +121,8 @@ export default async function GastosPage({
               gasto.categorias_gasto as unknown as { nombre: string } | null
             )?.nombre ?? '—'
 
-            const fechaDisplay = new Date(gasto.fecha + 'T12:00:00').toLocaleDateString('es-MX', {
+            const fechaDisplay = new Date(gasto.fecha + 'T12:00:00Z').toLocaleDateString('es-MX', {
+              timeZone: 'America/Mexico_City',
               day: 'numeric',
               month: 'short',
             })

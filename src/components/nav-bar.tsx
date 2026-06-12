@@ -21,6 +21,16 @@ const LINKS_DUENO = [
   { href: '/configuracion', label: 'Config', Icon: Settings },
 ]
 
+const LINKS_ADMINISTRADOR = [
+  { href: '/', label: 'Inicio', Icon: Home },
+  { href: '/pos', label: 'POS', Icon: ShoppingCart },
+  { href: '/corte', label: 'Caja', Icon: Wallet },
+  { href: '/ventas', label: 'Ventas', Icon: ClipboardList },
+  { href: '/gastos', label: 'Gastos', Icon: Receipt },
+  { href: '/productos', label: 'Productos', Icon: Package },
+  { href: '/proveedores', label: 'Proveedores', Icon: Truck },
+]
+
 const LINKS_EMPLEADO = [
   { href: '/', label: 'Inicio', Icon: Home },
   { href: '/pos', label: 'POS', Icon: ShoppingCart },
@@ -39,7 +49,10 @@ export default function NavBar({
   rol?: RolNegocio | null
 }) {
   const pathname = usePathname()
-  const links = rol === 'empleado' ? LINKS_EMPLEADO : LINKS_DUENO
+  const links =
+    rol === 'empleado' ? LINKS_EMPLEADO :
+    rol === 'administrador' ? LINKS_ADMINISTRADOR :
+    LINKS_DUENO
 
   return (
     <header className="sticky top-0 z-40 border-b bg-card shadow-sm print:hidden">
