@@ -1,52 +1,64 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Scale, Download, User } from 'lucide-react'
+import {
+  ChevronLeft, ChevronRight, Download,
+  TrendingUp, TrendingDown, Scale,
+  AlertTriangle, Package, User,
+  ArrowUpRight, ArrowDownRight, Minus as MinusIcon,
+} from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
 import { formatMXN } from '@/lib/dinero'
 import { mexicoDayRange } from '@/lib/fecha'
 import { cn } from '@/lib/utils'
-import { DonutEgresos, BarrasSeisM, type DonutSlice, type MesBar } from './finanzas-charts'
-import PresupuestoForm from './presupuesto-form'
+import { DonutEgresos, BarrasSeisM, DiasSemanaChart, type DonutSlice, type MesBar, type DiaSemana } from './finanzas-charts'
+import PresupuestoCell from './presupuesto-form'
 
-// ── helpers ────────────────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
+function hoyYM(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' })
+    .format(new Date()).slice(0, 7)
+}
 function mesLabel(ym: string) {
   const [y, m] = ym.split('-').map(Number)
   return new Date(Date.UTC(y, m - 1, 15)).toLocaleDateString('es-MX', {
-    timeZone: 'UTC',
-    month: 'long',
-    year: 'numeric',
+    timeZone: 'UTC', month: 'long', year: 'numeric',
   })
 }
-
 function prevMes(ym: string) {
   const [y, m] = ym.split('-').map(Number)
   const d = new Date(Date.UTC(y, m - 2, 1))
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
 }
-
 function nextMes(ym: string) {
   const [y, m] = ym.split('-').map(Number)
   const d = new Date(Date.UTC(y, m, 1))
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
 }
-
-function mesRange(ym: string): { start: string; end: string; startDate: string; endDate: string } {
+function mesRange(ym: string) {
   const [y, m] = ym.split('-').map(Number)
-  const firstDay = `${ym}-01`
   const lastDate = new Date(Date.UTC(y, m, 0))
   const lastDay = `${ym}-${String(lastDate.getUTCDate()).padStart(2, '0')}`
-  const { start } = mexicoDayRange(firstDay)
-  const { end } = mexicoDayRange(lastDay)
-  return { start, end, startDate: firstDay, endDate: lastDay }
+  return {
+    start:     mexicoDayRange(`${ym}-01`).start,
+    end:       mexicoDayRange(lastDay).end,
+    startDate: `${ym}-01`,
+    endDate:   lastDay,
+    diasTotal: lastDate.getUTCDate(),
+  }
 }
-
-function hoyYM(): string {
-  const d = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date())
-  return d.slice(0, 7)
+function diasTranscurridos(ym: string): number {
+  const hoy = hoyYM()
+  if (ym !== hoy) return mesRange(ym).diasTotal
+  return parseInt(
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' })
+      .format(new Date()).slice(8, 10),
+    10,
+  )
 }
+const DIAS_ES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
@@ -62,126 +74,187 @@ export default async function FinanzasPage({
   if (!negocio) redirect('/crear-negocio')
 
   const { mes: mesParam } = await searchParams
-  const mesActual = /^\d{4}-\d{2}$/.test(mesParam ?? '') ? mesParam! : hoyYM()
-  const rango = mesRange(mesActual)
-  const rangoPrev = mesRange(prevMes(mesActual))
+  const mesActual = /^\d{4}-\d{4,}/.test(mesParam ?? '') || /^\d{4}-\d{2}$/.test(mesParam ?? '')
+    ? mesParam!
+    : hoyYM()
+  // Validate format
+  const mesNorm = /^\d{4}-\d{2}$/.test(mesActual) ? mesActual : hoyYM()
 
-  const supabase = await createClient()
+  const rango     = mesRange(mesNorm)
+  const rangoPrev = mesRange(prevMes(mesNorm))
+  const diasMes   = diasTranscurridos(mesNorm)
+  const supabase  = await createClient()
 
-  // ── Parallel queries ────────────────────────────────────────────────────────
+  // ── Queries ────────────────────────────────────────────────────────────────
   const [
     { data: ventasMes },
+    { data: ventasMesAnt },
     { data: gastosMes },
-    { data: gastosPrevMes },
+    { data: gastosMesAnt },
     { data: categorias },
     { data: itemsMes },
+    { data: allProductos },
   ] = await Promise.all([
-    // Ventas del mes
-    supabase
-      .from('ventas')
-      .select('total')
-      .eq('negocio_id', negocio.id)
-      .eq('estado', 'completada')
-      .gte('created_at', rango.start)
-      .lte('created_at', rango.end),
+    supabase.from('ventas')
+      .select('total, created_at')
+      .eq('negocio_id', negocio.id).eq('estado', 'completada')
+      .gte('created_at', rango.start).lte('created_at', rango.end),
 
-    // Gastos del mes
-    supabase
-      .from('gastos')
+    supabase.from('ventas')
+      .select('total')
+      .eq('negocio_id', negocio.id).eq('estado', 'completada')
+      .gte('created_at', rangoPrev.start).lte('created_at', rangoPrev.end),
+
+    supabase.from('gastos')
       .select('monto, es_personal, categoria_id, categorias_gasto(nombre)')
       .eq('negocio_id', negocio.id)
-      .gte('fecha', rango.startDate)
-      .lte('fecha', rango.endDate),
+      .gte('fecha', rango.startDate).lte('fecha', rango.endDate),
 
-    // Gastos mes anterior (comparativa)
-    supabase
-      .from('gastos')
+    supabase.from('gastos')
       .select('monto, es_personal')
       .eq('negocio_id', negocio.id)
-      .gte('fecha', rangoPrev.startDate)
-      .lte('fecha', rangoPrev.endDate),
+      .gte('fecha', rangoPrev.startDate).lte('fecha', rangoPrev.endDate),
 
-    // Categorías con presupuesto
-    supabase
-      .from('categorias_gasto')
+    supabase.from('categorias_gasto')
       .select('id, nombre, presupuesto')
-      .eq('negocio_id', negocio.id)
-      .order('nombre'),
+      .eq('negocio_id', negocio.id).order('nombre'),
 
-    // Venta items del mes (para top productos por ganancia)
-    supabase
-      .from('venta_items')
+    supabase.from('venta_items')
       .select('cantidad, subtotal, producto_id, productos(nombre, precio_costo), ventas!inner(created_at, estado)')
       .eq('ventas.estado', 'completada')
-      .gte('ventas.created_at', rango.start)
-      .lte('ventas.created_at', rango.end),
+      .gte('ventas.created_at', rango.start).lte('ventas.created_at', rango.end),
+
+    supabase.from('productos')
+      .select('id, nombre, existencias, precio_costo')
+      .eq('negocio_id', negocio.id).eq('activo', true),
   ])
 
-  // ── 6-month bar chart ───────────────────────────────────────────────────────
-  const seisM: MesBar[] = []
-  for (let i = 5; i >= 0; i--) {
-    const [y, m] = mesActual.split('-').map(Number)
-    const d = new Date(Date.UTC(y, m - 1 - i, 1))
-    const ym = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
-    const r = mesRange(ym)
-    const label = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 15))
-      .toLocaleDateString('es-MX', { timeZone: 'UTC', month: 'short' })
-    seisM.push({ mes: label, ingresos: 0, egresos: 0 })
-    // We'll fill in inline — but to avoid 12 queries we use a simpler approach:
-    // just mark placeholders; replace current month with real data
-    if (i === 0) {
-      seisM[seisM.length - 1].ingresos = (ventasMes ?? []).reduce((s, v) => s + v.total, 0)
-      seisM[seisM.length - 1].egresos = (gastosMes ?? []).filter((g) => !g.es_personal).reduce((s, g) => s + g.monto, 0)
-    }
-  }
-
-  // Fetch the other 5 months in one go via a broader range
-  const [y0, m0] = mesActual.split('-').map(Number)
+  // ── 6-month chart (2 extra queries) ────────────────────────────────────────
+  const [y0, m0] = mesNorm.split('-').map(Number)
   const d5ago = new Date(Date.UTC(y0, m0 - 6, 1))
-  const range5start = mexicoDayRange(`${d5ago.getUTCFullYear()}-${String(d5ago.getUTCMonth() + 1).padStart(2, '0')}-01`).start
-  const range5end = mexicoDayRange(`${mesActual}-01`).start  // exclusive — up to start of current month
+  const r5start = mexicoDayRange(
+    `${d5ago.getUTCFullYear()}-${String(d5ago.getUTCMonth() + 1).padStart(2, '0')}-01`
+  ).start
+  const r5end = mexicoDayRange(`${mesNorm}-01`).start
 
   const [{ data: ventasPast }, { data: gastosPast }] = await Promise.all([
-    supabase
-      .from('ventas')
-      .select('total, created_at')
-      .eq('negocio_id', negocio.id)
-      .eq('estado', 'completada')
-      .gte('created_at', range5start)
-      .lt('created_at', range5end),
-    supabase
-      .from('gastos')
-      .select('monto, es_personal, fecha')
+    supabase.from('ventas').select('total, created_at')
+      .eq('negocio_id', negocio.id).eq('estado', 'completada')
+      .gte('created_at', r5start).lt('created_at', r5end),
+    supabase.from('gastos').select('monto, es_personal, fecha')
       .eq('negocio_id', negocio.id)
       .gte('fecha', `${d5ago.getUTCFullYear()}-${String(d5ago.getUTCMonth() + 1).padStart(2, '0')}-01`)
-      .lt('fecha', `${mesActual}-01`),
+      .lt('fecha', `${mesNorm}-01`),
   ])
 
-  // Bucket past data into the 5 earlier month slots
-  for (let i = 0; i < 5; i++) {
-    const [y, m] = mesActual.split('-').map(Number)
-    const d = new Date(Date.UTC(y, m - 1 - (5 - i), 1))
-    const ym = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+  // ── KPIs base ──────────────────────────────────────────────────────────────
+  const ingresosMes   = (ventasMes  ?? []).reduce((s, v) => s + v.total, 0)
+  const ingresosPrev  = (ventasMesAnt ?? []).reduce((s, v) => s + v.total, 0)
+  const egresosMes    = (gastosMes  ?? []).filter(g => !g.es_personal).reduce((s, g) => s + g.monto, 0)
+  const egresosPrev   = (gastosMesAnt ?? []).filter(g => !g.es_personal).reduce((s, g) => s + g.monto, 0)
+  const retirosMes    = (gastosMes  ?? []).filter(g => g.es_personal).reduce((s, g) => s + g.monto, 0)
+  const balanceMes    = ingresosMes - egresosMes
+  const numVentas     = ventasMes?.length ?? 0
+  const ticketPromedio = numVentas > 0 ? Math.round(ingresosMes / numVentas) : 0
 
-    seisM[i].ingresos = (ventasPast ?? [])
-      .filter((v) => v.created_at.startsWith(ym.slice(0, 4)) && new Date(v.created_at).getUTCMonth() + 1 === parseInt(ym.slice(5, 7)))
-      .reduce((s, v) => s + v.total, 0)
+  // ── Costo de ventas / margen bruto ─────────────────────────────────────────
+  const costoVentas = (itemsMes ?? []).reduce((s, item) => {
+    const pc = (item.productos as unknown as { precio_costo: number | null } | null)?.precio_costo ?? 0
+    return s + item.cantidad * pc
+  }, 0)
+  const hayCostos = costoVentas > 0
+  const margenBruto = ingresosMes - costoVentas
+  const margenBrutoPct = ingresosMes > 0 ? Math.round((margenBruto / ingresosMes) * 100) : null
 
-    seisM[i].egresos = (gastosPast ?? [])
-      .filter((g) => !g.es_personal && (g.fecha as string).startsWith(ym))
-      .reduce((s, g) => s + g.monto, 0)
+  // ── Punto de equilibrio ────────────────────────────────────────────────────
+  const promedioDialio = diasMes > 0 ? Math.round(ingresosMes / diasMes) : 0
+  // Si hay márgenes: necesitas vender (gasto diario / margen%) para cubrir gastos
+  // Si no: solo divide egresos / días del mes
+  const gastosDiario = Math.round(egresosMes / rango.diasTotal)
+  const breakEvenDiario = hayCostos && margenBrutoPct && margenBrutoPct > 0
+    ? Math.round(gastosDiario / (margenBrutoPct / 100))
+    : gastosDiario
+  const superaBreakEven = promedioDialio >= breakEvenDiario
+
+  // ── Crecimiento vs mes anterior ────────────────────────────────────────────
+  const hasPrevData = ingresosPrev > 0
+  const crecimientoPct = hasPrevData
+    ? Math.round(((ingresosMes - ingresosPrev) / ingresosPrev) * 100)
+    : null
+  const crecimientoDelta = ingresosMes - ingresosPrev
+
+  // ── Gastos sobre ventas ────────────────────────────────────────────────────
+  const gastosSobreVentasPct = ingresosMes > 0
+    ? Math.round((egresosMes / ingresosMes) * 100)
+    : null
+
+  // ── Semáforo ───────────────────────────────────────────────────────────────
+  type Semaforo = 'verde' | 'amarillo' | 'rojo'
+  const margenNetoPct = ingresosMes > 0 ? (balanceMes / ingresosMes) * 100 : 0
+  const semaforo: Semaforo =
+    balanceMes < 0 ? 'rojo' :
+    (margenNetoPct < 15 || (hasPrevData && ingresosMes < ingresosPrev)) ? 'amarillo' :
+    'verde'
+
+  const mayorGasto = (gastosMes ?? [])
+    .filter(g => !g.es_personal)
+    .sort((a, b) => b.monto - a.monto)[0]
+  const mayorGastoNombre = (mayorGasto?.categorias_gasto as unknown as { nombre: string } | null)?.nombre ?? ''
+
+  const semaforoData = {
+    verde: {
+      bg: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40',
+      dot: 'bg-emerald-500',
+      titulo: 'Vas bien',
+      mensaje: `Este mes llevas ${formatMXN(ingresosMes)} de ventas y ${formatMXN(egresosMes)} de gastos. Te quedan ${formatMXN(balanceMes)} de utilidad.${mayorGastoNombre ? ` Tu mayor gasto es ${mayorGastoNombre}.` : ''}${hasPrevData ? ` Tus ventas van ${crecimientoPct! >= 0 ? 'arriba' : 'abajo'} ${Math.abs(crecimientoPct!)}% vs el mes pasado.` : ''}`,
+    },
+    amarillo: {
+      bg: 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40',
+      dot: 'bg-yellow-500',
+      titulo: 'Cuidado, está apretado',
+      mensaje: `Tienes ${formatMXN(balanceMes)} de balance${margenNetoPct < 15 ? `, que es solo el ${Math.round(margenNetoPct)}% de lo que vendes — muy poquito margen` : ''}.${hasPrevData && ingresosMes < ingresosPrev ? ` Tus ventas bajaron ${Math.abs(crecimientoPct!)}% vs el mes pasado (${formatMXN(ingresosPrev)}).` : ''}${mayorGastoNombre ? ` Revisa el gasto de ${mayorGastoNombre}.` : ''}`,
+    },
+    rojo: {
+      bg: 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/40',
+      dot: 'bg-red-500',
+      titulo: 'Estás perdiendo dinero',
+      mensaje: `Tus gastos (${formatMXN(egresosMes)}) son más que tus ventas (${formatMXN(ingresosMes)}). Estás perdiendo ${formatMXN(Math.abs(balanceMes))} este mes.${mayorGastoNombre ? ` El gasto más pesado es ${mayorGastoNombre}.` : ''} Necesitas aumentar ventas o bajar gastos urgente.`,
+    },
   }
+  const sd = semaforoData[semaforo]
 
-  // ── KPIs ────────────────────────────────────────────────────────────────────
-  const ingresosMes = (ventasMes ?? []).reduce((s, v) => s + v.total, 0)
-  const egresosMes = (gastosMes ?? []).filter((g) => !g.es_personal).reduce((s, g) => s + g.monto, 0)
-  const retirosMes = (gastosMes ?? []).filter((g) => g.es_personal).reduce((s, g) => s + g.monto, 0)
-  const balanceMes = ingresosMes - egresosMes
+  // ── Mejores días de la semana ──────────────────────────────────────────────
+  const dowMap = new Map<number, number>()
+  for (const v of ventasMes ?? []) {
+    const dow = new Date(v.created_at).toLocaleDateString('en-US', {
+      timeZone: 'America/Mexico_City', weekday: 'short',
+    })
+    // convert to 0-6 (Sun-Sat)
+    const d = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(dow)
+    if (d >= 0) dowMap.set(d, (dowMap.get(d) ?? 0) + v.total)
+  }
+  const diasSemana: DiaSemana[] = DIAS_ES.map((label, i) => ({
+    dia: label,
+    total: dowMap.get(i) ?? 0,
+    tickets: 0,
+  }))
+  const mejorDia = [...diasSemana].sort((a, b) => b.total - a.total)[0]
 
-  const ingresosPrev = 0  // Ventas del mes anterior no se consultó para simplificar; usamos egresos
-  const egresosPrev = (gastosPrevMes ?? []).filter((g) => !g.es_personal).reduce((s, g) => s + g.monto, 0)
+  // ── Valor del inventario a costo ───────────────────────────────────────────
+  const inventarioValor = (allProductos ?? []).reduce(
+    (s, p) => s + p.existencias * (p.precio_costo ?? 0), 0,
+  )
 
-  // ── Egresos por categoría ───────────────────────────────────────────────────
+  // ── Productos sin movimiento (0 ventas en el mes) ──────────────────────────
+  const vendidosIds = new Set((itemsMes ?? []).map(i => i.producto_id))
+  const sinMovimiento = (allProductos ?? [])
+    .filter(p => !vendidosIds.has(p.id))
+    .sort((a, b) =>
+      (b.existencias * (b.precio_costo ?? 0)) - (a.existencias * (a.precio_costo ?? 0)),
+    )
+    .slice(0, 8)
+
+  // ── Egresos por categoría ──────────────────────────────────────────────────
   type CatEgreso = { id: string; nombre: string; presupuesto: number | null; real: number }
   const catMap = new Map<string, CatEgreso>()
   for (const cat of categorias ?? []) {
@@ -189,80 +262,125 @@ export default async function FinanzasPage({
   }
   for (const g of gastosMes ?? []) {
     if (g.es_personal) continue
-    const entry = catMap.get(g.categoria_id)
-    if (entry) entry.real += g.monto
+    const e = catMap.get(g.categoria_id)
+    if (e) e.real += g.monto
   }
-  const egresosXCat = [...catMap.values()].filter((c) => c.real > 0 || c.presupuesto)
+  const egresosXCat = [...catMap.values()]
+    .filter(c => c.real > 0 || c.presupuesto)
     .sort((a, b) => b.real - a.real)
+  const donutData: DonutSlice[] = egresosXCat.filter(c => c.real > 0).map(c => ({ nombre: c.nombre, monto: c.real }))
 
-  // ── Donut slices ────────────────────────────────────────────────────────────
-  const donutData: DonutSlice[] = egresosXCat
-    .filter((c) => c.real > 0)
-    .map((c) => ({ nombre: c.nombre, monto: c.real }))
+  // ── 6-month chart ──────────────────────────────────────────────────────────
+  const seisM: MesBar[] = []
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(Date.UTC(y0, m0 - 1 - i, 1))
+    const ym = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+    const label = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 15))
+      .toLocaleDateString('es-MX', { timeZone: 'UTC', month: 'short' })
+    if (i === 0) {
+      seisM.push({ mes: label, ingresos: ingresosMes, egresos: egresosMes })
+    } else {
+      const v = (ventasPast ?? [])
+        .filter(v => new Date(v.created_at).toISOString().startsWith(ym.replace('-', '-').slice(0, 7)))
+        .reduce((s, v) => s + v.total, 0)
+      const g = (gastosPast ?? [])
+        .filter(g => !g.es_personal && (g.fecha as string).startsWith(ym))
+        .reduce((s, g) => s + g.monto, 0)
+      seisM.push({ mes: label, ingresos: v, egresos: g })
+    }
+  }
 
-  // ── Top 10 productos por ganancia ───────────────────────────────────────────
-  type ProdGanancia = { nombre: string; unidades: number; ganancia: number }
-  const prodMap = new Map<string, ProdGanancia>()
+  // ── Top 10 por ganancia ────────────────────────────────────────────────────
+  type PG = { nombre: string; unidades: number; ganancia: number }
+  const pmap = new Map<string, PG>()
   for (const item of itemsMes ?? []) {
     const prod = item.productos as unknown as { nombre: string; precio_costo: number | null } | null
-    const nombre = prod?.nombre ?? 'Producto eliminado'
+    const nombre = prod?.nombre ?? 'Eliminado'
     const pc = prod?.precio_costo ?? 0
-    const pv = pc > 0 ? item.subtotal / item.cantidad : 0
-    const margenUnit = pv - pc
-    const entry = prodMap.get(item.producto_id) ?? { nombre, unidades: 0, ganancia: 0 }
-    entry.unidades += item.cantidad
-    entry.ganancia += margenUnit * item.cantidad
-    prodMap.set(item.producto_id, entry)
+    const pv = item.subtotal / item.cantidad
+    const e = pmap.get(item.producto_id) ?? { nombre, unidades: 0, ganancia: 0 }
+    e.unidades += item.cantidad
+    e.ganancia += (pv - pc) * item.cantidad
+    pmap.set(item.producto_id, e)
   }
-  const top10 = [...prodMap.values()]
-    .filter((p) => p.ganancia > 0)
-    .sort((a, b) => b.ganancia - a.ganancia)
-    .slice(0, 10)
+  const top10 = [...pmap.values()].filter(p => p.ganancia > 0).sort((a, b) => b.ganancia - a.ganancia).slice(0, 10)
 
-  // ── Comparativa vs mes anterior ─────────────────────────────────────────────
-  const pctEgresos = egresosPrev > 0
-    ? Math.round(((egresosMes - egresosPrev) / egresosPrev) * 100)
-    : null
-
-  const isCurrentMonth = mesActual === hoyYM()
-  const nextYM = nextMes(mesActual)
+  const isCurrentMonth = mesNorm === hoyYM()
   const canGoNext = !isCurrentMonth
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
-      {/* Header + navegación mes */}
+    <div className="space-y-5">
+
+      {/* ── Header ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Finanzas</h1>
         <div className="flex items-center gap-2">
-          <Link
-            href={`/finanzas?mes=${prevMes(mesActual)}`}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border hover:bg-accent transition-colors"
-          >
+          <Link href={`/finanzas?mes=${prevMes(mesNorm)}`}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border hover:bg-accent transition-colors">
             <ChevronLeft className="h-4 w-4" />
           </Link>
-          <span className="min-w-[140px] text-center text-sm font-semibold capitalize">
-            {mesLabel(mesActual)}
+          <span className="min-w-[150px] text-center text-sm font-semibold capitalize">
+            {mesLabel(mesNorm)}
           </span>
-          <Link
-            href={canGoNext ? `/finanzas?mes=${nextYM}` : '#'}
-            className={cn(
-              'flex h-8 w-8 items-center justify-center rounded-lg border transition-colors',
-              canGoNext ? 'hover:bg-accent' : 'opacity-30 pointer-events-none',
-            )}
-          >
+          <Link href={canGoNext ? `/finanzas?mes=${nextMes(mesNorm)}` : '#'}
+            className={cn('flex h-8 w-8 items-center justify-center rounded-lg border transition-colors',
+              canGoNext ? 'hover:bg-accent' : 'opacity-30 pointer-events-none')}>
             <ChevronRight className="h-4 w-4" />
           </Link>
-          <a
-            href={`/api/export/finanzas?mes=${mesActual}`}
-            className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
-          >
+          <a href={`/api/export/finanzas?mes=${mesNorm}`}
+            className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors">
             <Download className="h-4 w-4" />
             Excel
           </a>
         </div>
       </div>
 
-      {/* KPIs principales */}
+      {/* ── 1. Semáforo ── */}
+      <div className={cn('rounded-xl border p-5 shadow-sm', sd.bg)}>
+        <div className="flex items-start gap-3">
+          <span className={cn('mt-1 h-3.5 w-3.5 shrink-0 rounded-full', sd.dot)} />
+          <div>
+            <p className="text-lg font-bold">{sd.titulo}</p>
+            <p className="mt-1 text-sm leading-relaxed">{sd.mensaje}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 2. Punto de equilibrio ── */}
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <p className="text-sm font-semibold mb-1">Punto de equilibrio diario</p>
+        <p className="text-xs text-muted-foreground mb-3">
+          {hayCostos
+            ? 'Con tu margen de ganancia, necesitas vender esta cantidad al día solo para cubrir gastos.'
+            : 'Divide tus gastos del mes entre los días. Así sabes cuánto necesitas vender cada día.'}
+        </p>
+        <div className="flex flex-wrap items-center gap-6">
+          <div className="text-center">
+            <p className="text-2xl font-black text-primary">{formatMXN(breakEvenDiario)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">necesitas al día</p>
+          </div>
+          <div className={cn('flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium',
+            superaBreakEven
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400')}>
+            {superaBreakEven
+              ? <ArrowUpRight className="h-4 w-4" />
+              : <ArrowDownRight className="h-4 w-4" />}
+            <span>
+              Tu promedio diario es {formatMXN(promedioDialio)} —{' '}
+              {superaBreakEven ? 'estás por encima, bien' : 'estás por debajo de la meta'}
+            </span>
+          </div>
+          {hayCostos && margenBrutoPct !== null && (
+            <p className="text-xs text-muted-foreground">
+              (calculado con tu margen bruto de {margenBrutoPct}%)
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* ── 3. KPIs ── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-xl border bg-card p-5 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
@@ -270,62 +388,176 @@ export default async function FinanzasPage({
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ingresos</span>
           </div>
           <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{formatMXN(ingresosMes)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{numVentas} ventas · ticket promedio {formatMXN(ticketPromedio)}</p>
         </div>
 
         <div className="rounded-xl border bg-card p-5 shadow-sm">
-          <div className="mb-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TrendingDown className="h-5 w-5 text-red-500" />
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Egresos</span>
-            </div>
-            {pctEgresos !== null && (
-              <span className={cn(
-                'text-xs font-semibold',
-                pctEgresos > 0 ? 'text-red-500' : 'text-emerald-600',
-              )}>
-                {pctEgresos > 0 ? '↑' : '↓'} {Math.abs(pctEgresos)}% vs mes ant.
-              </span>
-            )}
+          <div className="mb-2 flex items-center gap-2">
+            <TrendingDown className="h-5 w-5 text-red-500" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Egresos del negocio</span>
           </div>
           <p className="text-3xl font-bold text-red-600 dark:text-red-400">{formatMXN(egresosMes)}</p>
+          {egresosPrev > 0 && (
+            <p className={cn('mt-1 text-xs font-medium', egresosMes > egresosPrev ? 'text-red-500' : 'text-emerald-600')}>
+              {egresosMes > egresosPrev ? '↑' : '↓'} {Math.abs(Math.round(((egresosMes - egresosPrev) / egresosPrev) * 100))}% vs mes anterior
+            </p>
+          )}
         </div>
 
-        <div className={cn(
-          'rounded-xl border p-5 shadow-sm',
-          balanceMes >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/20' : 'bg-red-50 dark:bg-red-950/20',
-        )}>
+        <div className={cn('rounded-xl border p-5 shadow-sm',
+          balanceMes >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/20' : 'bg-red-50 dark:bg-red-950/20')}>
           <div className="mb-2 flex items-center gap-2">
             <Scale className={cn('h-5 w-5', balanceMes >= 0 ? 'text-emerald-500' : 'text-red-500')} />
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Balance</span>
           </div>
-          <p className={cn(
-            'text-3xl font-bold',
-            balanceMes >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300',
-          )}>
+          <p className={cn('text-3xl font-bold', balanceMes >= 0
+            ? 'text-emerald-700 dark:text-emerald-300'
+            : 'text-red-700 dark:text-red-300')}>
             {formatMXN(balanceMes)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {ingresosMes > 0 ? `${Math.round(margenNetoPct)}% de lo que vendes se convierte en ganancia` : 'Sin ventas'}
           </p>
         </div>
       </div>
 
-      {/* Retiros personales */}
-      {retirosMes > 0 && (
-        <div className="flex items-center gap-3 rounded-xl border bg-card px-5 py-4 shadow-sm">
-          <User className="h-5 w-5 shrink-0 text-orange-400" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold">Retiros personales del dueño</p>
-            <p className="text-xs text-muted-foreground">No incluidos en egresos del negocio</p>
-          </div>
-          <p className="text-xl font-bold text-orange-500">{formatMXN(retirosMes)}</p>
-        </div>
-      )}
+      {/* ── 4. Métricas nuevas — fila 1 ── */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 
-      {/* Grid: tabla egresos por categoría + donut */}
+        {/* Crecimiento */}
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Crecimiento vs mes anterior</p>
+          {crecimientoPct !== null ? (
+            <>
+              <div className="flex items-baseline gap-2">
+                <span className={cn('text-2xl font-bold',
+                  crecimientoPct >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500')}>
+                  {crecimientoPct >= 0 ? '+' : ''}{crecimientoPct}%
+                </span>
+                {crecimientoPct >= 0
+                  ? <ArrowUpRight className="h-4 w-4 text-emerald-500" />
+                  : <ArrowDownRight className="h-4 w-4 text-red-500" />}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {crecimientoDelta >= 0 ? '+' : ''}{formatMXN(crecimientoDelta)} vs {formatMXN(ingresosPrev)} del mes anterior
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">Sin datos del mes anterior para comparar</p>
+          )}
+        </div>
+
+        {/* Margen bruto */}
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Margen bruto</p>
+          {margenBrutoPct !== null ? (
+            <>
+              <p className="text-2xl font-bold text-primary">{margenBrutoPct}%</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                De cada $100 que vendes, te quedan <strong>${margenBrutoPct}</strong> antes de pagar gastos fijos
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Agrega el precio de costo a tus productos para ver este número
+            </p>
+          )}
+        </div>
+
+        {/* Gastos sobre ventas */}
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Gastos sobre ventas</p>
+          {gastosSobreVentasPct !== null ? (
+            <>
+              <p className={cn('text-2xl font-bold',
+                gastosSobreVentasPct > 85 ? 'text-red-600 dark:text-red-400' :
+                gastosSobreVentasPct > 60 ? 'text-yellow-600 dark:text-yellow-400' :
+                'text-emerald-600 dark:text-emerald-400')}>
+                {gastosSobreVentasPct}%
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                De cada $100 que vendes, <strong className={gastosSobreVentasPct > 85 ? 'text-red-500' : ''}>
+                  ${gastosSobreVentasPct} se van en gastos
+                </strong>
+                {gastosSobreVentasPct > 85 && ' — demasiado alto'}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">Sin ventas este mes</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── 4b. Métricas nuevas — fila 2 ── */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+
+        {/* Mejores días */}
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Ventas por día de la semana</p>
+          {mejorDia && mejorDia.total > 0 && (
+            <p className="text-xs text-muted-foreground mb-2">
+              Tu mejor día es <strong>{mejorDia.dia}</strong> con {formatMXN(mejorDia.total)} acumulados
+            </p>
+          )}
+          <DiasSemanaChart data={diasSemana} />
+        </div>
+
+        {/* Inventario a costo */}
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Valor del inventario</p>
+          {inventarioValor > 0 ? (
+            <>
+              <p className="text-2xl font-bold">{formatMXN(inventarioValor)}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Tienes este dinero invertido en mercancía en tu estante. A precio de costo.
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Agrega precio de costo a tus productos para ver el valor del inventario
+            </p>
+          )}
+        </div>
+
+        {/* Productos sin movimiento */}
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+            Productos parados este mes ({sinMovimiento.length})
+          </p>
+          {sinMovimiento.length === 0 ? (
+            <p className="text-sm text-emerald-600">¡Todos tus productos se vendieron este mes!</p>
+          ) : (
+            <div className="space-y-1.5">
+              {sinMovimiento.slice(0, 5).map((p) => (
+                <div key={p.id} className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium truncate flex-1">{p.nombre}</p>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      {p.existencias} uds
+                      {p.precio_costo ? ` · ${formatMXN(p.existencias * p.precio_costo)} parados` : ''}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {sinMovimiento.length > 5 && (
+                <p className="text-xs text-muted-foreground">+{sinMovimiento.length - 5} más</p>
+              )}
+              <p className="text-xs text-muted-foreground border-t pt-1.5 mt-1">
+                Este dinero está parado en tu estante, no genera ganancia.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── 5. Egresos por categoría + Donut ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-        {/* Tabla egresos por categoría — 3/5 */}
         <div className="lg:col-span-3 rounded-xl border bg-card shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b">
-            <h2 className="text-sm font-semibold">Egresos por categoría</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Haz clic en el presupuesto para editarlo</p>
+            <p className="text-sm font-semibold">Egresos por categoría</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Escribe un presupuesto y presiona Enter o Tab para guardarlo. Rojo = se pasó del presupuesto.
+            </p>
           </div>
           {egresosXCat.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-muted-foreground">Sin egresos este mes</p>
@@ -336,28 +568,27 @@ export default async function FinanzasPage({
                   <th className="px-4 py-2 text-left">Categoría</th>
                   <th className="px-4 py-2 text-right">Presupuesto</th>
                   <th className="px-4 py-2 text-right">Real</th>
-                  <th className="px-4 py-2 text-right w-20">%</th>
+                  <th className="px-4 py-2 text-right w-16">%</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {egresosXCat.map((c) => {
-                  const sobre = c.presupuesto && c.real > c.presupuesto
-                  const pct = c.presupuesto ? Math.round((c.real / c.presupuesto) * 100) : null
+                  const sobre = !!c.presupuesto && c.real > c.presupuesto
+                  const pct   = c.presupuesto ? Math.round((c.real / c.presupuesto) * 100) : null
                   return (
                     <tr key={c.id} className={cn(sobre && 'bg-red-50/60 dark:bg-red-950/20')}>
                       <td className="px-4 py-2.5 font-medium">{c.nombre}</td>
                       <td className="px-4 py-2.5 text-right">
-                        <PresupuestoForm categoriaId={c.id} presupuestoActual={c.presupuesto} />
+                        <PresupuestoCell categoriaId={c.id} presupuestoActual={c.presupuesto} />
                       </td>
-                      <td className={cn('px-4 py-2.5 text-right font-semibold tabular-nums', sobre ? 'text-destructive' : '')}>
+                      <td className={cn('px-4 py-2.5 text-right font-semibold tabular-nums',
+                        sobre ? 'text-destructive' : '')}>
                         {formatMXN(c.real)}
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-xs">
-                        {pct !== null ? (
-                          <span className={cn('font-semibold', sobre ? 'text-destructive' : 'text-muted-foreground')}>
-                            {pct}%
-                          </span>
-                        ) : '—'}
+                        {pct !== null
+                          ? <span className={cn('font-semibold', sobre ? 'text-destructive' : 'text-muted-foreground')}>{pct}%</span>
+                          : '—'}
                       </td>
                     </tr>
                   )
@@ -367,17 +598,15 @@ export default async function FinanzasPage({
           )}
         </div>
 
-        {/* Donut — 2/5 */}
         <div className="lg:col-span-2 rounded-xl border bg-card shadow-sm p-4">
-          <h2 className="mb-2 text-sm font-semibold">Distribución de egresos</h2>
+          <p className="mb-2 text-sm font-semibold">Distribución de egresos</p>
           <DonutEgresos data={donutData} />
           <div className="mt-2 space-y-1">
             {donutData.slice(0, 5).map((d, i) => (
               <div key={d.nombre} className="flex items-center gap-2 text-xs">
-                <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-sm"
-                  style={{ backgroundColor: ['var(--color-chart-1)', 'var(--color-chart-2)', 'var(--color-chart-3)', 'var(--color-chart-4)', 'var(--color-chart-5)'][i] }}
-                />
+                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{
+                  backgroundColor: ['var(--color-chart-1)','var(--color-chart-2)','var(--color-chart-3)','var(--color-chart-4)','var(--color-chart-5)'][i],
+                }} />
                 <span className="flex-1 truncate text-muted-foreground">{d.nombre}</span>
                 <span className="font-medium tabular-nums">{formatMXN(d.monto)}</span>
               </div>
@@ -386,25 +615,26 @@ export default async function FinanzasPage({
         </div>
       </div>
 
-      {/* Barras 6 meses */}
+      {/* ── 6. Barras 6 meses ── */}
       <div className="rounded-xl border bg-card p-4 shadow-sm">
-        <h2 className="mb-4 text-sm font-semibold">Ingresos vs Egresos — últimos 6 meses</h2>
+        <p className="mb-1 text-sm font-semibold">Ingresos vs Egresos — últimos 6 meses</p>
+        <p className="mb-4 text-xs text-muted-foreground">Compara cómo ha ido tu negocio mes a mes.</p>
         <BarrasSeisM data={seisM} />
       </div>
 
-      {/* Top 10 productos por ganancia */}
+      {/* ── 7. Top 10 por ganancia ── */}
       {top10.length > 0 && (
         <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b">
-            <h2 className="text-sm font-semibold">Top productos por ganancia generada</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">unidades vendidas × (precio − costo)</p>
+            <p className="text-sm font-semibold">Productos que más te dejan</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Ganancia = unidades vendidas × (precio de venta − precio de costo)</p>
           </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
                 <th className="px-4 py-2 text-left">#</th>
                 <th className="px-4 py-2 text-left">Producto</th>
-                <th className="px-4 py-2 text-right">Unidades</th>
+                <th className="px-4 py-2 text-right">Uds</th>
                 <th className="px-4 py-2 text-right">Ganancia</th>
               </tr>
             </thead>
@@ -423,6 +653,21 @@ export default async function FinanzasPage({
           </table>
         </div>
       )}
+
+      {/* ── 8. Retiros personales ── */}
+      {retirosMes > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border bg-card px-5 py-4 shadow-sm">
+          <User className="h-5 w-5 shrink-0 text-orange-400" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold">Retiros personales del dueño</p>
+            <p className="text-xs text-muted-foreground">
+              Este dinero lo sacaste para uso personal. No está incluido en los egresos del negocio.
+            </p>
+          </div>
+          <p className="text-xl font-bold text-orange-500 tabular-nums shrink-0">{formatMXN(retirosMes)}</p>
+        </div>
+      )}
+
     </div>
   )
 }
