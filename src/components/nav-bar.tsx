@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Package, Tag, ShoppingCart, Receipt, Wallet, ClipboardList, LogOut, Settings, Store } from 'lucide-react'
+import { Home, Package, Tag, ShoppingCart, Receipt, Wallet, ClipboardList, LogOut, Settings, Store, Truck } from 'lucide-react'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -17,6 +17,7 @@ const LINKS_DUENO = [
   { href: '/gastos', label: 'Gastos', Icon: Receipt },
   { href: '/productos', label: 'Productos', Icon: Package },
   { href: '/categorias', label: 'Categorías', Icon: Tag },
+  { href: '/proveedores', label: 'Proveedores', Icon: Truck },
   { href: '/configuracion', label: 'Config', Icon: Settings },
 ]
 
