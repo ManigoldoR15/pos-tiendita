@@ -2,9 +2,11 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
+import { hoyMX } from '@/lib/fecha'
 import FormNombre from './form-nombre'
 import FormMetodoPago from './form-metodo-pago'
 import FormEmpleado from './form-empleado'
+import FormMeta from './form-meta'
 import { toggleMetodoPagoAction, eliminarMetodoPagoAction } from './actions'
 import { cambiarRolEmpleadoAction, eliminarEmpleadoAction } from './actions-empleados'
 import { Button } from '@/components/ui/button'
@@ -26,9 +28,22 @@ export default async function ConfiguracionPage() {
 
   type Miembro = { user_id: string; email: string; rol: string; created_at: string }
   let miembros: Miembro[] = []
+  let metaActual: number | null = null
+
   if (rolActual === 'dueno') {
-    const { data } = await supabase.rpc('get_miembros_negocio', { p_negocio_id: negocio.id })
-    miembros = (data as Miembro[]) ?? []
+    const hoy = hoyMX()
+    const mes = hoy.substring(0, 8) + '01'
+    const [{ data: miembrosData }, { data: metaData }] = await Promise.all([
+      supabase.rpc('get_miembros_negocio', { p_negocio_id: negocio.id }),
+      supabase
+        .from('metas')
+        .select('meta_ventas')
+        .eq('negocio_id', negocio.id)
+        .eq('mes', mes)
+        .single(),
+    ])
+    miembros = (miembrosData as Miembro[]) ?? []
+    metaActual = metaData?.meta_ventas ?? null
   }
 
   return (
@@ -95,6 +110,19 @@ export default async function ConfiguracionPage() {
           <FormMetodoPago />
         </div>
       </section>
+
+      {/* — Meta del mes (solo dueño) ——————————————— */}
+      {rolActual === 'dueno' && (
+        <section className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
+          <div>
+            <h2 className="font-semibold text-base">Meta de ventas del mes</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Establece tu objetivo mensual para ver el avance en el dashboard.
+            </p>
+          </div>
+          <FormMeta metaActual={metaActual} />
+        </section>
+      )}
 
       {/* — Empleados (solo dueño) ——————————————— */}
       {rolActual === 'dueno' && (
