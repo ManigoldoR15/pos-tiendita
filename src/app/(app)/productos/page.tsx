@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Pencil, Plus, AlertTriangle } from 'lucide-react'
+import { Pencil, Plus, AlertTriangle, Download, Upload } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { formatMXN } from '@/lib/dinero'
@@ -9,46 +9,79 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { eliminarProductoAction } from './actions'
 
+const PAGE_SIZE = 48
+
 export default async function ProductosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ categoria?: string; alerta?: string }>
+  searchParams: Promise<{ categoria?: string; alerta?: string; pagina?: string }>
 }) {
-  const { categoria: categoriaFiltro, alerta } = await searchParams
+  const { categoria: categoriaFiltro, alerta, pagina } = await searchParams
+  const paginaActual = Math.max(1, parseInt(pagina ?? '1') || 1)
   const soloStockBajo = alerta === 'bajo'
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
   const supabase = await createClient()
 
-  const [{ data: categorias }, { data: productos }] = await Promise.all([
+  const desde = (paginaActual - 1) * PAGE_SIZE
+  const hasta = desde + PAGE_SIZE - 1
+
+  let query = supabase
+    .from('productos')
+    .select('id, nombre, precio_venta, precio_costo, existencias, activo, categoria_id, categorias_producto(nombre)', { count: 'exact' })
+    .eq('negocio_id', negocio!.id)
+    .order('nombre')
+
+  if (categoriaFiltro) query = query.eq('categoria_id', categoriaFiltro)
+  if (soloStockBajo) query = query.gt('existencias', 0).lte('existencias', STOCK_MINIMO)
+
+  const [{ data: categorias }, { data: productos, count: totalProductos }] = await Promise.all([
     supabase
       .from('categorias_producto')
       .select('id, nombre')
       .eq('negocio_id', negocio!.id)
       .order('nombre'),
-    supabase
-      .from('productos')
-      .select('id, nombre, precio_venta, existencias, activo, categoria_id, categorias_producto(nombre)')
-      .eq('negocio_id', negocio!.id)
-      .order('nombre'),
+    query.range(desde, hasta),
   ])
 
-  const productosFiltrados = productos?.filter((p) => {
-    if (categoriaFiltro && p.categoria_id !== categoriaFiltro) return false
-    if (soloStockBajo && !(p.existencias > 0 && p.existencias <= STOCK_MINIMO)) return false
-    return true
-  })
+  const productosFiltrados = productos ?? []
+  const totalPaginas = Math.ceil((totalProductos ?? 0) / PAGE_SIZE)
+
+  // Build pagination URL helper
+  function paginaUrl(p: number) {
+    const params = new URLSearchParams()
+    if (categoriaFiltro) params.set('categoria', categoriaFiltro)
+    if (soloStockBajo) params.set('alerta', 'bajo')
+    if (p > 1) params.set('pagina', String(p))
+    const qs = params.toString()
+    return `/productos${qs ? `?${qs}` : ''}`
+  }
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Productos</h1>
-        <Button asChild>
-          <Link href="/productos/nuevo">
-            <Plus className="h-4 w-4" />
-            Nuevo
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <a
+            href="/api/export/productos"
+            className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            Excel
+          </a>
+          <Button variant="outline" asChild>
+            <Link href="/productos/importar">
+              <Upload className="h-4 w-4" />
+              Importar
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/productos/nuevo">
+              <Plus className="h-4 w-4" />
+              Nuevo
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -88,13 +121,31 @@ export default async function ProductosPage({
         ))}
       </div>
 
+      {/* Contador */}
+      {(totalProductos ?? 0) > 0 && (
+        <p className="mb-3 text-xs text-muted-foreground">
+          {totalProductos} {totalProductos === 1 ? 'producto' : 'productos'}
+          {totalPaginas > 1 && ` · Página ${paginaActual} de ${totalPaginas}`}
+        </p>
+      )}
+
       {/* Grilla de productos */}
       {productosFiltrados && productosFiltrados.length > 0 ? (
+        <>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {productosFiltrados.map((producto) => {
             const catNombre = (
               producto.categorias_producto as unknown as { nombre: string } | null
             )?.nombre
+
+            const pc = (producto as unknown as { precio_costo: number | null }).precio_costo ?? 0
+            const margen = pc > 0
+              ? Math.round(((producto.precio_venta - pc) / producto.precio_venta) * 100)
+              : null
+            const margenColor = margen === null ? '' :
+              margen >= 30 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+              margen >= 15 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                             'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
 
             return (
               <div
@@ -116,10 +167,17 @@ export default async function ProductosPage({
                   {producto.nombre}
                 </p>
 
-                {/* Precio */}
-                <p className="mb-1 text-lg font-bold text-primary">
-                  {formatMXN(producto.precio_venta)}
-                </p>
+                {/* Precio + margen */}
+                <div className="mb-1 flex items-center gap-2">
+                  <p className="text-lg font-bold text-primary">
+                    {formatMXN(producto.precio_venta)}
+                  </p>
+                  {margen !== null && (
+                    <span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold', margenColor)}>
+                      {margen}%
+                    </span>
+                  )}
+                </div>
 
                 {/* Existencias */}
                 <p
@@ -161,6 +219,49 @@ export default async function ProductosPage({
             )
           })}
         </div>
+        {/* Paginación */}
+
+        {totalPaginas > 1 && (
+          <div className="mt-6 flex items-center justify-center gap-2">
+            {paginaActual > 1 && (
+              <Link
+                href={paginaUrl(paginaActual - 1)}
+                className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
+              >
+                ← Anterior
+              </Link>
+            )}
+            {Array.from({ length: Math.min(totalPaginas, 7) }, (_, i) => {
+              const p = totalPaginas <= 7 ? i + 1
+                : paginaActual <= 4 ? i + 1
+                : paginaActual >= totalPaginas - 3 ? totalPaginas - 6 + i
+                : paginaActual - 3 + i
+              return (
+                <Link
+                  key={p}
+                  href={paginaUrl(p)}
+                  className={cn(
+                    'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+                    p === paginaActual
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-accent',
+                  )}
+                >
+                  {p}
+                </Link>
+              )
+            })}
+            {paginaActual < totalPaginas && (
+              <Link
+                href={paginaUrl(paginaActual + 1)}
+                className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
+              >
+                Siguiente →
+              </Link>
+            )}
+          </div>
+        )}
+        </>
       ) : (
         <div className="mt-12 text-center text-muted-foreground">
           <p className="text-lg">
