@@ -11,8 +11,10 @@ export type ProductoState = { error: string } | null
 function validarFormProducto(formData: FormData): {
   nombre: string
   precio_venta: number
+  precio_costo: number | null
   categoria_id: string | null
   existencias: number
+  codigo_barras: string | null
   activo: boolean
 } | { error: string } {
   const nombre = (formData.get('nombre') as string)?.trim()
@@ -22,11 +24,15 @@ function validarFormProducto(formData: FormData): {
   const precio_venta = textoCentavos(precioTexto)
   if (!precioTexto || precio_venta < 0) return { error: 'Escribe un precio válido' }
 
+  const costoTexto = (formData.get('precio_costo') as string)?.trim()
+  const precio_costo = costoTexto ? textoCentavos(costoTexto) : null
+
   const categoria_id = (formData.get('categoria_id') as string) || null
   const existencias = parseInt(formData.get('existencias') as string) || 0
+  const codigo_barras = (formData.get('codigo_barras') as string)?.trim() || null
   const activo = formData.get('activo') === 'on'
 
-  return { nombre, precio_venta, categoria_id, existencias, activo }
+  return { nombre, precio_venta, precio_costo, categoria_id, existencias, codigo_barras, activo }
 }
 
 export async function crearProductoAction(

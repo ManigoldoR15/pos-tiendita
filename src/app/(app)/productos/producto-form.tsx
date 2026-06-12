@@ -16,8 +16,10 @@ type ProductoFormProps = {
     id?: string
     nombre?: string
     precio_venta?: number
+    precio_costo?: number | null
     categoria_id?: string | null
     existencias?: number
+    codigo_barras?: string | null
     activo?: boolean
   }
 }
@@ -75,6 +77,41 @@ export default function ProductoForm({
               className="w-full rounded-lg border border-input bg-background py-3 pl-7 pr-3 text-base outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
+        </div>
+
+        {/* Precio costo */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium">Precio de costo (MXN)</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+            <input
+              name="precio_costo"
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue={
+                inicial.precio_costo != null
+                  ? centavosATexto(inicial.precio_costo)
+                  : ''
+              }
+              placeholder="0.00"
+              className="w-full rounded-lg border border-input bg-background py-3 pl-7 pr-3 text-base outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">Para calcular márgenes y ganancia bruta</p>
+        </div>
+
+        {/* Código de barras */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium">Código de barras</label>
+          <input
+            name="codigo_barras"
+            defaultValue={inicial.codigo_barras ?? ''}
+            placeholder="Escanea o escribe el código EAN"
+            autoComplete="off"
+            className="rounded-lg border border-input bg-background px-3 py-3 text-base font-mono outline-none focus:ring-2 focus:ring-ring"
+          />
+          <p className="text-xs text-muted-foreground">Se usa en modo mostrador del POS con escáner</p>
         </div>
 
         {/* Categoría */}
