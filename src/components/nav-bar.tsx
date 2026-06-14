@@ -242,16 +242,16 @@ export default function NavBar({
         </div>
 
         {/* Mobile: right side */}
-        <div className="flex md:hidden ml-auto items-center gap-1">
+        <div className="flex md:hidden ml-auto items-center gap-0.5">
           <ThemeToggle />
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
+            type="button"
             onClick={() => setMobileOpen((v) => !v)}
             aria-label="Menú"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
+          </button>
         </div>
       </div>
 

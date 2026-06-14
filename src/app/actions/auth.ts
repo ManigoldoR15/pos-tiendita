@@ -18,6 +18,9 @@ export async function loginAction(
   })
 
   if (error) {
+    if (error.message === 'Email not confirmed') {
+      return { error: 'Confirma tu correo antes de entrar. Revisa tu bandeja de entrada (y la carpeta de spam).' }
+    }
     return { error: 'Correo o contraseña incorrectos' }
   }
 

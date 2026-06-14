@@ -23,9 +23,9 @@ function hoyYM(): string {
 }
 function mesLabel(ym: string) {
   const [y, m] = ym.split('-').map(Number)
-  return new Date(Date.UTC(y, m - 1, 15)).toLocaleDateString('es-MX', {
-    timeZone: 'UTC', month: 'long', year: 'numeric',
-  })
+  const mes = new Intl.DateTimeFormat('es-MX', { month: 'long' })
+    .format(new Date(Date.UTC(y, m - 1, 15)))
+  return `${mes.charAt(0).toUpperCase() + mes.slice(1)} de ${y}`
 }
 function prevMes(ym: string) {
   const [y, m] = ym.split('-').map(Number)
@@ -315,12 +315,12 @@ export default async function FinanzasPage({
       {/* ── Header ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Finanzas</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link href={`/finanzas?mes=${prevMes(mesNorm)}`}
             className="flex h-8 w-8 items-center justify-center rounded-lg border hover:bg-accent transition-colors">
             <ChevronLeft className="h-4 w-4" />
           </Link>
-          <span className="min-w-[150px] text-center text-sm font-semibold capitalize">
+          <span className="min-w-[150px] text-center text-sm font-semibold">
             {mesLabel(mesNorm)}
           </span>
           <Link href={canGoNext ? `/finanzas?mes=${nextMes(mesNorm)}` : '#'}
@@ -355,7 +355,7 @@ export default async function FinanzasPage({
             ? 'Con tu margen de ganancia, necesitas vender esta cantidad al día solo para cubrir gastos.'
             : 'Divide tus gastos del mes entre los días. Así sabes cuánto necesitas vender cada día.'}
         </p>
-        <div className="flex flex-wrap items-center gap-6">
+        <div className="flex flex-wrap items-start gap-4">
           <div className="text-center">
             <p className="text-2xl font-black text-primary">{formatMXN(breakEvenDiario)}</p>
             <p className="text-xs text-muted-foreground mt-0.5">necesitas al día</p>
@@ -562,39 +562,41 @@ export default async function FinanzasPage({
           {egresosXCat.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-muted-foreground">Sin egresos este mes</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
-                  <th className="px-4 py-2 text-left">Categoría</th>
-                  <th className="px-4 py-2 text-right">Presupuesto</th>
-                  <th className="px-4 py-2 text-right">Real</th>
-                  <th className="px-4 py-2 text-right w-16">%</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {egresosXCat.map((c) => {
-                  const sobre = !!c.presupuesto && c.real > c.presupuesto
-                  const pct   = c.presupuesto ? Math.round((c.real / c.presupuesto) * 100) : null
-                  return (
-                    <tr key={c.id} className={cn(sobre && 'bg-red-50/60 dark:bg-red-950/20')}>
-                      <td className="px-4 py-2.5 font-medium">{c.nombre}</td>
-                      <td className="px-4 py-2.5 text-right">
-                        <PresupuestoCell categoriaId={c.id} presupuestoActual={c.presupuesto} />
-                      </td>
-                      <td className={cn('px-4 py-2.5 text-right font-semibold tabular-nums',
-                        sobre ? 'text-destructive' : '')}>
-                        {formatMXN(c.real)}
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-xs">
-                        {pct !== null
-                          ? <span className={cn('font-semibold', sobre ? 'text-destructive' : 'text-muted-foreground')}>{pct}%</span>
-                          : '—'}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[360px] text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
+                    <th className="px-4 py-2 text-left">Categoría</th>
+                    <th className="px-4 py-2 text-right">Presupuesto</th>
+                    <th className="px-4 py-2 text-right">Real</th>
+                    <th className="px-4 py-2 text-right w-16">%</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {egresosXCat.map((c) => {
+                    const sobre = !!c.presupuesto && c.real > c.presupuesto
+                    const pct   = c.presupuesto ? Math.round((c.real / c.presupuesto) * 100) : null
+                    return (
+                      <tr key={c.id} className={cn(sobre && 'bg-red-50/60 dark:bg-red-950/20')}>
+                        <td className="px-4 py-2.5 font-medium">{c.nombre}</td>
+                        <td className="px-4 py-2.5 text-right">
+                          <PresupuestoCell categoriaId={c.id} presupuestoActual={c.presupuesto} />
+                        </td>
+                        <td className={cn('px-4 py-2.5 text-right font-semibold tabular-nums',
+                          sobre ? 'text-destructive' : '')}>
+                          {formatMXN(c.real)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-xs">
+                          {pct !== null
+                            ? <span className={cn('font-semibold', sobre ? 'text-destructive' : 'text-muted-foreground')}>{pct}%</span>
+                            : '—'}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
@@ -629,28 +631,30 @@ export default async function FinanzasPage({
             <p className="text-sm font-semibold">Productos que más te dejan</p>
             <p className="text-xs text-muted-foreground mt-0.5">Ganancia = unidades vendidas × (precio de venta − precio de costo)</p>
           </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
-                <th className="px-4 py-2 text-left">#</th>
-                <th className="px-4 py-2 text-left">Producto</th>
-                <th className="px-4 py-2 text-right">Uds</th>
-                <th className="px-4 py-2 text-right">Ganancia</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {top10.map((p, i) => (
-                <tr key={i}>
-                  <td className="px-4 py-2.5 text-muted-foreground text-xs font-mono">{i + 1}</td>
-                  <td className="px-4 py-2.5 font-medium max-w-[220px] truncate">{p.nombre}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{p.unidades}</td>
-                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-                    {formatMXN(p.ganancia)}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[320px] text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
+                  <th className="px-4 py-2 text-left">#</th>
+                  <th className="px-4 py-2 text-left">Producto</th>
+                  <th className="px-4 py-2 text-right">Uds</th>
+                  <th className="px-4 py-2 text-right">Ganancia</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y">
+                {top10.map((p, i) => (
+                  <tr key={i}>
+                    <td className="px-4 py-2.5 text-muted-foreground text-xs font-mono">{i + 1}</td>
+                    <td className="px-4 py-2.5 font-medium max-w-[160px] truncate">{p.nombre}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{p.unidades}</td>
+                    <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                      {formatMXN(p.ganancia)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

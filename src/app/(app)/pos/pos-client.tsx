@@ -212,9 +212,9 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
   }
 
   return (
-    <div className="flex h-[calc(100svh-8rem)] gap-4">
+    <div className="flex flex-col gap-4 md:flex-row md:h-[calc(100svh-8rem)]">
       {/* ── Grilla de productos ── */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col md:overflow-hidden">
         {/* Toggle de modo */}
         <div className="mb-3 flex items-center gap-2 shrink-0">
           <div className="flex rounded-lg border p-0.5 bg-muted/40">
@@ -283,7 +283,7 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="md:flex-1 md:overflow-y-auto">
           {productosFiltrados.length === 0 ? (
             <p className="mt-12 text-center text-muted-foreground">
               {busqueda
@@ -339,7 +339,7 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
       </div>
 
       {/* ── Carrito ── */}
-      <div className="flex w-72 shrink-0 flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
+      <div className="flex w-full flex-col rounded-xl border bg-card shadow-sm md:w-72 md:shrink-0 md:overflow-hidden">
         <div className="flex shrink-0 items-center gap-2 border-b px-4 py-3">
           <ShoppingCart className="h-5 w-5" />
           <span className="font-semibold">Carrito</span>
@@ -357,7 +357,7 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
           </div>
         ) : (
           <>
-            <div className="flex-1 space-y-2 overflow-y-auto p-3">
+            <div className="space-y-2 p-3 md:flex-1 md:overflow-y-auto">
               {carrito.map((item) => (
                 <div key={item.productoId} className="flex items-center gap-2">
                   <div className="min-w-0 flex-1">
@@ -367,16 +367,16 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
                   <div className="flex shrink-0 items-center gap-1">
                     <button
                       onClick={() => cambiarCantidad(item.productoId, -1)}
-                      className="flex h-6 w-6 items-center justify-center rounded-full border hover:bg-accent"
+                      className="flex h-8 w-8 items-center justify-center rounded-full border hover:bg-accent"
                     >
-                      <Minus className="h-3 w-3" />
+                      <Minus className="h-3.5 w-3.5" />
                     </button>
                     <span className="w-6 text-center text-sm font-bold">{item.cantidad}</span>
                     <button
                       onClick={() => cambiarCantidad(item.productoId, 1)}
-                      className="flex h-6 w-6 items-center justify-center rounded-full border hover:bg-accent"
+                      className="flex h-8 w-8 items-center justify-center rounded-full border hover:bg-accent"
                     >
-                      <Plus className="h-3 w-3" />
+                      <Plus className="h-3.5 w-3.5" />
                     </button>
                   </div>
                   <p className="w-14 shrink-0 text-right text-sm font-semibold">

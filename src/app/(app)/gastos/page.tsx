@@ -20,7 +20,8 @@ export default async function GastosPage({
   if (!negocio) redirect('/crear-negocio')
 
   const rolActual = await getRolActual()
-  // Admins and employees can only see business expenses
+  if (!rolActual || rolActual === 'empleado') redirect('/')
+
   const puedeVerPersonal = rolActual === 'dueno'
 
   const hoy = hoyMX()
@@ -51,9 +52,9 @@ export default async function GastosPage({
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Gastos</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <a
             href="/api/export/gastos"
             className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent transition-colors"

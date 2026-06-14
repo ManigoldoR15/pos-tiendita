@@ -165,11 +165,11 @@ export default function PosMostrador({ productos, metodosPago, onCambiarModo }: 
   }
 
   return (
-    <div className="flex h-[calc(100svh-8rem)] gap-4">
+    <div className="flex flex-col gap-4 md:flex-row md:h-[calc(100svh-8rem)]">
       {/* ── Panel izquierdo: ticket ─────────────────────────────────────── */}
       <div className="flex flex-1 flex-col min-w-0 gap-3">
         {/* Header con toggle de modo */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <div className="flex rounded-lg border p-0.5 bg-muted/40">
             <button
               onClick={onCambiarModo}
@@ -185,7 +185,7 @@ export default function PosMostrador({ productos, metodosPago, onCambiarModo }: 
               Mostrador
             </button>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="hidden sm:block text-xs text-muted-foreground">
             Escanea un código de barras o escríbelo y presiona Enter
           </p>
         </div>
@@ -213,7 +213,7 @@ export default function PosMostrador({ productos, metodosPago, onCambiarModo }: 
         </form>
 
         {/* Ticket */}
-        <div className="flex-1 overflow-y-auto rounded-xl border bg-card">
+        <div className="md:flex-1 md:overflow-y-auto rounded-xl border bg-card">
           {ticket.length === 0 ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
               <p>Ticket vacío — escanea un producto</p>
@@ -236,14 +236,14 @@ export default function PosMostrador({ productos, metodosPago, onCambiarModo }: 
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => cambiarCantidad(item.productoId, -1)}
-                          className="flex h-6 w-6 items-center justify-center rounded-md border hover:bg-accent"
+                          className="flex h-8 w-8 items-center justify-center rounded-md border hover:bg-accent"
                         >
                           <Minus className="h-3 w-3" />
                         </button>
                         <span className="w-8 text-center font-mono font-bold">{item.cantidad}</span>
                         <button
                           onClick={() => cambiarCantidad(item.productoId, 1)}
-                          className="flex h-6 w-6 items-center justify-center rounded-md border hover:bg-accent"
+                          className="flex h-8 w-8 items-center justify-center rounded-md border hover:bg-accent"
                         >
                           <Plus className="h-3 w-3" />
                         </button>
@@ -275,7 +275,7 @@ export default function PosMostrador({ productos, metodosPago, onCambiarModo }: 
       </div>
 
       {/* ── Panel derecho: cobro ────────────────────────────────────────── */}
-      <div className="flex w-72 shrink-0 flex-col gap-3">
+      <div className="flex w-full flex-col gap-3 md:w-72 md:shrink-0">
         {/* Total */}
         <div className={cn(
           'rounded-xl border p-5 text-center shadow-sm',
