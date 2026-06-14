@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { anularVentaAction } from './actions'
 import { Button } from '@/components/ui/button'
 import { XCircle } from 'lucide-react'
 
 export default function BotonAnular({ ventaId }: { ventaId: string }) {
+  const router = useRouter()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
@@ -23,7 +25,7 @@ export default function BotonAnular({ ventaId }: { ventaId: string }) {
       setConfirming(false)
       setPending(false)
     } else {
-      window.location.reload()
+      router.refresh()
     }
   }
 

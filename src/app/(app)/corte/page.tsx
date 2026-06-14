@@ -8,15 +8,8 @@ import { cn } from '@/lib/utils'
 import FormAbrirCorte from './form-abrir'
 import FormCerrarCorte from './form-cerrar'
 
-function fmtFecha(iso: string) {
-  return new Date(iso).toLocaleString('es-MX', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
+import { fmtFechaHoraCorta } from '@/lib/fecha'
+function fmtFecha(iso: string) { return fmtFechaHoraCorta(iso) }
 
 export default async function CortePage() {
   const negocio = await getNegocioActual()

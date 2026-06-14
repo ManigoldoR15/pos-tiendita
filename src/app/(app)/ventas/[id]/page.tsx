@@ -3,7 +3,9 @@ import { notFound, redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { getRolActual } from '@/lib/rol'
 import { formatMXN } from '@/lib/dinero'
+import { fmtFechaHora } from '@/lib/fecha'
 import BotonAnular from './boton-anular'
 
 export default async function DetalleVentaPage({
@@ -15,15 +17,19 @@ export default async function DetalleVentaPage({
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
 
-  const supabase = await createClient()
+  const [supabase, rolActual] = await Promise.all([
+    createClient(),
+    getRolActual(),
+  ])
+  const puedeAnular = rolActual === 'dueno' || rolActual === 'administrador'
   const { data: venta } = await supabase
     .from('ventas')
     .select(`
-      id, total, pago_recibido, cambio, created_at, estado, notas,
+      id, total, descuento, pago_recibido, cambio, created_at, estado, notas,
       metodos_pago(nombre),
       venta_items(
         id, cantidad, precio_unitario, subtotal,
-        productos(nombre)
+        productos(nombre, precio_costo)
       )
     `)
     .eq('id', id)
@@ -40,18 +46,16 @@ export default async function DetalleVentaPage({
     cantidad: number
     precio_unitario: number
     subtotal: number
-    productos: { nombre: string } | null
+    productos: { nombre: string; precio_costo: number | null } | null
   }
   const items = (venta.venta_items as unknown as ItemRaw[]) ?? []
 
-  const fechaCompleta = new Date(venta.created_at).toLocaleString('es-MX', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const ventaSubtotal = items.reduce((s, i) => s + i.subtotal, 0)
+  const descuento = (venta as unknown as { descuento: number }).descuento ?? 0
+  const costoVenta = items.reduce((s, i) => s + i.cantidad * (i.productos?.precio_costo ?? 0), 0)
+  const gananciaBruta = venta.total - costoVenta
+
+  const fechaCompleta = fmtFechaHora(venta.created_at)
 
   return (
     <div className="mx-auto max-w-lg space-y-5">
@@ -67,7 +71,7 @@ export default async function DetalleVentaPage({
       </div>
 
       <div>
-        <h1 className="text-xl font-bold capitalize">{fechaCompleta}</h1>
+        <h1 className="text-xl font-bold">{fechaCompleta.charAt(0).toUpperCase() + fechaCompleta.slice(1)}</h1>
         <div className="mt-1 flex items-center gap-2">
           <span className="text-sm text-muted-foreground">{metodoPago}</span>
           {venta.estado === 'cancelada' && (
@@ -119,6 +123,18 @@ export default async function DetalleVentaPage({
 
         {/* Totales */}
         <div className="border-t px-4 py-3 space-y-1.5 bg-muted/20">
+          {descuento > 0 && (
+            <>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Subtotal</span>
+                <span>{formatMXN(ventaSubtotal)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-emerald-600">
+                <span>Descuento</span>
+                <span>−{formatMXN(descuento)}</span>
+              </div>
+            </>
+          )}
           <div className="flex justify-between text-sm">
             <span className="font-semibold">Total</span>
             <span className="font-bold text-lg">{formatMXN(venta.total)}</span>
@@ -135,6 +151,14 @@ export default async function DetalleVentaPage({
               <span>{formatMXN(venta.cambio)}</span>
             </div>
           )}
+          {costoVenta > 0 && (
+            <div className="flex justify-between text-sm border-t pt-1.5 mt-1">
+              <span className="text-muted-foreground">Ganancia bruta</span>
+              <span className={gananciaBruta >= 0 ? 'font-semibold text-emerald-600' : 'font-semibold text-destructive'}>
+                {formatMXN(gananciaBruta)}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -145,7 +169,7 @@ export default async function DetalleVentaPage({
         </div>
       )}
 
-      {venta.estado === 'completada' && (
+      {venta.estado === 'completada' && puedeAnular && (
         <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-4">
           <p className="mb-3 text-sm text-muted-foreground">
             Anular devolverá las unidades al inventario.

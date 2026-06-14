@@ -1,60 +1,45 @@
+import { hoyMX, mexicoDayRange, addDaysMX } from './fecha'
+
 export type Periodo = 'hoy' | 'semana' | 'mes' | 'rango'
 
 export type Rango = {
-  start: string   // ISO para ventas (timestamptz)
+  start: string    // ISO UTC para filtros de timestamptz
   end: string
-  startDate: string  // YYYY-MM-DD para gastos (date)
+  startDate: string  // YYYY-MM-DD en hora México, para filtros de date
   endDate: string
 }
 
 export function getRango(p: string, desde?: string, hasta?: string): Rango {
-  const ahora = new Date()
+  const hoy = hoyMX()  // "YYYY-MM-DD" en hora de México
 
   if (p === 'semana') {
-    const ini = new Date(ahora)
-    ini.setDate(ahora.getDate() - 6)
-    ini.setHours(0, 0, 0, 0)
-    return {
-      start: ini.toISOString(),
-      end: ahora.toISOString(),
-      startDate: ini.toISOString().split('T')[0],
-      endDate: ahora.toISOString().split('T')[0],
-    }
+    const hace6d = addDaysMX(hoy, -6)
+    const { start } = mexicoDayRange(hace6d)
+    const { end }   = mexicoDayRange(hoy)
+    return { start, end, startDate: hace6d, endDate: hoy }
   }
 
   if (p === 'mes') {
-    const ini = new Date(ahora.getFullYear(), ahora.getMonth(), 1)
-    return {
-      start: ini.toISOString(),
-      end: ahora.toISOString(),
-      startDate: ini.toISOString().split('T')[0],
-      endDate: ahora.toISOString().split('T')[0],
-    }
+    const primerDia = hoy.substring(0, 8) + '01'
+    const { start } = mexicoDayRange(primerDia)
+    const { end }   = mexicoDayRange(hoy)
+    return { start, end, startDate: primerDia, endDate: hoy }
   }
 
   if (p === 'rango' && desde && hasta) {
-    return {
-      start: new Date(desde + 'T00:00:00').toISOString(),
-      end: new Date(hasta + 'T23:59:59.999').toISOString(),
-      startDate: desde,
-      endDate: hasta,
-    }
+    const { start } = mexicoDayRange(desde)
+    const { end }   = mexicoDayRange(hasta)
+    return { start, end, startDate: desde, endDate: hasta }
   }
 
   // hoy (default)
-  const ini = new Date(ahora)
-  ini.setHours(0, 0, 0, 0)
-  return {
-    start: ini.toISOString(),
-    end: ahora.toISOString(),
-    startDate: ini.toISOString().split('T')[0],
-    endDate: ahora.toISOString().split('T')[0],
-  }
+  const { start, end } = mexicoDayRange(hoy)
+  return { start, end, startDate: hoy, endDate: hoy }
 }
 
 export const PERIODOS: { label: string; value: Periodo }[] = [
-  { label: 'Hoy', value: 'hoy' },
+  { label: 'Hoy',    value: 'hoy'    },
   { label: 'Semana', value: 'semana' },
-  { label: 'Mes', value: 'mes' },
-  { label: 'Rango', value: 'rango' },
+  { label: 'Mes',    value: 'mes'    },
+  { label: 'Rango',  value: 'rango'  },
 ]

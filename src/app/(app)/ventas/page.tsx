@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { ChevronRight, Printer } from 'lucide-react'
+import { ChevronRight, Printer, Download } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { formatMXN } from '@/lib/dinero'
 import { getRango, PERIODOS, type Periodo } from '@/lib/periodo'
+import { fmtHora, fmtFechaCorta } from '@/lib/fecha'
 import { cn } from '@/lib/utils'
 
 export default async function VentasPage({
@@ -39,14 +40,21 @@ export default async function VentasPage({
     <div className="space-y-5">
       <h1 className="text-2xl font-bold">Historial de ventas</h1>
 
-      {/* Cabecera con botón reporte */}
-      <div className="flex items-center gap-3">
-        <Link
-          href={`/ventas/reporte?p=${periodo}${desde ? `&desde=${desde}` : ''}${hasta ? `&hasta=${hasta}` : ''}`}
+      {/* Cabecera con botones reporte / exportar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <a
+          href="/api/export/ventas"
           className="ml-auto flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
         >
+          <Download className="h-4 w-4" />
+          Excel
+        </a>
+        <Link
+          href={`/ventas/reporte?p=${periodo}${desde ? `&desde=${desde}` : ''}${hasta ? `&hasta=${hasta}` : ''}`}
+          className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
+        >
           <Printer className="h-4 w-4" />
-          Imprimir reporte
+          Imprimir
         </Link>
       </div>
 
@@ -129,14 +137,8 @@ export default async function VentasPage({
           {lista.map((venta) => {
             const metodoPago =
               (venta.metodos_pago as unknown as { nombre: string } | null)?.nombre ?? '—'
-            const hora = new Date(venta.created_at).toLocaleTimeString('es-MX', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-            const fecha = new Date(venta.created_at).toLocaleDateString('es-MX', {
-              day: 'numeric',
-              month: 'short',
-            })
+            const hora = fmtHora(venta.created_at)
+            const fecha = fmtFechaCorta(venta.created_at)
 
             return (
               <Link

@@ -17,14 +17,14 @@ export default async function ConfiguracionPage() {
   if (!negocio) redirect('/crear-negocio')
 
   const supabase = await createClient()
-  const [{ data: metodos }, rolActual] = await Promise.all([
-    supabase
-      .from('metodos_pago')
-      .select('id, nombre, activo')
-      .eq('negocio_id', negocio.id)
-      .order('nombre'),
-    getRolActual(),
-  ])
+  const rolActual = await getRolActual()
+  if (rolActual !== 'dueno') redirect('/')
+
+  const { data: metodos } = await supabase
+    .from('metodos_pago')
+    .select('id, nombre, activo')
+    .eq('negocio_id', negocio.id)
+    .order('nombre')
 
   type Miembro = { user_id: string; email: string; rol: string; created_at: string }
   let miembros: Miembro[] = []

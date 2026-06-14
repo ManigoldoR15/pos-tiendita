@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import GastoForm from './gasto-form'
 import { crearGastoAction } from '../actions'
+import { hoyMX } from '@/lib/fecha'
 
 export default async function NuevoGastoPage() {
   const negocio = await getNegocioActual()
@@ -15,7 +16,7 @@ export default async function NuevoGastoPage() {
     .eq('negocio_id', negocio.id)
     .order('orden')
 
-  const fechaHoy = new Date().toISOString().split('T')[0]
+  const fechaHoy = hoyMX()
 
   return (
     <GastoForm

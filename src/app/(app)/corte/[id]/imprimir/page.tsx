@@ -7,16 +7,8 @@ import { formatMXN } from '@/lib/dinero'
 import { cn } from '@/lib/utils'
 import { PrintButton } from '@/components/print-button'
 
-function fmtFechaLarga(iso: string) {
-  return new Date(iso).toLocaleString('es-MX', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
+import { fmtFechaHora, fmtHora } from '@/lib/fecha'
+function fmtFechaLarga(iso: string) { return fmtFechaHora(iso) }
 
 export default async function ImprimirCortePage({
   params,
@@ -75,11 +67,11 @@ export default async function ImprimirCortePage({
       <div className="rounded-xl border bg-card p-4 mb-4 space-y-2 text-sm">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Apertura</span>
-          <span className="font-medium capitalize">{fmtFechaLarga(corte.fecha_apertura)}</span>
+          <span className="font-medium">{fmtFechaLarga(corte.fecha_apertura)}</span>
         </div>
         <div className="flex justify-between border-t pt-2">
           <span className="text-muted-foreground">Cierre</span>
-          <span className="font-medium capitalize">
+          <span className="font-medium">
             {corte.fecha_cierre ? fmtFechaLarga(corte.fecha_cierre) : '—'}
           </span>
         </div>
@@ -126,10 +118,7 @@ export default async function ImprimirCortePage({
               {lista.map((v) => {
                 const metodo =
                   (v.metodos_pago as unknown as { nombre: string } | null)?.nombre ?? '—'
-                const hora = new Date(v.created_at).toLocaleTimeString('es-MX', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })
+                const hora = fmtHora(v.created_at)
                 return (
                   <tr key={v.id} className={cn(v.estado === 'cancelada' && 'opacity-40')}>
                     <td className="px-4 py-2">{hora}</td>

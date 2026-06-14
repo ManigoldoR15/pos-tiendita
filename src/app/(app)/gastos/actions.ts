@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { textoCentavos } from '@/lib/dinero'
+import { hoyMX } from '@/lib/fecha'
 
 export type GastoState = { error: string } | null
 
@@ -18,7 +19,7 @@ export async function crearGastoAction(
   const categoria_id = formData.get('categoria_id') as string
   const montoTexto = (formData.get('monto') as string) ?? ''
   const descripcion = (formData.get('descripcion') as string)?.trim() || null
-  const fecha = (formData.get('fecha') as string) || new Date().toISOString().split('T')[0]
+  const fecha = (formData.get('fecha') as string) || hoyMX()
   const es_personal = formData.get('es_personal') === 'on'
 
   if (!categoria_id) return { error: 'Selecciona una categoría' }

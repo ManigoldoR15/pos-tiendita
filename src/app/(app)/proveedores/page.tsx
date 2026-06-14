@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { getRolActual } from '@/lib/rol'
 import FormProveedor from './form-proveedor'
 import ProveedorCard from './proveedor-card'
 import { crearProveedorAction } from './actions'
@@ -8,6 +9,9 @@ import { crearProveedorAction } from './actions'
 export default async function ProveedoresPage() {
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
+
+  const rol = await getRolActual()
+  if (!rol || rol === 'empleado') redirect('/')
 
   const supabase = await createClient()
   const { data: proveedores } = await supabase

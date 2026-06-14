@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { formatMXN } from '@/lib/dinero'
 import { getRango, PERIODOS, type Periodo } from '@/lib/periodo'
+import { fmtVentaLabel, fmtFechaHoraCorta } from '@/lib/fecha'
 import { PrintButton } from '@/components/print-button'
 
 export default async function ReporteVentasPage({
@@ -69,13 +70,7 @@ export default async function ReporteVentasPage({
     .sort((a, b) => b[1].monto - a[1].monto)
     .slice(0, 10)
 
-  const fechaGenerado = new Date().toLocaleString('es-MX', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const fechaGenerado = fmtFechaHoraCorta(new Date().toISOString())
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -201,13 +196,7 @@ export default async function ReporteVentasPage({
               {lista.map((v) => {
                 const metodo =
                   (v.metodos_pago as unknown as { nombre: string } | null)?.nombre ?? '—'
-                const dt = new Date(v.created_at)
-                const label = dt.toLocaleString('es-MX', {
-                  day: 'numeric',
-                  month: 'short',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })
+                const label = fmtVentaLabel(v.created_at)
                 return (
                   <tr key={v.id} className={v.estado === 'cancelada' ? 'opacity-40' : ''}>
                     <td className="px-4 py-2 text-muted-foreground">{label}</td>
