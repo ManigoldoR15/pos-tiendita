@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import {
   Home, Package, Tag, ShoppingCart, Receipt, Wallet, ClipboardList,
-  LogOut, Settings, Store, Truck, BarChart2, ChevronDown, Menu, X,
+  LogOut, Settings, Store, Truck, BarChart2, ChevronDown, Menu, X, CalendarCheck,
 } from 'lucide-react'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,7 @@ const DIRECT_DUENO: NavLink[] = [
   { href: '/ventas', label: 'Ventas', Icon: ClipboardList },
   { href: '/gastos', label: 'Gastos', Icon: Receipt },
   { href: '/finanzas', label: 'Finanzas', Icon: BarChart2 },
+  { href: '/caducidad', label: 'Caducidad', Icon: CalendarCheck },
 ]
 
 const CATALOGO_DUENO: NavLink[] = [
@@ -38,6 +39,7 @@ const DIRECT_ADMIN: NavLink[] = [
   { href: '/corte', label: 'Caja', Icon: Wallet },
   { href: '/ventas', label: 'Ventas', Icon: ClipboardList },
   { href: '/gastos', label: 'Gastos', Icon: Receipt },
+  { href: '/caducidad', label: 'Caducidad', Icon: CalendarCheck },
 ]
 
 const CATALOGO_ADMIN: NavLink[] = [
@@ -51,6 +53,7 @@ const DIRECT_EMPLEADO: NavLink[] = [
   { href: '/corte', label: 'Caja', Icon: Wallet },
   { href: '/ventas', label: 'Ventas', Icon: ClipboardList },
   { href: '/productos', label: 'Productos', Icon: Package },
+  { href: '/caducidad', label: 'Caducidad', Icon: CalendarCheck },
 ]
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -158,10 +161,12 @@ function CatalogoDropdown({
 export default function NavBar({
   negocioNombre,
   stockBajo = 0,
+  lotesAlerta = 0,
   rol,
 }: {
   negocioNombre: string
   stockBajo?: number
+  lotesAlerta?: number
   rol?: RolNegocio | null
 }) {
   const pathname = usePathname()
@@ -203,7 +208,11 @@ export default function NavBar({
               label={label}
               Icon={Icon}
               active={href === '/' ? pathname === '/' : pathname.startsWith(href)}
-              badge={href === '/productos' ? stockBajo : undefined}
+              badge={
+                href === '/productos' ? stockBajo :
+                href === '/caducidad' ? lotesAlerta :
+                undefined
+              }
             />
           ))}
 
@@ -260,7 +269,9 @@ export default function NavBar({
         <div className="md:hidden border-t bg-card px-4 py-3 space-y-1">
           {allMobileLinks.map(({ href, label, Icon }) => {
             const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
-            const badge = href === '/productos' ? stockBajo : 0
+            const badge =
+              href === '/productos' ? stockBajo :
+              href === '/caducidad' ? lotesAlerta : 0
             return (
               <Link
                 key={href}

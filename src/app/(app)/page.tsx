@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ShoppingCart, Receipt, TrendingUp, TrendingDown, Package, AlertTriangle, Target } from 'lucide-react'
+import { ShoppingCart, Receipt, TrendingUp, TrendingDown, Package, AlertTriangle, Target, CalendarX } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
@@ -38,6 +38,8 @@ export default async function DashboardPage({
       .format(new Date(Date.UTC(parseInt(hoy.slice(0, 4)), parseInt(hoy.slice(5, 7)), 0))),
   )
 
+  const en3dias = addDaysMX(hoy, 3)
+
   const [
     { data: ventas },
     { data: gastos },
@@ -46,6 +48,7 @@ export default async function DashboardPage({
     { data: ventasSemana },
     { data: metaMes },
     { data: ventasMes },
+    { count: numLotesAlerta },
   ] = await Promise.all([
     supabase
       .from('ventas')
@@ -101,6 +104,13 @@ export default async function DashboardPage({
       .eq('estado', 'completada')
       .gte('created_at', mesStart)
       .lte('created_at', mesEnd),
+
+    supabase
+      .from('lotes_producto')
+      .select('*', { count: 'exact', head: true })
+      .eq('negocio_id', negocio.id)
+      .eq('activo', true)
+      .or(`fecha_caducidad.lte.${en3dias},estado_manual.eq.negro`),
   ])
 
   // 7-day chart data (Mexico calendar days)
@@ -315,6 +325,21 @@ export default async function DashboardPage({
             {numStockBajo === 1 ? 'producto tiene' : 'productos tienen'} stock bajo (≤ {STOCK_MINIMO} unidades)
           </span>
           <span className="ml-auto text-orange-500">Ver →</span>
+        </Link>
+      )}
+
+      {/* Alerta caducidad */}
+      {(numLotesAlerta ?? 0) > 0 && (
+        <Link
+          href="/caducidad?estado=negro"
+          className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800/40 px-4 py-3 text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/30 transition-colors"
+        >
+          <CalendarX className="h-5 w-5 shrink-0 text-red-500" />
+          <span>
+            <strong>{numLotesAlerta}</strong>{' '}
+            {numLotesAlerta === 1 ? 'lote caduca' : 'lotes caducan'} en 3 días o ya está vencido — verifica el producto
+          </span>
+          <span className="ml-auto text-red-500">Ver →</span>
         </Link>
       )}
 
