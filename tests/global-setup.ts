@@ -132,10 +132,12 @@ export default async function globalSetup() {
   // ── 5. Save browser auth state ───────────────────────────────────────────
   const browser = await chromium.launch()
 
+  const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3000'
+
   async function saveAuth(email: string, password: string, file: string) {
     const ctx = await browser.newContext()
     const page = await ctx.newPage()
-    await page.goto('http://localhost:3000/login')
+    await page.goto(`${BASE_URL}/login`)
     await page.fill('input[name="email"]', email)
     await page.fill('input[name="contrasena"]', password)
     await page.click('button[type="submit"]')

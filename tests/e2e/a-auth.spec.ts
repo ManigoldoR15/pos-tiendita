@@ -136,7 +136,6 @@ test.describe('Auth: registro → crear negocio → logout → login', () => {
     await page.fill('input[name="contrasena"]', TEST_PASSWORD)
     await page.click('button[type="submit"]')
     await page.waitForURL((u) => !u.pathname.includes('/login'), { timeout: 10000 })
-    await page.waitForLoadState('networkidle', { timeout: 8000 })
 
     // Si no hay negocio aún (redirect a /crear-negocio), crearlo para poder hacer logout
     if (page.url().includes('crear-negocio')) {
