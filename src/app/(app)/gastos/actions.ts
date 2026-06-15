@@ -16,18 +16,30 @@ export async function crearGastoAction(
   const negocio = await getNegocioActual()
   if (!negocio) return { error: 'No hay negocio activo' }
 
-  const categoria_id = formData.get('categoria_id') as string
+  let categoria_id = (formData.get('categoria_id') as string) || ''
+  const nueva_categoria_nombre = (formData.get('nueva_categoria_nombre') as string)?.trim() || ''
   const montoTexto = (formData.get('monto') as string) ?? ''
   const descripcion = (formData.get('descripcion') as string)?.trim() || null
   const fecha = (formData.get('fecha') as string) || hoyMX()
   const es_personal = formData.get('es_personal') === 'on'
 
-  if (!categoria_id) return { error: 'Selecciona una categoría' }
+  if (!categoria_id && !nueva_categoria_nombre) return { error: 'Selecciona o escribe una categoría' }
 
   const monto = textoCentavos(montoTexto)
   if (monto <= 0) return { error: 'El monto debe ser mayor a $0.00' }
 
   const supabase = await createClient()
+
+  if (!categoria_id && nueva_categoria_nombre) {
+    const { data: newCat, error: catError } = await supabase
+      .from('categorias_gasto')
+      .insert({ negocio_id: negocio.id, nombre: nueva_categoria_nombre })
+      .select('id')
+      .single()
+    if (catError || !newCat) return { error: 'No se pudo crear la categoría. Intenta de nuevo.' }
+    categoria_id = newCat.id
+  }
+
   const { error } = await supabase.from('gastos').insert({
     negocio_id: negocio.id,
     categoria_id,

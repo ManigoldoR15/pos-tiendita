@@ -4,6 +4,7 @@ import { useActionState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { centavosATexto } from '@/lib/dinero'
+import ComboboxCategoria from '@/components/combobox-categoria'
 import type { ProductoState } from './actions'
 
 type Categoria = { id: string; nombre: string }
@@ -117,18 +118,11 @@ export default function ProductoForm({
         {/* Categoría */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium">Categoría</label>
-          <select
-            name="categoria_id"
-            defaultValue={inicial.categoria_id ?? ''}
-            className="rounded-lg border border-input bg-background px-3 py-3 text-base outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">Sin categoría</option>
-            {categorias.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre}
-              </option>
-            ))}
-          </select>
+          <ComboboxCategoria
+            categorias={categorias}
+            placeholder="Sin categoría / escribe una nueva…"
+            defaultCategoriaId={inicial.categoria_id ?? ''}
+          />
         </div>
 
         {/* Existencias */}

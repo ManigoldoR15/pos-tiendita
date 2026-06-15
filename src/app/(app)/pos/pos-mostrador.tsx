@@ -38,12 +38,16 @@ export default function PosMostrador({ productos, metodosPago, onCambiarModo }: 
   const pagoNum = Math.round(parseFloat(pagoRecibido) * 100) || 0
   const cambio = pagoNum >= total ? pagoNum - total : null
 
-  // Re-focus scanner input constantly
+  // Re-focus scanner input — but never steal focus from selects or other inputs
   useEffect(() => {
     const interval = setInterval(() => {
-      if (document.activeElement !== inputRef.current && !procesando && !exito) {
-        inputRef.current?.focus()
-      }
+      if (procesando || exito) return
+      const ae = document.activeElement
+      if (ae === inputRef.current) return
+      const tag = ae?.tagName ?? ''
+      if (tag === 'SELECT' || tag === 'TEXTAREA') return
+      if (tag === 'INPUT' && ae !== inputRef.current) return
+      inputRef.current?.focus()
     }, 300)
     return () => clearInterval(interval)
   }, [procesando, exito])

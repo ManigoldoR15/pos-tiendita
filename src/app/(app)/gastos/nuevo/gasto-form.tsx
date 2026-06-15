@@ -3,6 +3,7 @@
 import { useActionState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import ComboboxCategoria from '@/components/combobox-categoria'
 import type { GastoState } from '../actions'
 
 type Categoria = { id: string; nombre: string }
@@ -28,18 +29,11 @@ export default function GastoForm({
           <label className="text-sm font-medium">
             Categoría <span className="text-destructive">*</span>
           </label>
-          <select
-            name="categoria_id"
+          <ComboboxCategoria
+            categorias={categorias}
+            placeholder="Selecciona o escribe categoría…"
             required
-            className="rounded-lg border border-input bg-background px-3 py-3 text-base outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">Selecciona categoría…</option>
-            {categorias.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre}
-              </option>
-            ))}
-          </select>
+          />
         </div>
 
         {/* Monto */}

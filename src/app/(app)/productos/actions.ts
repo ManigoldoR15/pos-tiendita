@@ -13,6 +13,7 @@ function validarFormProducto(formData: FormData): {
   precio_venta: number
   precio_costo: number | null
   categoria_id: string | null
+  nueva_categoria_nombre: string | null
   existencias: number
   codigo_barras: string | null
   activo: boolean
@@ -28,11 +29,29 @@ function validarFormProducto(formData: FormData): {
   const precio_costo = costoTexto ? textoCentavos(costoTexto) : null
 
   const categoria_id = (formData.get('categoria_id') as string) || null
+  const nueva_categoria_nombre = (formData.get('nueva_categoria_nombre') as string)?.trim() || null
   const existencias = parseInt(formData.get('existencias') as string) || 0
   const codigo_barras = (formData.get('codigo_barras') as string)?.trim() || null
   const activo = formData.get('activo') === 'on'
 
-  return { nombre, precio_venta, precio_costo, categoria_id, existencias, codigo_barras, activo }
+  return { nombre, precio_venta, precio_costo, categoria_id, nueva_categoria_nombre, existencias, codigo_barras, activo }
+}
+
+async function resolverCategoria(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  negocioId: string,
+  categoriaId: string | null,
+  nuevaCategoriaNombre: string | null,
+): Promise<{ categoria_id: string | null } | { error: string }> {
+  if (categoriaId) return { categoria_id: categoriaId }
+  if (!nuevaCategoriaNombre) return { categoria_id: null }
+  const { data, error } = await supabase
+    .from('categorias_producto')
+    .insert({ negocio_id: negocioId, nombre: nuevaCategoriaNombre })
+    .select('id')
+    .single()
+  if (error || !data) return { error: 'No se pudo crear la categoría. Intenta de nuevo.' }
+  return { categoria_id: data.id }
 }
 
 export async function crearProductoAction(
@@ -46,8 +65,13 @@ export async function crearProductoAction(
   if (!negocio) return { error: 'No hay negocio activo' }
 
   const supabase = await createClient()
+  const cat = await resolverCategoria(supabase, negocio.id, resultado.categoria_id, resultado.nueva_categoria_nombre)
+  if ('error' in cat) return cat
+
+  const { nueva_categoria_nombre: _, ...campos } = resultado
   const { error } = await supabase.from('productos').insert({
-    ...resultado,
+    ...campos,
+    categoria_id: cat.categoria_id,
     negocio_id: negocio.id,
   })
 
@@ -64,10 +88,17 @@ export async function editarProductoAction(
   const resultado = validarFormProducto(formData)
   if ('error' in resultado) return resultado
 
+  const negocio = await getNegocioActual()
+  if (!negocio) return { error: 'No hay negocio activo' }
+
   const supabase = await createClient()
+  const cat = await resolverCategoria(supabase, negocio.id, resultado.categoria_id, resultado.nueva_categoria_nombre)
+  if ('error' in cat) return cat
+
+  const { nueva_categoria_nombre: _, ...campos } = resultado
   const { error } = await supabase
     .from('productos')
-    .update(resultado)
+    .update({ ...campos, categoria_id: cat.categoria_id })
     .eq('id', id)
 
   if (error) return { error: 'No se pudo actualizar el producto. Intenta de nuevo.' }
