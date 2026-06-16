@@ -217,7 +217,7 @@ export default function PosMostrador({ productos, metodosPago, onCambiarModo }: 
         </form>
 
         {/* Ticket */}
-        <div className="md:flex-1 md:overflow-y-auto rounded-xl border bg-card">
+        <div className="card-soft md:flex-1 md:overflow-y-auto">
           {ticket.length === 0 ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
               <p>Ticket vacío — escanea un producto</p>
@@ -282,11 +282,11 @@ export default function PosMostrador({ productos, metodosPago, onCambiarModo }: 
       <div className="flex w-full flex-col gap-3 md:w-72 md:shrink-0">
         {/* Total */}
         <div className={cn(
-          'rounded-xl border p-5 text-center shadow-sm',
-          ticket.length > 0 ? 'bg-primary text-primary-foreground' : 'bg-card',
+          'card-soft p-6 text-center',
+          ticket.length > 0 ? 'bg-primary text-primary-foreground' : '',
         )}>
           <p className="text-xs font-semibold uppercase tracking-widest opacity-70 mb-1">Total</p>
-          <p className="text-5xl font-black tabular-nums leading-none">
+          <p className="text-5xl font-black tracking-tight tabular-nums leading-none">
             {ticket.length > 0 ? formatMXN(total) : '$0.00'}
           </p>
           <p className="mt-1 text-xs opacity-60">{ticket.reduce((s, i) => s + i.cantidad, 0)} artículo(s)</p>
@@ -339,9 +339,9 @@ export default function PosMostrador({ productos, metodosPago, onCambiarModo }: 
 
         {/* Cambio */}
         {cambio !== null && (
-          <div className="rounded-xl border bg-emerald-50 dark:bg-emerald-950/20 px-4 py-3 text-center">
+          <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-950/20 px-4 py-3 text-center">
             <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Cambio</p>
-            <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300 tabular-nums">
+            <p className="text-2xl font-black tracking-tight text-emerald-700 dark:text-emerald-300 tabular-nums">
               {formatMXN(cambio)}
             </p>
           </div>

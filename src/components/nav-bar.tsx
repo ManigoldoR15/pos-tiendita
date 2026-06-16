@@ -186,15 +186,15 @@ export default function NavBar({
   ]
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-card shadow-sm print:hidden">
-      <div className="mx-auto max-w-6xl px-4 h-14 flex items-center gap-2">
+    <header className="sticky top-0 z-40 border-b bg-card print:hidden">
+      <div className="mx-auto max-w-6xl px-4 h-16 flex items-center gap-3">
 
         {/* Logo */}
-        <Link href="/" className="flex shrink-0 items-center gap-2 mr-1">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+        <Link href="/" className="flex shrink-0 items-center gap-2.5 mr-1">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Store className="h-4 w-4" />
           </span>
-          <span className="hidden font-bold text-sm lg:block max-w-[120px] truncate">
+          <span className="hidden font-bold text-sm sm:block max-w-[140px] truncate tracking-tight">
             {negocioNombre}
           </span>
         </Link>

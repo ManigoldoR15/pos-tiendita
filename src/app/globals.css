@@ -135,3 +135,13 @@
     @apply font-sans;
   }
 }
+
+@layer components {
+  /* Tarjeta premium: sombra suave en claro, borde sutil en oscuro — sin línea dura gris */
+  .card-soft {
+    @apply rounded-2xl bg-card shadow-[0_1px_2px_rgb(0_0_0/0.04),0_10px_24px_-8px_rgb(0_0_0/0.08)] dark:border dark:border-border dark:shadow-none;
+  }
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-widest text-muted-foreground;
+  }
+}

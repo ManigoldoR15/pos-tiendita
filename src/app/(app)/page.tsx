@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ShoppingCart, Receipt, TrendingUp, TrendingDown, Package, AlertTriangle, Target, CalendarX } from 'lucide-react'
+import { ShoppingCart, Receipt, AlertTriangle, Target, CalendarX } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
@@ -164,22 +164,24 @@ export default async function DashboardPage({
   const maxMonto = topMonto[0]?.monto ?? 1
 
 
+  const periodoLabel = PERIODOS.find((x) => x.value === periodo)?.label ?? 'Hoy'
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">{negocio.nombre}</h1>
+        <h1 className="text-3xl font-black tracking-tight">{negocio.nombre}</h1>
         <div className="flex items-center gap-2">
           {/* Links de acceso rápido */}
           <Link
             href="/pos"
-            className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+            className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
           >
             <ShoppingCart className="h-4 w-4" />
             POS
           </Link>
           <Link
             href="/gastos/nuevo"
-            className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent"
+            className="flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm font-medium hover:bg-accent transition-colors"
           >
             <Receipt className="h-4 w-4" />
             Gasto
@@ -231,44 +233,45 @@ export default async function DashboardPage({
         )}
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <KpiCard
-          label="Ventas"
-          value={formatMXN(totalVentas)}
-          sub={`${numVentas} ${numVentas === 1 ? 'venta' : 'ventas'}`}
-          icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
-          accent="emerald"
-        />
+      {/* KPI principal — domina la pantalla */}
+      <div className="card-soft relative overflow-hidden bg-primary/[0.05] p-7 sm:p-9">
+        <p className="eyebrow mb-3">Ventas — {periodoLabel.toLowerCase()}</p>
+        <p className="text-5xl font-black tracking-tight text-primary sm:text-6xl">
+          {formatMXN(totalVentas)}
+        </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {numVentas} {numVentas === 1 ? 'venta registrada' : 'ventas registradas'}
+        </p>
+      </div>
+
+      {/* KPIs secundarios */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard
           label="Ganancia bruta"
           value={formatMXN(gananciaBruta)}
           sub="ingresos − costo"
-          icon={<TrendingUp className="h-5 w-5 text-blue-500" />}
-          accent={gananciaBruta >= 0 ? 'blue' : 'red'}
+          accent={gananciaBruta >= 0 ? 'default' : 'red'}
         />
         <KpiCard
-          label="Gastos negocio"
+          label="Gastos del negocio"
           value={formatMXN(totalGastos)}
           sub="sin personales"
-          icon={<TrendingDown className="h-5 w-5 text-red-500" />}
-          accent="red"
+          accent="default"
         />
         <KpiCard
           label="Utilidad neta"
           value={formatMXN(utilidad)}
           sub="ventas − gastos"
-          icon={<Package className="h-5 w-5 text-primary" />}
           accent={utilidad >= 0 ? 'emerald' : 'red'}
         />
       </div>
 
       {/* Meta del mes */}
       {metaValor && metaPct !== null && (
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="card-soft p-6">
+          <div className="mb-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-primary shrink-0" />
+              <Target className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="text-sm font-semibold">Meta del mes</span>
             </div>
             <span className={cn(
@@ -279,7 +282,7 @@ export default async function DashboardPage({
               {metaPct}%
             </span>
           </div>
-          <div className="mb-2 h-3 overflow-hidden rounded-full bg-muted">
+          <div className="mb-3 h-2.5 overflow-hidden rounded-full bg-muted">
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-700',
@@ -295,7 +298,7 @@ export default async function DashboardPage({
             </span>
             {proyeccion !== null && proyeccion > 0 && (
               <span>
-                Proyección: <strong>{formatMXN(proyeccion)}</strong>
+                Proyección: <strong className="text-foreground">{formatMXN(proyeccion)}</strong>
               </span>
             )}
           </div>
@@ -305,7 +308,7 @@ export default async function DashboardPage({
       {!metaValor && (
         <Link
           href="/configuracion"
-          className="flex items-center gap-3 rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground hover:bg-accent transition-colors"
+          className="flex items-center gap-3 rounded-2xl border border-dashed px-5 py-4 text-sm text-muted-foreground hover:bg-accent transition-colors"
         >
           <Target className="h-4 w-4 shrink-0" />
           <span>Establece una meta de ventas mensual en Configuración</span>
@@ -317,7 +320,7 @@ export default async function DashboardPage({
       {(numStockBajo ?? 0) > 0 && (
         <Link
           href="/productos?alerta=bajo"
-          className="flex items-center gap-3 rounded-xl border border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800/40 px-4 py-3 text-sm font-medium text-orange-700 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-950/30 transition-colors"
+          className="flex items-center gap-3 rounded-2xl border border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800/40 px-5 py-4 text-sm font-medium text-orange-700 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-950/30 transition-colors"
         >
           <AlertTriangle className="h-5 w-5 shrink-0 text-orange-500" />
           <span>
@@ -332,7 +335,7 @@ export default async function DashboardPage({
       {(numLotesAlerta ?? 0) > 0 && (
         <Link
           href="/caducidad?estado=negro"
-          className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800/40 px-4 py-3 text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/30 transition-colors"
+          className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800/40 px-5 py-4 text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/30 transition-colors"
         >
           <CalendarX className="h-5 w-5 shrink-0 text-red-500" />
           <span>
@@ -344,10 +347,8 @@ export default async function DashboardPage({
       )}
 
       {/* Gráfica ventas últimos 7 días */}
-      <div className="rounded-xl border bg-card p-4 shadow-sm">
-        <h3 className="mb-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          Ventas — últimos 7 días
-        </h3>
+      <div className="card-soft p-6 sm:p-7">
+        <h3 className="eyebrow mb-5">Ventas — últimos 7 días</h3>
         <SalesChart data={diasChart} />
       </div>
 
@@ -370,7 +371,7 @@ export default async function DashboardPage({
           />
         </div>
       ) : (
-        <div className="rounded-xl border bg-card p-8 text-center">
+        <div className="card-soft p-10 text-center">
           <ShoppingCart className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
           <p className="text-muted-foreground">Sin ventas en este periodo.</p>
           <Link href="/pos" className="mt-2 inline-block text-sm font-medium text-primary hover:underline">
@@ -386,30 +387,24 @@ function KpiCard({
   label,
   value,
   sub,
-  icon,
   accent,
 }: {
   label: string
   value: string
   sub: string
-  icon: React.ReactNode
-  accent: 'emerald' | 'blue' | 'red' | 'default'
+  accent: 'emerald' | 'red' | 'default'
 }) {
   const valueColor = {
     emerald: 'text-emerald-600 dark:text-emerald-400',
-    blue: 'text-blue-600 dark:text-blue-400',
     red: 'text-red-600 dark:text-red-400',
     default: 'text-foreground',
   }[accent]
 
   return (
-    <div className="rounded-xl border bg-card p-4 shadow-sm">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
-        {icon}
-      </div>
-      <p className={cn('text-xl font-bold leading-tight', valueColor)}>{value}</p>
-      <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>
+    <div className="card-soft p-6">
+      <p className="eyebrow mb-2">{label}</p>
+      <p className={cn('text-2xl font-black tracking-tight leading-tight', valueColor)}>{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
     </div>
   )
 }
@@ -430,11 +425,9 @@ function TopProductos({
   valNum: (p: ProdEntry) => number
 }) {
   return (
-    <div className="rounded-xl border bg-card p-4 shadow-sm">
-      <h3 className="mb-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-        {titulo}
-      </h3>
-      <div className="space-y-3">
+    <div className="card-soft p-6">
+      <h3 className="eyebrow mb-5">{titulo}</h3>
+      <div className="space-y-4">
         {productos.map((p, i) => (
           <div key={i}>
             <div className="flex items-center justify-between mb-1.5">

@@ -293,7 +293,7 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
                 : 'No hay productos activos.'}
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {productosFiltrados.map((producto) => {
                 const sinStock = producto.existencias <= 0
                 const enCarrito = carrito.find((i) => i.productoId === producto.id)
@@ -303,29 +303,29 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
                     onClick={() => agregarProducto(producto)}
                     disabled={sinStock}
                     className={cn(
-                      'relative flex flex-col items-center justify-center rounded-xl border bg-card p-4 text-center shadow-sm transition-all duration-150',
+                      'card-soft relative flex flex-col items-center justify-center p-5 text-center transition-all duration-150',
                       sinStock
                         ? 'cursor-not-allowed opacity-40'
-                        : 'cursor-pointer hover:border-primary hover:ring-2 hover:ring-primary/20 hover:shadow-md active:scale-95',
-                      enCarrito && !sinStock && 'border-primary/50 bg-primary/5',
+                        : 'cursor-pointer hover:ring-2 hover:ring-primary/30 active:scale-[0.97]',
+                      enCarrito && !sinStock && 'ring-2 ring-primary/40 bg-primary/[0.04]',
                     )}
                   >
                     {enCarrito && (
-                      <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-sm">
+                      <span className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-sm">
                         {enCarrito.cantidad}
                       </span>
                     )}
-                    <p className="mb-2 line-clamp-2 text-sm font-semibold leading-tight">
+                    <p className="mb-2.5 line-clamp-2 text-sm font-semibold leading-tight">
                       {producto.nombre}
                     </p>
-                    <p className="text-xl font-bold text-primary">
+                    <p className="text-2xl font-black tracking-tight text-primary">
                       {formatMXN(producto.precio_venta)}
                     </p>
                     {sinStock && (
-                      <p className="mt-1 text-xs font-medium text-destructive">Agotado</p>
+                      <p className="mt-1.5 text-xs font-medium text-destructive">Agotado</p>
                     )}
                     {!sinStock && producto.existencias <= STOCK_MINIMO && (
-                      <p className="mt-1 flex items-center gap-0.5 text-xs font-medium text-orange-500">
+                      <p className="mt-1.5 flex items-center gap-0.5 text-xs font-medium text-orange-500">
                         <AlertTriangle className="h-3 w-3" />
                         {producto.existencias} u.
                       </p>
@@ -339,10 +339,10 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
       </div>
 
       {/* ── Carrito ── */}
-      <div className="flex w-full flex-col rounded-xl border bg-card shadow-sm md:w-72 md:shrink-0 md:overflow-hidden">
-        <div className="flex shrink-0 items-center gap-2 border-b px-4 py-3">
-          <ShoppingCart className="h-5 w-5" />
-          <span className="font-semibold">Carrito</span>
+      <div className="card-soft flex w-full flex-col md:w-80 md:shrink-0 md:overflow-hidden">
+        <div className="flex shrink-0 items-center gap-2 border-b px-5 py-4">
+          <ShoppingCart className="h-5 w-5 text-muted-foreground" />
+          <span className="font-bold">Carrito</span>
           {carrito.length > 0 && (
             <span className="ml-auto text-xs text-muted-foreground">
               {carrito.reduce((s, i) => s + i.cantidad, 0)} items
@@ -357,7 +357,7 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
           </div>
         ) : (
           <>
-            <div className="space-y-2 p-3 md:flex-1 md:overflow-y-auto">
+            <div className="space-y-3 p-4 md:flex-1 md:overflow-y-auto">
               {carrito.map((item) => (
                 <div key={item.productoId} className="flex items-center gap-2">
                   <div className="min-w-0 flex-1">
@@ -386,14 +386,14 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
               ))}
             </div>
 
-            <div className="shrink-0 space-y-2 border-t p-4">
+            <div className="shrink-0 space-y-3 border-t p-5">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">Total</span>
-                <span className="text-2xl font-bold text-primary">{formatMXN(total)}</span>
+                <span className="text-3xl font-black tracking-tight text-primary">{formatMXN(total)}</span>
               </div>
               <Button
                 onClick={abrirCobro}
-                className="w-full h-11 text-base font-bold shadow-sm"
+                className="w-full h-14 text-lg font-bold"
               >
                 Cobrar {formatMXN(total)}
               </Button>
@@ -414,11 +414,11 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
       {/* ── Modal cobro ── */}
       {modalAbierto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm space-y-5 overflow-y-auto rounded-2xl bg-background p-6 shadow-xl" style={{ maxHeight: 'calc(100svh - 2rem)' }}>
-            <h2 className="text-xl font-bold">Cobrar venta</h2>
+          <div className="w-full max-w-sm space-y-6 overflow-y-auto rounded-3xl bg-background p-7 shadow-2xl" style={{ maxHeight: 'calc(100svh - 2rem)' }}>
+            <h2 className="text-2xl font-black tracking-tight">Cobrar venta</h2>
 
             {/* Totales */}
-            <div className="space-y-1 border-b pb-3">
+            <div className="space-y-1.5 border-b pb-4">
               {descuentoCentavos > 0 && (
                 <>
                   <div className="flex justify-between text-sm text-muted-foreground">
@@ -433,7 +433,7 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
               )}
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Total</span>
-                <span className="text-2xl font-bold text-primary">{formatMXN(total)}</span>
+                <span className="text-3xl font-black tracking-tight text-primary">{formatMXN(total)}</span>
               </div>
             </div>
 
@@ -637,17 +637,19 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
                   />
                 </div>
                 {cambio !== null && cambio >= 0 && (
-                  <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2">
-                    <span className="text-sm font-semibold text-green-700">
-                      Cambio: {formatMXN(cambio)}
-                    </span>
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-800/40 dark:bg-emerald-950/20 px-4 py-3">
+                    <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Cambio</p>
+                    <p className="text-xl font-black tracking-tight text-emerald-700 dark:text-emerald-300">
+                      {formatMXN(cambio)}
+                    </p>
                   </div>
                 )}
                 {cambio !== null && cambio < 0 && (
-                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
-                    <span className="text-sm font-semibold text-red-700">
-                      Falta: {formatMXN(Math.abs(cambio))}
-                    </span>
+                  <div className="rounded-xl border border-red-200 bg-red-50 dark:border-red-800/40 dark:bg-red-950/20 px-4 py-3">
+                    <p className="text-xs font-medium text-red-600 dark:text-red-400">Falta</p>
+                    <p className="text-xl font-black tracking-tight text-red-700 dark:text-red-300">
+                      {formatMXN(Math.abs(cambio))}
+                    </p>
                   </div>
                 )}
               </div>
@@ -663,7 +665,7 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
               <Button
                 variant="outline"
                 onClick={() => setModalAbierto(false)}
-                className="flex-1"
+                className="flex-1 h-12"
                 disabled={procesando}
               >
                 Cancelar
@@ -671,7 +673,7 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
               <Button
                 onClick={confirmarVenta}
                 disabled={procesando || (cambio !== null && cambio < 0)}
-                className="flex-1"
+                className="flex-1 h-12 text-base font-bold"
               >
                 {procesando ? 'Guardando...' : 'Confirmar'}
               </Button>
