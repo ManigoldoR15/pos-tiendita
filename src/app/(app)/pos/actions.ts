@@ -4,12 +4,14 @@ import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
 
-type ItemVenta = { producto_id: string; cantidad: number }
+type ItemVenta = { producto_id: string; cantidad: number; es_fiado?: boolean }
 
 export type ClienteSugerido = {
   id: string
   nombre: string
   telefono: string | null
+  en_lista_negra: boolean
+  motivo_lista_negra: string | null
 }
 
 export async function registrarVentaAction(params: {
@@ -48,7 +50,7 @@ export async function buscarClientesAction(q: string): Promise<ClienteSugerido[]
   const supabase = await createClient()
   const { data } = await supabase
     .from('clientes')
-    .select('id, nombre, telefono')
+    .select('id, nombre, telefono, en_lista_negra, motivo_lista_negra')
     .eq('negocio_id', negocio.id)
     .eq('activo', true)
     .or(`nombre.ilike.%${term}%,telefono.ilike.%${term}%`)
@@ -73,7 +75,7 @@ export async function crearClienteAction(
       nombre: nombre.trim(),
       telefono: telefono?.trim() || null,
     })
-    .select('id, nombre, telefono')
+    .select('id, nombre, telefono, en_lista_negra, motivo_lista_negra')
     .single()
 
   if (error) return { error: error.message }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { ShoppingCart, Plus, Minus, Trash2, CheckCircle, Search, X, AlertTriangle, User, Monitor, Grid3x3, Printer } from 'lucide-react'
+import { ShoppingCart, Plus, Minus, Trash2, CheckCircle, Search, X, AlertTriangle, User, Monitor, Grid3x3, Printer, HandCoins } from 'lucide-react'
 import { STOCK_MINIMO } from '@/lib/constantes'
 import { Button } from '@/components/ui/button'
 import { formatMXN, textoCentavos } from '@/lib/dinero'
@@ -29,6 +29,7 @@ type ItemCarrito = {
   nombre: string
   precio: number
   cantidad: number
+  fiado: boolean
 }
 
 type Props = {
@@ -93,8 +94,11 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
   }, [descuentoValor, descuentoTipo, subtotal])
 
   const total = Math.max(0, subtotal - descuentoCentavos)
+  const totalFiado = carrito.reduce((s, i) => s + (i.fiado ? i.precio * i.cantidad : 0), 0)
+  const montoPagar = Math.max(0, total - totalFiado)
+  const hayFiado = totalFiado > 0
   const pagoEnCentavos = textoCentavos(pagoRecibido)
-  const cambio = pagoRecibido.trim() ? pagoEnCentavos - total : null
+  const cambio = pagoRecibido.trim() ? pagoEnCentavos - montoPagar : null
 
   const metodoPagoNombre = metodosPago.find((m) => m.id === metodoPagoId)?.nombre ?? ''
   const esEfectivo = metodoPagoNombre.toLowerCase().includes('efectivo')
@@ -121,8 +125,22 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
           nombre: producto.nombre,
           precio: producto.precio_venta,
           cantidad: 1,
+          fiado: false,
         },
       ]
+    })
+  }
+
+  function toggleFiadoItem(productoId: string) {
+    setCarrito((prev) =>
+      prev.map((i) => (i.productoId === productoId ? { ...i, fiado: !i.fiado } : i)),
+    )
+  }
+
+  function toggleFiarTodo() {
+    setCarrito((prev) => {
+      const todoFiado = prev.length > 0 && prev.every((i) => i.fiado)
+      return prev.map((i) => ({ ...i, fiado: !todoFiado }))
     })
   }
 
@@ -182,10 +200,22 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
   }
 
   async function confirmarVenta() {
-    setProcesando(true)
     setErrorVenta(null)
+
+    if (hayFiado && !clienteSeleccionado) {
+      setErrorVenta('Selecciona o crea un cliente para fiar.')
+      return
+    }
+    if (hayFiado && clienteSeleccionado?.en_lista_negra) {
+      setErrorVenta(
+        `Este cliente está en lista negra: ${clienteSeleccionado.motivo_lista_negra ?? 'sin motivo especificado'}`,
+      )
+      return
+    }
+
+    setProcesando(true)
     const result = await registrarVentaAction({
-      items: carrito.map((i) => ({ producto_id: i.productoId, cantidad: i.cantidad })),
+      items: carrito.map((i) => ({ producto_id: i.productoId, cantidad: i.cantidad, es_fiado: i.fiado })),
       metodo_pago_id: metodoPagoId,
       pago_recibido: esEfectivo && pagoRecibido.trim() ? pagoEnCentavos : null,
       descuento: descuentoCentavos,
@@ -196,11 +226,13 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
       setErrorVenta(result.error)
     } else {
       setUltimaVenta({
-        items: carrito.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
+        items: carrito.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, fiado: i.fiado })),
         total,
         metodoPagoNombre,
         cambio: esEfectivo && cambio !== null && cambio > 0 ? cambio : null,
         fecha: new Date().toISOString(),
+        totalFiado,
+        clienteNombre: clienteSeleccionado?.nombre ?? null,
       })
       setCarrito([])
       setModalAbierto(false)
@@ -401,36 +433,47 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
           <>
             <div className="space-y-3 p-4 md:flex-1 md:overflow-y-auto">
               {carrito.map((item) => (
-                <div key={item.productoId} className="flex items-center gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium leading-tight">{item.nombre}</p>
-                    <p className="text-xs text-muted-foreground">{formatMXN(item.precio)} c/u</p>
+                <div key={item.productoId} className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium leading-tight">{item.nombre}</p>
+                      <p className="text-xs text-muted-foreground">{formatMXN(item.precio)} c/u</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        onClick={() => cambiarCantidad(item.productoId, -1)}
+                        className="flex h-8 w-8 items-center justify-center rounded-full border hover:bg-accent"
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.cantidad}
+                        onChange={(e) => setCantidadDirecta(item.productoId, parseInt(e.target.value, 10))}
+                        onFocus={(e) => e.target.select()}
+                        className="w-12 rounded-md border bg-background py-1 text-center text-sm font-bold outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <button
+                        onClick={() => cambiarCantidad(item.productoId, 1)}
+                        className="flex h-8 w-8 items-center justify-center rounded-full border hover:bg-accent"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <p className="w-14 shrink-0 text-right text-sm font-semibold">
+                      {formatMXN(item.precio * item.cantidad)}
+                    </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <button
-                      onClick={() => cambiarCantidad(item.productoId, -1)}
-                      className="flex h-8 w-8 items-center justify-center rounded-full border hover:bg-accent"
-                    >
-                      <Minus className="h-3.5 w-3.5" />
-                    </button>
+                  <label className="flex items-center gap-1.5 pl-0.5 text-xs text-muted-foreground">
                     <input
-                      type="number"
-                      min="1"
-                      value={item.cantidad}
-                      onChange={(e) => setCantidadDirecta(item.productoId, parseInt(e.target.value, 10))}
-                      onFocus={(e) => e.target.select()}
-                      className="w-12 rounded-md border bg-background py-1 text-center text-sm font-bold outline-none focus:ring-2 focus:ring-ring"
+                      type="checkbox"
+                      checked={item.fiado}
+                      onChange={() => toggleFiadoItem(item.productoId)}
+                      className="h-3.5 w-3.5 rounded accent-primary"
                     />
-                    <button
-                      onClick={() => cambiarCantidad(item.productoId, 1)}
-                      className="flex h-8 w-8 items-center justify-center rounded-full border hover:bg-accent"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <p className="w-14 shrink-0 text-right text-sm font-semibold">
-                    {formatMXN(item.precio * item.cantidad)}
-                  </p>
+                    Fiar este producto
+                  </label>
                 </div>
               ))}
             </div>
@@ -484,6 +527,18 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                 <span className="text-muted-foreground">Total</span>
                 <span className="text-3xl font-black tracking-tight text-primary">{formatMXN(total)}</span>
               </div>
+              {hayFiado && (
+                <>
+                  <div className="flex justify-between text-sm text-amber-600">
+                    <span>Queda a deber</span>
+                    <span>−{formatMXN(totalFiado)}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t pt-1.5">
+                    <span className="text-sm font-medium text-muted-foreground">A pagar ahora</span>
+                    <span className="text-xl font-bold">{formatMXN(montoPagar)}</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Descuento */}
@@ -556,7 +611,13 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-              ) : creandoCliente ? (
+              ) : null}
+              {clienteSeleccionado?.en_lista_negra && (
+                <p className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  Este cliente está en lista negra: {clienteSeleccionado.motivo_lista_negra ?? 'sin motivo especificado'}. No se le puede fiar (sí se le puede vender de contado).
+                </p>
+              )}
+              {!clienteSeleccionado && (creandoCliente ? (
                 <div className="space-y-2">
                   <input
                     autoFocus
@@ -640,7 +701,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                     </p>
                   )}
                 </div>
-              )}
+              ))}
             </div>
 
             {/* Método de pago */}
@@ -678,10 +739,24 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                   Tarjeta
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={toggleFiarTodo}
+                disabled={clienteSeleccionado?.en_lista_negra ?? false}
+                className={cn(
+                  'flex w-full items-center justify-center gap-1.5 rounded-xl border-2 px-4 py-3 text-center text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+                  carrito.length > 0 && carrito.every((i) => i.fiado)
+                    ? 'border-amber-500 bg-amber-500 text-white'
+                    : 'border-amber-300 text-amber-600 hover:bg-amber-50',
+                )}
+              >
+                <HandCoins className="h-4 w-4" />
+                Fiar venta completa
+              </button>
             </div>
 
-            {/* Recibido + cambio (solo efectivo) */}
-            {esEfectivo && (
+            {/* Recibido + cambio (solo efectivo, y solo si queda algo por cobrar) */}
+            {esEfectivo && montoPagar > 0 && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Dinero recibido (opcional)</label>
                 <div className="relative">

@@ -8,7 +8,8 @@ import FormMetodoPago from './form-metodo-pago'
 import FormEmpleado from './form-empleado'
 import FormMeta from './form-meta'
 import { toggleMetodoPagoAction, eliminarMetodoPagoAction } from './actions'
-import { cambiarRolEmpleadoAction, eliminarEmpleadoAction } from './actions-empleados'
+import { eliminarEmpleadoAction } from './actions-empleados'
+import SelectorRolEmpleado from './selector-rol-empleado'
 import { Button } from '@/components/ui/button'
 import { Trash2 } from 'lucide-react'
 
@@ -142,18 +143,7 @@ export default async function ConfiguracionPage() {
                   </span>
                 ) : (
                   <>
-                    <form action={cambiarRolEmpleadoAction}>
-                      <input type="hidden" name="user_id" value={m.user_id} />
-                      <select
-                        name="rol"
-                        defaultValue={m.rol}
-                        onChange={(e) => (e.target.form as HTMLFormElement).requestSubmit()}
-                        className="rounded-lg border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-                      >
-                        <option value="empleado">Empleado</option>
-                        <option value="administrador">Administrador</option>
-                      </select>
-                    </form>
+                    <SelectorRolEmpleado userId={m.user_id} rolActual={m.rol} />
 
                     <form action={eliminarEmpleadoAction}>
                       <input type="hidden" name="user_id" value={m.user_id} />

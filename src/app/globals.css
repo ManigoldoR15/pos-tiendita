@@ -146,16 +146,16 @@
   }
 }
 
-/* Impresión de ticket angosto: oculta todo excepto #ticket-imprimible */
+/* Impresión angosta: oculta todo excepto el elemento .imprimible activo */
 @media print {
   body.printing-ticket * {
     visibility: hidden;
   }
-  body.printing-ticket #ticket-imprimible,
-  body.printing-ticket #ticket-imprimible * {
+  body.printing-ticket .imprimible,
+  body.printing-ticket .imprimible * {
     visibility: visible;
   }
-  body.printing-ticket #ticket-imprimible {
+  body.printing-ticket .imprimible {
     position: fixed;
     left: 0;
     top: 0;

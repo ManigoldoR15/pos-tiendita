@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ShoppingCart, Receipt, AlertTriangle, Target, CalendarX } from 'lucide-react'
+import { ShoppingCart, Receipt, AlertTriangle, Target, CalendarX, HandCoins } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
@@ -49,6 +49,7 @@ export default async function DashboardPage({
     { data: metaMes },
     { data: ventasMes },
     { count: numLotesAlerta },
+    { data: fiadosPorCliente },
   ] = await Promise.all([
     supabase
       .from('ventas')
@@ -111,6 +112,11 @@ export default async function DashboardPage({
       .eq('negocio_id', negocio.id)
       .eq('activo', true)
       .or(`fecha_caducidad.lte.${en3dias},estado_manual.eq.negro`),
+
+    supabase
+      .from('fiados_por_cliente')
+      .select('cliente_id, deuda_total')
+      .eq('negocio_id', negocio.id),
   ])
 
   // 7-day chart data (Mexico calendar days)
@@ -146,6 +152,10 @@ export default async function DashboardPage({
   const diaActual = parseInt(hoy.slice(8, 10))
   const diasDelMes = new Date(parseInt(hoy.slice(0, 4)), parseInt(hoy.slice(5, 7)), 0).getDate()
   const proyeccion = diaActual > 0 ? Math.round((ventasMesTotal / diaActual) * diasDelMes) : null
+
+  // Fiados
+  const totalFiados = (fiadosPorCliente ?? []).reduce((s, f) => s + f.deuda_total, 0)
+  const numClientesFiados = (fiadosPorCliente ?? []).length
 
   // Top productos
   type ProdEntry = { nombre: string; unidades: number; monto: number }
@@ -343,6 +353,21 @@ export default async function DashboardPage({
             {numLotesAlerta === 1 ? 'lote caduca' : 'lotes caducan'} en 3 días o ya está vencido — verifica el producto
           </span>
           <span className="ml-auto text-red-500">Ver →</span>
+        </Link>
+      )}
+
+      {/* Alerta fiados */}
+      {numClientesFiados > 0 && (
+        <Link
+          href="/fiados"
+          className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800/40 px-5 py-4 text-sm font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/30 transition-colors"
+        >
+          <HandCoins className="h-5 w-5 shrink-0 text-amber-500" />
+          <span>
+            Por cobrar: <strong>{new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalFiados / 100)}</strong>{' '}
+            de {numClientesFiados} {numClientesFiados === 1 ? 'cliente' : 'clientes'}
+          </span>
+          <span className="ml-auto text-amber-500">Ver →</span>
         </Link>
       )}
 

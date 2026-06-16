@@ -2,7 +2,7 @@
 
 import { formatMXN } from '@/lib/dinero'
 
-export type ItemTicket = { nombre: string; cantidad: number; precio: number }
+export type ItemTicket = { nombre: string; cantidad: number; precio: number; fiado?: boolean }
 
 export type DatosTicket = {
   items: ItemTicket[]
@@ -10,6 +10,8 @@ export type DatosTicket = {
   metodoPagoNombre: string
   cambio: number | null
   fecha: string
+  totalFiado?: number
+  clienteNombre?: string | null
 }
 
 type Props = {
@@ -35,14 +37,14 @@ export default function TicketImprimible({ negocioNombre, datos }: Props) {
   return (
     <div
       id="ticket-imprimible"
-      className="hidden print:block print:w-[280px] print:bg-white print:p-3 print:font-mono print:text-[11px] print:text-black"
+      className="imprimible hidden print:block print:w-[280px] print:bg-white print:p-3 print:font-mono print:text-[11px] print:text-black"
     >
       <p className="text-center text-sm font-bold">{negocioNombre}</p>
       <p className="text-center">{fechaTexto} {horaTexto}</p>
       <div className="my-2 border-t border-dashed border-black" />
       {datos.items.map((it, i) => (
         <div key={i} className="flex justify-between gap-2">
-          <span>{it.cantidad} x {it.nombre}</span>
+          <span>{it.cantidad} x {it.nombre}{it.fiado ? ' (fiado)' : ''}</span>
           <span>{formatMXN(it.precio * it.cantidad)}</span>
         </div>
       ))}
@@ -60,6 +62,21 @@ export default function TicketImprimible({ negocioNombre, datos }: Props) {
           <span>Cambio</span>
           <span>{formatMXN(datos.cambio)}</span>
         </div>
+      )}
+      {!!datos.totalFiado && datos.totalFiado > 0 && (
+        <>
+          <div className="my-2 border-t border-dashed border-black" />
+          <div className="flex justify-between font-bold">
+            <span>QUEDÓ A DEBER</span>
+            <span>{formatMXN(datos.totalFiado)}</span>
+          </div>
+          {datos.clienteNombre && (
+            <div className="flex justify-between">
+              <span>Cliente</span>
+              <span>{datos.clienteNombre}</span>
+            </div>
+          )}
+        </>
       )}
       <p className="mt-3 text-center">¡Gracias por su compra!</p>
     </div>

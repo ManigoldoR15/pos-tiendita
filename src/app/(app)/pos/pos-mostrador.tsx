@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Grid3x3, Trash2, Plus, Minus, CheckCircle, X, Printer } from 'lucide-react'
+import { Grid3x3, Trash2, Plus, Minus, CheckCircle, X, Printer, User, HandCoins } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatMXN } from '@/lib/dinero'
 import { cn } from '@/lib/utils'
 import TicketImprimible, { imprimirTicket, type DatosTicket } from '@/components/ticket-imprimible'
-import { registrarVentaAction } from './actions'
+import { registrarVentaAction, buscarClientesAction, crearClienteAction } from './actions'
+import type { ClienteSugerido } from './actions'
 import type { Producto, MetodoPago } from './pos-client'
 
 type Item = {
@@ -14,6 +15,7 @@ type Item = {
   nombre: string
   precio: number
   cantidad: number
+  fiado: boolean
 }
 
 type Props = {
@@ -38,9 +40,34 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
   const [ultimaVenta, setUltimaVenta] = useState<DatosTicket | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Cliente / fiado
+  const [clienteSeleccionado, setClienteSeleccionado] = useState<ClienteSugerido | null>(null)
+  const [busquedaCliente, setBusquedaCliente] = useState('')
+  const [sugerenciasCliente, setSugerenciasCliente] = useState<ClienteSugerido[]>([])
+  const [creandoCliente, setCreandoCliente] = useState(false)
+  const [nuevoClienteNombre, setNuevoClienteNombre] = useState('')
+  const [nuevoClienteTelefono, setNuevoClienteTelefono] = useState('')
+  const [guardandoCliente, setGuardandoCliente] = useState(false)
+  const [errorCliente, setErrorCliente] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (busquedaCliente.trim().length < 2) {
+      setSugerenciasCliente([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      const results = await buscarClientesAction(busquedaCliente)
+      setSugerenciasCliente(results)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [busquedaCliente])
+
   const total = ticket.reduce((s, i) => s + i.precio * i.cantidad, 0)
+  const totalFiado = ticket.reduce((s, i) => s + (i.fiado ? i.precio * i.cantidad : 0), 0)
+  const montoPagar = Math.max(0, total - totalFiado)
+  const hayFiado = totalFiado > 0
   const pagoNum = Math.round(parseFloat(pagoRecibido) * 100) || 0
-  const cambio = pagoNum >= total ? pagoNum - total : null
+  const cambio = pagoNum >= montoPagar ? pagoNum - montoPagar : null
 
   const metodoPagoNombre = metodosPago.find((m) => m.id === metodoPagoId)?.nombre ?? ''
   const esEfectivo = metodoPagoNombre.toLowerCase().includes('efectivo')
@@ -109,9 +136,47 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
         nombre: prod.nombre,
         precio: prod.precio_venta,
         cantidad: 1,
+        fiado: false,
       }]
     })
   }, [productos])
+
+  function toggleFiadoItem(productoId: string) {
+    setTicket((prev) =>
+      prev.map((i) => (i.productoId === productoId ? { ...i, fiado: !i.fiado } : i)),
+    )
+  }
+
+  function toggleFiarTodo() {
+    setTicket((prev) => {
+      const todoFiado = prev.length > 0 && prev.every((i) => i.fiado)
+      return prev.map((i) => ({ ...i, fiado: !todoFiado }))
+    })
+  }
+
+  function cancelarCrearCliente() {
+    setCreandoCliente(false)
+    setNuevoClienteNombre('')
+    setNuevoClienteTelefono('')
+    setErrorCliente(null)
+  }
+
+  async function handleCrearCliente() {
+    if (!nuevoClienteNombre.trim()) return
+    setGuardandoCliente(true)
+    setErrorCliente(null)
+    const result = await crearClienteAction(nuevoClienteNombre, nuevoClienteTelefono || undefined)
+    setGuardandoCliente(false)
+    if ('error' in result) {
+      setErrorCliente(result.error)
+      return
+    }
+    setClienteSeleccionado(result)
+    setCreandoCliente(false)
+    setNuevoClienteNombre('')
+    setNuevoClienteTelefono('')
+    setBusquedaCliente('')
+  }
 
   function handleScanSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -145,14 +210,27 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
 
   async function cobrar() {
     if (ticket.length === 0 || procesando) return
-    setProcesando(true)
     setErrorVenta(null)
 
+    if (hayFiado && !clienteSeleccionado) {
+      setErrorVenta('Selecciona o crea un cliente para fiar.')
+      return
+    }
+    if (hayFiado && clienteSeleccionado?.en_lista_negra) {
+      setErrorVenta(
+        `Este cliente está en lista negra: ${clienteSeleccionado.motivo_lista_negra ?? 'sin motivo especificado'}`,
+      )
+      return
+    }
+
+    setProcesando(true)
+
     const res = await registrarVentaAction({
-      items: ticket.map((i) => ({ producto_id: i.productoId, cantidad: i.cantidad })),
+      items: ticket.map((i) => ({ producto_id: i.productoId, cantidad: i.cantidad, es_fiado: i.fiado })),
       metodo_pago_id: metodoPagoId,
       pago_recibido: pagoNum > 0 ? pagoNum : null,
       descuento: 0,
+      cliente_id: clienteSeleccionado?.id ?? null,
     })
 
     setProcesando(false)
@@ -162,11 +240,13 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
     }
 
     setUltimaVenta({
-      items: ticket.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
+      items: ticket.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, fiado: i.fiado })),
       total,
       metodoPagoNombre,
       cambio: cambio !== null && cambio > 0 ? cambio : null,
       fecha: new Date().toISOString(),
+      totalFiado,
+      clienteNombre: clienteSeleccionado?.nombre ?? null,
     })
     setExito(true)
     setTimeout(() => {
@@ -174,6 +254,7 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
       setTicket([])
       setPagoRecibido('')
       setScanInput('')
+      setClienteSeleccionado(null)
       inputRef.current?.focus()
     }, 5000)
   }
@@ -262,6 +343,7 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
                   <th className="px-4 py-2 text-left">Producto</th>
                   <th className="px-3 py-2 text-center w-28">Cantidad</th>
                   <th className="px-4 py-2 text-right">Subtotal</th>
+                  <th className="px-2 py-2 text-center w-16">Fiar</th>
                   <th className="px-2 py-2 w-8" />
                 </tr>
               </thead>
@@ -295,6 +377,15 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
                     </td>
                     <td className="px-4 py-2.5 text-right font-semibold tabular-nums">
                       {formatMXN(item.precio * item.cantidad)}
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={item.fiado}
+                        onChange={() => toggleFiadoItem(item.productoId)}
+                        className="h-4 w-4 rounded accent-primary"
+                        title="Fiar este producto"
+                      />
                     </td>
                     <td className="px-2 py-2">
                       <button
@@ -330,7 +421,125 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
             {ticket.length > 0 ? formatMXN(total) : '$0.00'}
           </p>
           <p className="mt-1 text-xs opacity-60">{ticket.reduce((s, i) => s + i.cantidad, 0)} artículo(s)</p>
+          {hayFiado && (
+            <div className="mt-2 space-y-0.5 border-t border-white/20 pt-2 text-sm">
+              <p className="opacity-80">Queda a deber: {formatMXN(totalFiado)}</p>
+              <p className="font-bold">A pagar ahora: {formatMXN(montoPagar)}</p>
+            </div>
+          )}
         </div>
+
+        {/* Cliente (requerido si hay fiado) */}
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-muted-foreground">Cliente {hayFiado ? '(requerido para fiar)' : '(opcional)'}</p>
+          {clienteSeleccionado ? (
+            <div className="flex items-center justify-between rounded-lg border bg-accent px-3 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{clienteSeleccionado.nombre}</p>
+                {clienteSeleccionado.telefono && (
+                  <p className="text-xs text-muted-foreground">{clienteSeleccionado.telefono}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setClienteSeleccionado(null)}
+                className="ml-2 shrink-0 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
+          {clienteSeleccionado?.en_lista_negra && (
+            <p className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              En lista negra: {clienteSeleccionado.motivo_lista_negra ?? 'sin motivo especificado'}. No se le puede fiar.
+            </p>
+          )}
+          {!clienteSeleccionado && (creandoCliente ? (
+            <div className="space-y-1.5">
+              <input
+                autoFocus
+                placeholder="Nombre *"
+                value={nuevoClienteNombre}
+                onChange={(e) => setNuevoClienteNombre(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCrearCliente()}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              />
+              <input
+                placeholder="Teléfono (opcional)"
+                value={nuevoClienteTelefono}
+                onChange={(e) => setNuevoClienteTelefono(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCrearCliente()}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              />
+              {errorCliente && <p className="text-xs text-destructive">{errorCliente}</p>}
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1" onClick={cancelarCrearCliente}>
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  disabled={!nuevoClienteNombre.trim() || guardandoCliente}
+                  onClick={handleCrearCliente}
+                >
+                  {guardandoCliente ? 'Guardando…' : 'Guardar'}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="relative">
+              <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                placeholder="Buscar nombre o teléfono…"
+                value={busquedaCliente}
+                onChange={(e) => setBusquedaCliente(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-20 text-sm outline-none focus:ring-2 focus:ring-ring"
+              />
+              <button
+                type="button"
+                onClick={() => { setCreandoCliente(true); setNuevoClienteNombre(busquedaCliente.trim()) }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md bg-accent px-2 py-0.5 text-xs font-medium hover:bg-accent/80"
+              >
+                + Nuevo
+              </button>
+              {sugerenciasCliente.length > 0 && (
+                <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border bg-background shadow-lg">
+                  {sugerenciasCliente.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        setClienteSeleccionado(c)
+                        setBusquedaCliente('')
+                        setSugerenciasCliente([])
+                      }}
+                      className="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-accent"
+                    >
+                      <span className="text-sm font-medium">{c.nombre}</span>
+                      {c.telefono && <span className="text-xs text-muted-foreground">{c.telefono}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Fiar venta completa */}
+        <button
+          type="button"
+          onClick={toggleFiarTodo}
+          disabled={(clienteSeleccionado?.en_lista_negra ?? false) || ticket.length === 0}
+          className={cn(
+            'flex w-full items-center justify-center gap-1.5 rounded-xl border-2 px-4 py-2.5 text-center text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+            ticket.length > 0 && ticket.every((i) => i.fiado)
+              ? 'border-amber-500 bg-amber-500 text-white'
+              : 'border-amber-300 text-amber-600 hover:bg-amber-50',
+          )}
+        >
+          <HandCoins className="h-4 w-4" />
+          Fiar venta completa
+        </button>
 
         {/* Método de pago */}
         <div className="grid grid-cols-2 gap-2">
@@ -357,6 +566,7 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
         </div>
 
         {/* Dinero recibido */}
+        {montoPagar > 0 && (
         <div>
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Dinero recibido</label>
           <div className="relative">
@@ -373,8 +583,10 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
             />
           </div>
         </div>
+        )}
 
         {/* Billetes rápidos */}
+        {montoPagar > 0 && (
         <div className="grid grid-cols-4 gap-1.5">
           {BILLETES.map((b) => (
             <button
@@ -389,9 +601,10 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
             </button>
           ))}
         </div>
+        )}
 
         {/* Cambio */}
-        {cambio !== null && (
+        {montoPagar > 0 && cambio !== null && (
           <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-950/20 px-4 py-3 text-center">
             <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Cambio</p>
             <p className="text-2xl font-black tracking-tight text-emerald-700 dark:text-emerald-300 tabular-nums">
