@@ -3,14 +3,17 @@
 import { useActionState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import SelectorColorCategoria from '@/components/selector-color-categoria'
 import { editarCategoriaAction } from '../../actions'
 
 export default function FormEditarCategoria({
   id,
   nombreInicial,
+  colorInicial,
 }: {
   id: string
   nombreInicial: string
+  colorInicial: string | null
 }) {
   const [state, action, pending] = useActionState(editarCategoriaAction, null)
 
@@ -28,6 +31,8 @@ export default function FormEditarCategoria({
           className="rounded-lg border border-input bg-background px-3 py-3 text-base outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
+
+      <SelectorColorCategoria defaultValue={colorInicial} />
 
       {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
 

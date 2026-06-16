@@ -4,6 +4,8 @@ import { Pencil } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { Button } from '@/components/ui/button'
+import { getColorCategoria } from '@/lib/colores-categoria'
+import { cn } from '@/lib/utils'
 import FormNuevaCategoria from './form-nueva-categoria'
 import { eliminarCategoriaAction } from './actions'
 
@@ -14,7 +16,7 @@ export default async function CategoriasPage() {
 
   const { data: categorias } = await supabase
     .from('categorias_producto')
-    .select('id, nombre, productos(count)')
+    .select('id, nombre, color, productos(count)')
     .eq('negocio_id', negocio!.id)
     .order('nombre')
 
@@ -29,13 +31,22 @@ export default async function CategoriasPage() {
           {categorias.map((cat) => {
             const total = (cat.productos as unknown as { count: number }[])?.[0]
               ?.count ?? 0
+            const colorCat = getColorCategoria(cat.color)
             return (
               <li key={cat.id} className="flex items-center justify-between px-4 py-3">
-                <div>
-                  <p className="font-medium">{cat.nombre}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {total} producto{total !== 1 ? 's' : ''}
-                  </p>
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className={cn(
+                      'h-3 w-3 shrink-0 rounded-full',
+                      colorCat ? colorCat.dot : 'bg-muted',
+                    )}
+                  />
+                  <div>
+                    <p className="font-medium">{cat.nombre}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {total} producto{total !== 1 ? 's' : ''}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="ghost" size="sm" asChild>

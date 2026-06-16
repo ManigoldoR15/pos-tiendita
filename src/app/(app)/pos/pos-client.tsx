@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { ShoppingCart, Plus, Minus, Trash2, CheckCircle, Search, X, AlertTriangle, User, Monitor, Grid3x3 } from 'lucide-react'
+import { ShoppingCart, Plus, Minus, Trash2, CheckCircle, Search, X, AlertTriangle, User, Monitor, Grid3x3, Printer } from 'lucide-react'
 import { STOCK_MINIMO } from '@/lib/constantes'
 import { Button } from '@/components/ui/button'
 import { formatMXN, textoCentavos } from '@/lib/dinero'
 import { cn } from '@/lib/utils'
+import { getColorCategoria } from '@/lib/colores-categoria'
+import TicketImprimible, { imprimirTicket, type DatosTicket } from '@/components/ticket-imprimible'
 import { registrarVentaAction, buscarClientesAction, crearClienteAction } from './actions'
 import type { ClienteSugerido } from './actions'
 import PosMostrador from './pos-mostrador'
@@ -19,7 +21,7 @@ export type Producto = {
   codigo_barras: string | null
 }
 
-type Categoria = { id: string; nombre: string }
+type Categoria = { id: string; nombre: string; color: string | null }
 export type MetodoPago = { id: string; nombre: string }
 
 type ItemCarrito = {
@@ -33,9 +35,10 @@ type Props = {
   productos: Producto[]
   categorias: Categoria[]
   metodosPago: MetodoPago[]
+  negocioNombre: string
 }
 
-export default function PosClient({ productos, categorias, metodosPago }: Props) {
+export default function PosClient({ productos, categorias, metodosPago, negocioNombre }: Props) {
   const [modo, setModo] = useState<'tactil' | 'mostrador'>('tactil')
   const [carrito, setCarrito] = useState<ItemCarrito[]>([])
   const [busqueda, setBusqueda] = useState('')
@@ -48,6 +51,7 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
   const [procesando, setProcesando] = useState(false)
   const [errorVenta, setErrorVenta] = useState<string | null>(null)
   const [ventaExitosa, setVentaExitosa] = useState(false)
+  const [ultimaVenta, setUltimaVenta] = useState<DatosTicket | null>(null)
 
   // Fase 16: clientes frecuentes
   const [clienteSeleccionado, setClienteSeleccionado] = useState<ClienteSugerido | null>(null)
@@ -95,6 +99,12 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
   const metodoPagoNombre = metodosPago.find((m) => m.id === metodoPagoId)?.nombre ?? ''
   const esEfectivo = metodoPagoNombre.toLowerCase().includes('efectivo')
 
+  const metodoEfectivo = metodosPago.find((m) => m.nombre.toLowerCase().includes('efectivo')) ?? metodosPago[0]
+  const metodoTarjeta =
+    metodosPago.find((m) => m.nombre.toLowerCase().includes('tarjeta')) ??
+    metodosPago.find((m) => m.id !== metodoEfectivo?.id) ??
+    metodosPago[0]
+
   function agregarProducto(producto: Producto) {
     if (producto.existencias <= 0) return
     setCarrito((prev) => {
@@ -124,6 +134,13 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
       if (nueva <= 0) return prev.filter((i) => i.productoId !== productoId)
       return prev.map((i) => (i.productoId === productoId ? { ...i, cantidad: nueva } : i))
     })
+  }
+
+  function setCantidadDirecta(productoId: string, valor: number) {
+    const nueva = Math.max(1, Math.floor(valor) || 1)
+    setCarrito((prev) =>
+      prev.map((i) => (i.productoId === productoId ? { ...i, cantidad: nueva } : i)),
+    )
   }
 
   function abrirCobro() {
@@ -178,25 +195,41 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
     if ('error' in result) {
       setErrorVenta(result.error)
     } else {
+      setUltimaVenta({
+        items: carrito.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
+        total,
+        metodoPagoNombre,
+        cambio: esEfectivo && cambio !== null && cambio > 0 ? cambio : null,
+        fecha: new Date().toISOString(),
+      })
       setCarrito([])
       setModalAbierto(false)
       setPagoRecibido('')
       setClienteSeleccionado(null)
       setVentaExitosa(true)
-      setTimeout(() => setVentaExitosa(false), 4000)
+      setTimeout(() => setVentaExitosa(false), 8000)
     }
   }
 
   if (ventaExitosa) {
     return (
-      <div className="flex h-96 flex-col items-center justify-center gap-4">
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-          <CheckCircle className="h-12 w-12 text-primary" />
+      <>
+        <div className="flex h-96 flex-col items-center justify-center gap-4">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+            <CheckCircle className="h-12 w-12 text-primary" />
+          </div>
+          <p className="text-2xl font-bold">¡Venta registrada!</p>
+          <p className="text-muted-foreground">Inventario actualizado.</p>
+          {ultimaVenta && (
+            <Button variant="outline" onClick={imprimirTicket}>
+              <Printer className="h-4 w-4" />
+              Imprimir ticket
+            </Button>
+          )}
+          <p className="text-sm text-muted-foreground">Listo para la siguiente venta.</p>
         </div>
-        <p className="text-2xl font-bold">¡Venta registrada!</p>
-        <p className="text-muted-foreground">Inventario actualizado.</p>
-        <p className="text-sm text-muted-foreground">Listo para la siguiente venta.</p>
-      </div>
+        {ultimaVenta && <TicketImprimible negocioNombre={negocioNombre} datos={ultimaVenta} />}
+      </>
     )
   }
 
@@ -206,6 +239,7 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
       <PosMostrador
         productos={productos}
         metodosPago={metodosPago}
+        negocioNombre={negocioNombre}
         onCambiarModo={() => setModo('tactil')}
       />
     )
@@ -297,23 +331,31 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
               {productosFiltrados.map((producto) => {
                 const sinStock = producto.existencias <= 0
                 const enCarrito = carrito.find((i) => i.productoId === producto.id)
+                const categoria = categorias.find((c) => c.id === producto.categoria_id)
+                const colorCat = getColorCategoria(categoria?.color)
                 return (
                   <button
                     key={producto.id}
                     onClick={() => agregarProducto(producto)}
                     disabled={sinStock}
                     className={cn(
-                      'card-soft relative flex flex-col items-center justify-center p-5 text-center transition-all duration-150',
+                      'card-soft relative flex flex-col items-center justify-center overflow-hidden p-5 text-center transition-all duration-150',
                       sinStock
                         ? 'cursor-not-allowed opacity-40'
                         : 'cursor-pointer hover:ring-2 hover:ring-primary/30 active:scale-[0.97]',
                       enCarrito && !sinStock && 'ring-2 ring-primary/40 bg-primary/[0.04]',
                     )}
                   >
+                    {colorCat && (
+                      <span className={cn('absolute inset-x-0 top-0 h-1.5', colorCat.bar)} />
+                    )}
                     {enCarrito && (
                       <span className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-sm">
                         {enCarrito.cantidad}
                       </span>
+                    )}
+                    {colorCat && (
+                      <span className={cn('absolute left-2.5 top-2.5 h-2.5 w-2.5 rounded-full', colorCat.dot)} />
                     )}
                     <p className="mb-2.5 line-clamp-2 text-sm font-semibold leading-tight">
                       {producto.nombre}
@@ -371,7 +413,14 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
                     >
                       <Minus className="h-3.5 w-3.5" />
                     </button>
-                    <span className="w-6 text-center text-sm font-bold">{item.cantidad}</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.cantidad}
+                      onChange={(e) => setCantidadDirecta(item.productoId, parseInt(e.target.value, 10))}
+                      onFocus={(e) => e.target.select()}
+                      className="w-12 rounded-md border bg-background py-1 text-center text-sm font-bold outline-none focus:ring-2 focus:ring-ring"
+                    />
                     <button
                       onClick={() => cambiarCantidad(item.productoId, 1)}
                       className="flex h-8 w-8 items-center justify-center rounded-full border hover:bg-accent"
@@ -597,31 +646,44 @@ export default function PosClient({ productos, categorias, metodosPago }: Props)
             {/* Método de pago */}
             <div className="space-y-2">
               <p className="text-sm font-medium">Método de pago</p>
-              <div className="grid grid-cols-2 gap-2">
-                {metodosPago.map((mp) => (
-                  <button
-                    key={mp.id}
-                    onClick={() => {
-                      setMetodoPagoId(mp.id)
-                      setPagoRecibido('')
-                    }}
-                    className={cn(
-                      'rounded-lg border px-3 py-2 text-left text-sm font-medium transition-colors',
-                      metodoPagoId === mp.id
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'hover:bg-accent',
-                    )}
-                  >
-                    {mp.nombre}
-                  </button>
-                ))}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMetodoPagoId(metodoEfectivo?.id ?? '')
+                    setPagoRecibido('')
+                  }}
+                  className={cn(
+                    'rounded-xl border-2 px-4 py-4 text-center text-base font-bold transition-colors',
+                    esEfectivo
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'hover:bg-accent',
+                  )}
+                >
+                  Efectivo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMetodoPagoId(metodoTarjeta?.id ?? '')
+                    setPagoRecibido('')
+                  }}
+                  className={cn(
+                    'rounded-xl border-2 px-4 py-4 text-center text-base font-bold transition-colors',
+                    !esEfectivo
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'hover:bg-accent',
+                  )}
+                >
+                  Tarjeta
+                </button>
               </div>
             </div>
 
             {/* Recibido + cambio (solo efectivo) */}
             {esEfectivo && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Recibido (opcional)</label>
+                <label className="text-sm font-medium">Dinero recibido (opcional)</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                     $

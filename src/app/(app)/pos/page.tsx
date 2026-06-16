@@ -17,7 +17,7 @@ export default async function PosPage() {
       .order('nombre'),
     supabase
       .from('categorias_producto')
-      .select('id, nombre')
+      .select('id, nombre, color')
       .eq('negocio_id', negocio.id)
       .order('nombre'),
     supabase
@@ -33,6 +33,7 @@ export default async function PosPage() {
       productos={productos ?? []}
       categorias={categorias ?? []}
       metodosPago={metodosPago ?? []}
+      negocioNombre={negocio.nombre}
     />
   )
 }

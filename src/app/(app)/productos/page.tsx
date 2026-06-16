@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Pencil, Plus, AlertTriangle, Download, Upload } from 'lucide-react'
+import { Pencil, Plus, PackagePlus, AlertTriangle, Download, Upload } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { formatMXN } from '@/lib/dinero'
 import { STOCK_MINIMO } from '@/lib/constantes'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { getColorCategoria } from '@/lib/colores-categoria'
 import { eliminarProductoAction } from './actions'
 
 const PAGE_SIZE = 48
@@ -28,7 +29,7 @@ export default async function ProductosPage({
 
   let query = supabase
     .from('productos')
-    .select('id, nombre, precio_venta, precio_costo, existencias, activo, categoria_id, categorias_producto(nombre)', { count: 'exact' })
+    .select('id, nombre, precio_venta, precio_costo, existencias, activo, categoria_id, categorias_producto(nombre, color)', { count: 'exact' })
     .eq('negocio_id', negocio!.id)
     .order('nombre')
 
@@ -38,7 +39,7 @@ export default async function ProductosPage({
   const [{ data: categorias }, { data: productos, count: totalProductos }] = await Promise.all([
     supabase
       .from('categorias_producto')
-      .select('id, nombre')
+      .select('id, nombre, color')
       .eq('negocio_id', negocio!.id)
       .order('nombre'),
     query.range(desde, hasta),
@@ -134,9 +135,9 @@ export default async function ProductosPage({
         <>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {productosFiltrados.map((producto) => {
-            const catNombre = (
-              producto.categorias_producto as unknown as { nombre: string } | null
-            )?.nombre
+            const cat = producto.categorias_producto as unknown as { nombre: string; color: string | null } | null
+            const catNombre = cat?.nombre
+            const colorCat = getColorCategoria(cat?.color)
 
             const pc = (producto as unknown as { precio_costo: number | null }).precio_costo ?? 0
             const margen = pc > 0
@@ -151,13 +152,17 @@ export default async function ProductosPage({
               <div
                 key={producto.id}
                 className={cn(
-                  'flex flex-col rounded-xl border bg-card p-3 shadow-sm',
+                  'relative flex flex-col overflow-hidden rounded-xl border bg-card p-3 shadow-sm',
                   !producto.activo && 'opacity-50',
                 )}
               >
+                {colorCat && (
+                  <span className={cn('absolute inset-x-0 top-0 h-1.5', colorCat.bar)} />
+                )}
                 {/* Categoría badge */}
                 {catNombre && (
-                  <span className="mb-1 text-xs text-muted-foreground">
+                  <span className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    {colorCat && <span className={cn('h-2 w-2 rounded-full', colorCat.dot)} />}
                     {catNombre}
                   </span>
                 )}
@@ -201,6 +206,11 @@ export default async function ProductosPage({
                     <Link href={`/productos/${producto.id}/editar`}>
                       <Pencil className="h-3 w-3" />
                       Editar
+                    </Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild title="Agregar lote">
+                    <Link href={`/productos/${producto.id}/lotes/nuevo`}>
+                      <PackagePlus className="h-3 w-3" />
                     </Link>
                   </Button>
                   <form action={eliminarProductoAction} data-action="eliminar-producto">

@@ -145,3 +145,19 @@
     @apply text-xs font-semibold uppercase tracking-widest text-muted-foreground;
   }
 }
+
+/* Impresión de ticket angosto: oculta todo excepto #ticket-imprimible */
+@media print {
+  body.printing-ticket * {
+    visibility: hidden;
+  }
+  body.printing-ticket #ticket-imprimible,
+  body.printing-ticket #ticket-imprimible * {
+    visibility: visible;
+  }
+  body.printing-ticket #ticket-imprimible {
+    position: fixed;
+    left: 0;
+    top: 0;
+  }
+}

@@ -4,8 +4,14 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { COLORES_CATEGORIA } from '@/lib/colores-categoria'
 
 export type CategoriaState = { error: string } | null
+
+function colorValido(valor: FormDataEntryValue | null): string | null {
+  if (!valor || typeof valor !== 'string') return null
+  return COLORES_CATEGORIA.some((c) => c.key === valor) ? valor : null
+}
 
 export async function crearCategoriaAction(
   _prev: CategoriaState,
@@ -13,6 +19,7 @@ export async function crearCategoriaAction(
 ): Promise<CategoriaState> {
   const nombre = (formData.get('nombre') as string)?.trim()
   if (!nombre) return { error: 'Escribe el nombre de la categoría' }
+  const color = colorValido(formData.get('color'))
 
   const negocio = await getNegocioActual()
   if (!negocio) return { error: 'No hay negocio activo' }
@@ -20,7 +27,7 @@ export async function crearCategoriaAction(
   const supabase = await createClient()
   const { error } = await supabase
     .from('categorias_producto')
-    .insert({ nombre, negocio_id: negocio.id })
+    .insert({ nombre, negocio_id: negocio.id, color })
 
   if (error) return { error: 'No se pudo guardar. Intenta de nuevo.' }
   revalidatePath('/categorias')
@@ -34,11 +41,12 @@ export async function editarCategoriaAction(
   const id = formData.get('id') as string
   const nombre = (formData.get('nombre') as string)?.trim()
   if (!nombre) return { error: 'Escribe el nombre de la categoría' }
+  const color = colorValido(formData.get('color'))
 
   const supabase = await createClient()
   const { error } = await supabase
     .from('categorias_producto')
-    .update({ nombre })
+    .update({ nombre, color })
     .eq('id', id)
 
   if (error) return { error: 'No se pudo actualizar. Intenta de nuevo.' }

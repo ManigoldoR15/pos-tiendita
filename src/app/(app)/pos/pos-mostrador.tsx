@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Grid3x3, Trash2, Plus, Minus, CheckCircle, X } from 'lucide-react'
+import { Grid3x3, Trash2, Plus, Minus, CheckCircle, X, Printer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatMXN } from '@/lib/dinero'
 import { cn } from '@/lib/utils'
+import TicketImprimible, { imprimirTicket, type DatosTicket } from '@/components/ticket-imprimible'
 import { registrarVentaAction } from './actions'
 import type { Producto, MetodoPago } from './pos-client'
 
@@ -18,25 +19,36 @@ type Item = {
 type Props = {
   productos: Producto[]
   metodosPago: MetodoPago[]
+  negocioNombre: string
   onCambiarModo: () => void
 }
 
 const BILLETES = [50_00, 100_00, 200_00, 500_00]
 
-export default function PosMostrador({ productos, metodosPago, onCambiarModo }: Props) {
+export default function PosMostrador({ productos, metodosPago, negocioNombre, onCambiarModo }: Props) {
   const [ticket, setTicket] = useState<Item[]>([])
-  const [metodoPagoId, setMetodoPagoId] = useState(metodosPago[0]?.id ?? '')
+  const metodoEfectivoInicial = metodosPago.find((m) => m.nombre.toLowerCase().includes('efectivo')) ?? metodosPago[0]
+  const [metodoPagoId, setMetodoPagoId] = useState(metodoEfectivoInicial?.id ?? '')
   const [pagoRecibido, setPagoRecibido] = useState('')
   const [procesando, setProcesando] = useState(false)
   const [errorVenta, setErrorVenta] = useState<string | null>(null)
   const [exito, setExito] = useState(false)
   const [scanInput, setScanInput] = useState('')
   const [scanError, setScanError] = useState('')
+  const [ultimaVenta, setUltimaVenta] = useState<DatosTicket | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const total = ticket.reduce((s, i) => s + i.precio * i.cantidad, 0)
   const pagoNum = Math.round(parseFloat(pagoRecibido) * 100) || 0
   const cambio = pagoNum >= total ? pagoNum - total : null
+
+  const metodoPagoNombre = metodosPago.find((m) => m.id === metodoPagoId)?.nombre ?? ''
+  const esEfectivo = metodoPagoNombre.toLowerCase().includes('efectivo')
+  const metodoEfectivo = metodosPago.find((m) => m.nombre.toLowerCase().includes('efectivo')) ?? metodosPago[0]
+  const metodoTarjeta =
+    metodosPago.find((m) => m.nombre.toLowerCase().includes('tarjeta')) ??
+    metodosPago.find((m) => m.id !== metodoEfectivo?.id) ??
+    metodosPago[0]
 
   // Re-focus scanner input — but never steal focus from selects or other inputs
   useEffect(() => {
@@ -57,7 +69,7 @@ export default function PosMostrador({ productos, metodosPago, onCambiarModo }: 
     function handler(e: KeyboardEvent) {
       if (e.key === 'F2') {
         e.preventDefault()
-        if (ticket.length > 0 && !procesando) cobrar()
+        if (ticket.length > 0 && !procesando && !exito) cobrar()
       }
       if (e.key === 'Escape') {
         e.preventDefault()
@@ -117,6 +129,11 @@ export default function PosMostrador({ productos, metodosPago, onCambiarModo }: 
     )
   }
 
+  function setCantidadDirecta(id: string, valor: number) {
+    const nueva = Math.max(1, Math.floor(valor) || 1)
+    setTicket((prev) => prev.map((i) => (i.productoId === id ? { ...i, cantidad: nueva } : i)))
+  }
+
   function quitarUltima() {
     setTicket((prev) => prev.slice(0, -1))
   }
@@ -144,6 +161,13 @@ export default function PosMostrador({ productos, metodosPago, onCambiarModo }: 
       return
     }
 
+    setUltimaVenta({
+      items: ticket.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
+      total,
+      metodoPagoNombre,
+      cambio: cambio !== null && cambio > 0 ? cambio : null,
+      fecha: new Date().toISOString(),
+    })
     setExito(true)
     setTimeout(() => {
       setExito(false)
@@ -151,20 +175,29 @@ export default function PosMostrador({ productos, metodosPago, onCambiarModo }: 
       setPagoRecibido('')
       setScanInput('')
       inputRef.current?.focus()
-    }, 2000)
+    }, 5000)
   }
 
   if (exito) {
     return (
-      <div className="flex h-[calc(100svh-8rem)] items-center justify-center">
-        <div className="text-center">
-          <CheckCircle className="mx-auto mb-4 h-20 w-20 text-emerald-500" />
-          <p className="text-2xl font-bold text-emerald-600">¡Venta registrada!</p>
-          {cambio !== null && cambio > 0 && (
-            <p className="mt-2 text-xl font-semibold">Cambio: {formatMXN(cambio)}</p>
-          )}
+      <>
+        <div className="flex h-[calc(100svh-8rem)] items-center justify-center">
+          <div className="text-center">
+            <CheckCircle className="mx-auto mb-4 h-20 w-20 text-emerald-500" />
+            <p className="text-2xl font-bold text-emerald-600">¡Venta registrada!</p>
+            {cambio !== null && cambio > 0 && (
+              <p className="mt-2 text-xl font-semibold">Cambio: {formatMXN(cambio)}</p>
+            )}
+            {ultimaVenta && (
+              <Button variant="outline" className="mt-4" onClick={imprimirTicket}>
+                <Printer className="h-4 w-4" />
+                Imprimir ticket
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+        {ultimaVenta && <TicketImprimible negocioNombre={negocioNombre} datos={ultimaVenta} />}
+      </>
     )
   }
 
@@ -244,7 +277,14 @@ export default function PosMostrador({ productos, metodosPago, onCambiarModo }: 
                         >
                           <Minus className="h-3 w-3" />
                         </button>
-                        <span className="w-8 text-center font-mono font-bold">{item.cantidad}</span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.cantidad}
+                          onChange={(e) => setCantidadDirecta(item.productoId, parseInt(e.target.value, 10))}
+                          onFocus={(e) => e.target.select()}
+                          className="w-12 rounded-md border bg-background py-1 text-center font-mono font-bold outline-none focus:ring-2 focus:ring-ring"
+                        />
                         <button
                           onClick={() => cambiarCantidad(item.productoId, 1)}
                           className="flex h-8 w-8 items-center justify-center rounded-md border hover:bg-accent"
@@ -293,19 +333,32 @@ export default function PosMostrador({ productos, metodosPago, onCambiarModo }: 
         </div>
 
         {/* Método de pago */}
-        <select
-          value={metodoPagoId}
-          onChange={(e) => setMetodoPagoId(e.target.value)}
-          className="rounded-xl border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          {metodosPago.map((m) => (
-            <option key={m.id} value={m.id}>{m.nombre}</option>
-          ))}
-        </select>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setMetodoPagoId(metodoEfectivo?.id ?? '')}
+            className={cn(
+              'rounded-xl border-2 py-3 text-center text-sm font-bold transition-colors',
+              esEfectivo ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-accent',
+            )}
+          >
+            Efectivo
+          </button>
+          <button
+            type="button"
+            onClick={() => setMetodoPagoId(metodoTarjeta?.id ?? '')}
+            className={cn(
+              'rounded-xl border-2 py-3 text-center text-sm font-bold transition-colors',
+              !esEfectivo ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-accent',
+            )}
+          >
+            Tarjeta
+          </button>
+        </div>
 
-        {/* Pago recibido */}
+        {/* Dinero recibido */}
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Pago recibido</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Dinero recibido</label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
             <input

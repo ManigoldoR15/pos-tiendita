@@ -12,7 +12,7 @@ export default async function EditarCategoriaPage({
 
   const { data: categoria } = await supabase
     .from('categorias_producto')
-    .select('id, nombre')
+    .select('id, nombre, color')
     .eq('id', id)
     .single()
 
@@ -21,7 +21,7 @@ export default async function EditarCategoriaPage({
   return (
     <div className="mx-auto max-w-md">
       <h1 className="mb-6 text-2xl font-bold">Editar categoría</h1>
-      <FormEditarCategoria id={categoria.id} nombreInicial={categoria.nombre} />
+      <FormEditarCategoria id={categoria.id} nombreInicial={categoria.nombre} colorInicial={categoria.color} />
     </div>
   )
 }
