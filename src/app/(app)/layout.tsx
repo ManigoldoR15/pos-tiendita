@@ -12,6 +12,7 @@ export default async function AppLayout({
 }) {
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
+  if (negocio.suspendido) redirect('/cuenta-suspendida')
 
   const supabase = await createClient()
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
