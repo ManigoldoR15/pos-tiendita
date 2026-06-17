@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import {
   Home, Package, Tag, ShoppingCart, Receipt, Wallet, ClipboardList,
-  LogOut, Settings, Store, Truck, BarChart2, ChevronDown, Menu, X, CalendarCheck, HandCoins,
+  LogOut, Settings, Store, Truck, BarChart2, ChevronDown, Menu, X, CalendarCheck, HandCoins, Scale,
 } from 'lucide-react'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -23,6 +23,7 @@ const DIRECT_DUENO: NavLink[] = [
   { href: '/corte', label: 'Caja', Icon: Wallet },
   { href: '/ventas', label: 'Ventas', Icon: ClipboardList },
   { href: '/fiados', label: 'Fiados', Icon: HandCoins },
+  { href: '/cuadre', label: 'Cuadre', Icon: Scale },
   { href: '/gastos', label: 'Gastos', Icon: Receipt },
   { href: '/finanzas', label: 'Finanzas', Icon: BarChart2 },
   { href: '/caducidad', label: 'Caducidad', Icon: CalendarCheck },
@@ -40,6 +41,7 @@ const DIRECT_ADMIN: NavLink[] = [
   { href: '/corte', label: 'Caja', Icon: Wallet },
   { href: '/ventas', label: 'Ventas', Icon: ClipboardList },
   { href: '/fiados', label: 'Fiados', Icon: HandCoins },
+  { href: '/cuadre', label: 'Cuadre', Icon: Scale },
   { href: '/gastos', label: 'Gastos', Icon: Receipt },
   { href: '/caducidad', label: 'Caducidad', Icon: CalendarCheck },
 ]

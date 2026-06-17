@@ -1,17 +1,27 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { centavosATexto } from '@/lib/dinero'
 import ComboboxCategoria from '@/components/combobox-categoria'
+import CapturaLotes from '@/components/captura-lotes'
 import type { ProductoState } from './actions'
 
 type Categoria = { id: string; nombre: string }
+type CategoriaPerecedero = {
+  id: string
+  nombre: string
+  dias_refri: number | null
+  dias_congelador: number | null
+  dias_ambiente: number | null
+}
 
 type ProductoFormProps = {
   action: (prev: ProductoState, formData: FormData) => Promise<ProductoState>
   categorias: Categoria[]
+  categoriasPerecedero?: CategoriaPerecedero[]
+  hoy?: string
   titulo: string
   inicial?: {
     id?: string
@@ -22,16 +32,22 @@ type ProductoFormProps = {
     existencias?: number
     codigo_barras?: string | null
     activo?: boolean
+    unidad_medida?: string
   }
 }
 
 export default function ProductoForm({
   action,
   categorias,
+  categoriasPerecedero = [],
+  hoy = '',
   titulo,
   inicial = {},
 }: ProductoFormProps) {
   const [state, formAction, pending] = useActionState(action, null)
+  const [tipoCaducidad, setTipoCaducidad] = useState<'envasado' | 'fresco'>('envasado')
+  const [unidadMedida, setUnidadMedida] = useState(inicial.unidad_medida ?? 'pieza')
+  const esNuevo = !inicial.id
 
   return (
     <div className="mx-auto max-w-lg">
@@ -102,6 +118,30 @@ export default function ProductoForm({
           <p className="text-xs text-muted-foreground">Para calcular márgenes y ganancia bruta</p>
         </div>
 
+        {/* Unidad de medida */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium">
+            Unidad de medida <span className="text-destructive">*</span>
+          </label>
+          <select
+            name="unidad_medida"
+            value={unidadMedida}
+            onChange={(e) => setUnidadMedida(e.target.value)}
+            className="rounded-lg border border-input bg-background px-3 py-3 text-base outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="pieza">Pieza / unidad (abarrotes, latas, botellas…)</option>
+            <option value="kg">Kilogramo (carnicería, granel pesado)</option>
+            <option value="g">Gramo (especias, ingredientes pequeños)</option>
+            <option value="litro">Litro (líquidos a granel)</option>
+            <option value="ml">Mililitro (líquidos pequeños)</option>
+          </select>
+          {unidadMedida !== 'pieza' && (
+            <p className="text-xs text-muted-foreground">
+              Precio de venta = precio por {unidadMedida}. En el POS se pedirá la cantidad exacta al vender.
+            </p>
+          )}
+        </div>
+
         {/* Código de barras */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium">Código de barras</label>
@@ -125,17 +165,43 @@ export default function ProductoForm({
           />
         </div>
 
-        {/* Existencias */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium">Existencias actuales</label>
-          <input
-            name="existencias"
-            type="number"
-            min="0"
-            defaultValue={inicial.existencias ?? 0}
-            className="rounded-lg border border-input bg-background px-3 py-3 text-base outline-none focus:ring-2 focus:ring-ring"
-          />
-        </div>
+        {/* Existencias / lotes */}
+        {esNuevo ? (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium">
+                Tipo de manejo <span className="text-destructive">*</span>
+              </label>
+              <select
+                name="tipo_caducidad"
+                required
+                value={tipoCaducidad}
+                onChange={(e) => setTipoCaducidad(e.target.value as 'envasado' | 'fresco')}
+                className="rounded-lg border border-input bg-background px-3 py-3 text-base outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="envasado">Envasado / abarrotes (caducidad opcional)</option>
+                <option value="fresco">Fresco / perecedero (caducidad calculada)</option>
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium">
+                Lote inicial <span className="text-destructive">*</span>
+              </label>
+              <CapturaLotes tipo={tipoCaducidad} categorias={categoriasPerecedero} hoy={hoy} unidadMedida={unidadMedida} />
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">Existencias actuales</label>
+            <p className="rounded-lg border border-input bg-muted px-3 py-3 text-base text-muted-foreground">
+              {inicial.existencias ?? 0} {unidadMedida === 'pieza' ? 'unidades' : unidadMedida}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Para agregar inventario usa &quot;Agregar lote&quot; desde la lista de productos.
+            </p>
+          </div>
+        )}
 
         {/* Activo */}
         <label className="flex cursor-pointer items-center gap-3">

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Plus, Settings, Info } from 'lucide-react'
+import { Settings, Info } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
@@ -12,7 +12,6 @@ import {
   type EstadoLote,
 } from '@/lib/caducidad'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import { marcarNegroAction, darDeBajaAction, seedCategoriasIfEmpty } from './actions'
 
 export default async function CaducidadPage({
@@ -39,6 +38,7 @@ export default async function CaducidadPage({
     `)
     .eq('negocio_id', negocio.id)
     .eq('activo', true)
+    .not('fecha_caducidad', 'is', null)
     .order('fecha_caducidad', { ascending: true })
 
   const hoy = hoyMX()
@@ -120,12 +120,6 @@ export default async function CaducidadPage({
               Categorías
             </Link>
           )}
-          <Button asChild>
-            <Link href="/caducidad/nuevo">
-              <Plus className="h-4 w-4" />
-              Nuevo lote
-            </Link>
-          </Button>
         </div>
       </div>
 
@@ -173,16 +167,17 @@ export default async function CaducidadPage({
         <div className="mt-12 text-center text-muted-foreground">
           {lotesConEstado.length === 0 ? (
             <>
-              <p className="text-lg">No hay lotes registrados.</p>
+              <p className="text-lg">No hay lotes con fecha de caducidad registrados.</p>
               <p className="mt-1 text-sm">
-                Registra tu primer lote con el botón{' '}
-                <Link href="/caducidad/nuevo" className="font-medium text-primary hover:underline">
-                  Nuevo lote
-                </Link>.
+                Agrega lotes desde{' '}
+                <Link href="/productos" className="font-medium text-primary hover:underline">
+                  Productos
+                </Link>{' '}
+                (botón &quot;Agregar lote&quot;) con fecha de caducidad para que aparezcan aquí.
               </p>
             </>
           ) : (
-            <p className="text-lg">No hay lotes en estado "{ESTADO_CONFIG[filtroEstado as EstadoLote]?.label}".</p>
+            <p className="text-lg">No hay lotes en estado &quot;{ESTADO_CONFIG[filtroEstado as EstadoLote]?.label}&quot;.</p>
           )}
         </div>
       ) : (
@@ -245,20 +240,18 @@ export default async function CaducidadPage({
                         </button>
                       </form>
                     )}
-                    <form action={darDeBajaAction}>
-                      <input type="hidden" name="lote_id" value={lote.id} />
-                      <button
-                        type="submit"
-                        title={
-                          puedeGestionarStock
-                            ? 'Desactiva el lote y descuenta del inventario'
-                            : 'Desactiva el lote (sin descontar inventario)'
-                        }
-                        className="rounded-lg border border-destructive/40 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
-                      >
-                        {puedeGestionarStock ? 'Dar de baja' : 'Retirar lote'}
-                      </button>
-                    </form>
+                    {puedeGestionarStock && (
+                      <form action={darDeBajaAction}>
+                        <input type="hidden" name="lote_id" value={lote.id} />
+                        <button
+                          type="submit"
+                          title="Desactiva el lote y descuenta del inventario"
+                          className="rounded-lg border border-destructive/40 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                        >
+                          Dar de baja
+                        </button>
+                      </form>
+                    )}
                   </div>
                 </div>
               </div>

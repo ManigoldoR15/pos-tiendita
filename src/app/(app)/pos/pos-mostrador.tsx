@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Grid3x3, Trash2, Plus, Minus, CheckCircle, X, Printer, User, HandCoins } from 'lucide-react'
+import { Grid3x3, Trash2, Plus, Minus, CheckCircle, X, Printer, User, HandCoins, Scale } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatMXN } from '@/lib/dinero'
 import { cn } from '@/lib/utils'
@@ -9,6 +9,7 @@ import TicketImprimible, { imprimirTicket, type DatosTicket } from '@/components
 import { registrarVentaAction, buscarClientesAction, crearClienteAction } from './actions'
 import type { ClienteSugerido } from './actions'
 import type { Producto, MetodoPago } from './pos-client'
+import { esGranel, formatCantidad, stepCantidad, minCantidad } from '@/lib/unidades'
 
 type Item = {
   productoId: string
@@ -16,6 +17,7 @@ type Item = {
   precio: number
   cantidad: number
   fiado: boolean
+  unidad: string
 }
 
 type Props = {
@@ -40,6 +42,10 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
   const [ultimaVenta, setUltimaVenta] = useState<DatosTicket | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Granel: popup de cantidad al escanear
+  const [granelPendiente, setGranelPendiente] = useState<Producto | null>(null)
+  const [granelCantidad, setGranelCantidad] = useState('')
+
   // Cliente / fiado
   const [clienteSeleccionado, setClienteSeleccionado] = useState<ClienteSugerido | null>(null)
   const [busquedaCliente, setBusquedaCliente] = useState('')
@@ -62,8 +68,8 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
     return () => clearTimeout(timer)
   }, [busquedaCliente])
 
-  const total = ticket.reduce((s, i) => s + i.precio * i.cantidad, 0)
-  const totalFiado = ticket.reduce((s, i) => s + (i.fiado ? i.precio * i.cantidad : 0), 0)
+  const total = ticket.reduce((s, i) => s + Math.round(i.precio * i.cantidad), 0)
+  const totalFiado = ticket.reduce((s, i) => s + (i.fiado ? Math.round(i.precio * i.cantidad) : 0), 0)
   const montoPagar = Math.max(0, total - totalFiado)
   const hayFiado = totalFiado > 0
   const pagoNum = Math.round(parseFloat(pagoRecibido) * 100) || 0
@@ -117,6 +123,11 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
       return
     }
     setScanError('')
+    if (esGranel(prod.unidad_medida)) {
+      setGranelPendiente(prod)
+      setGranelCantidad('')
+      return
+    }
     setTicket((prev) => {
       const idx = prev.findIndex((i) => i.productoId === prod.id)
       if (idx >= 0) {
@@ -137,9 +148,35 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
         precio: prod.precio_venta,
         cantidad: 1,
         fiado: false,
+        unidad: prod.unidad_medida,
       }]
     })
   }, [productos])
+
+  function confirmarGranel() {
+    if (!granelPendiente) return
+    const cantidad = parseFloat(granelCantidad)
+    if (isNaN(cantidad) || cantidad <= 0) return
+    setTicket((prev) => {
+      const idx = prev.findIndex((i) => i.productoId === granelPendiente.id)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = { ...next[idx], cantidad: next[idx].cantidad + cantidad }
+        return next
+      }
+      return [...prev, {
+        productoId: granelPendiente.id,
+        nombre: granelPendiente.nombre,
+        precio: granelPendiente.precio_venta,
+        cantidad,
+        fiado: false,
+        unidad: granelPendiente.unidad_medida,
+      }]
+    })
+    setGranelPendiente(null)
+    setGranelCantidad('')
+    inputRef.current?.focus()
+  }
 
   function toggleFiadoItem(productoId: string) {
     setTicket((prev) =>
@@ -195,8 +232,14 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
   }
 
   function setCantidadDirecta(id: string, valor: number) {
-    const nueva = Math.max(1, Math.floor(valor) || 1)
-    setTicket((prev) => prev.map((i) => (i.productoId === id ? { ...i, cantidad: nueva } : i)))
+    setTicket((prev) => {
+      const item = prev.find((i) => i.productoId === id)
+      if (!item) return prev
+      const nueva = esGranel(item.unidad)
+        ? Math.max(minCantidad(item.unidad), valor || minCantidad(item.unidad))
+        : Math.max(1, Math.floor(valor) || 1)
+      return prev.map((i) => (i.productoId === id ? { ...i, cantidad: nueva } : i))
+    })
   }
 
   function quitarUltima() {
@@ -240,7 +283,7 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
     }
 
     setUltimaVenta({
-      items: ticket.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, fiado: i.fiado })),
+      items: ticket.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, fiado: i.fiado, unidad: i.unidad })),
       total,
       metodoPagoNombre,
       cambio: cambio !== null && cambio > 0 ? cambio : null,
@@ -283,6 +326,56 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
   }
 
   return (
+    <>
+    {/* Modal granel */}
+    {granelPendiente && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="w-full max-w-xs space-y-4 rounded-2xl bg-background p-6 shadow-2xl">
+          <div className="flex items-center gap-2">
+            <Scale className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-bold">¿Cuánto vendes?</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">{granelPendiente.nombre}</p>
+          <div className="relative">
+            <input
+              autoFocus
+              type="number"
+              min={minCantidad(granelPendiente.unidad_medida)}
+              step={stepCantidad(granelPendiente.unidad_medida)}
+              placeholder="0"
+              value={granelCantidad}
+              onChange={(e) => setGranelCantidad(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && confirmarGranel()}
+              className="w-full rounded-lg border border-input bg-background px-3 py-3 pr-16 text-xl font-bold outline-none focus:ring-2 focus:ring-ring"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+              {granelPendiente.unidad_medida}
+            </span>
+          </div>
+          {granelCantidad && parseFloat(granelCantidad) > 0 && (
+            <p className="text-sm font-medium text-primary">
+              Subtotal: {formatMXN(Math.round(granelPendiente.precio_venta * parseFloat(granelCantidad)))}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => { setGranelPendiente(null); inputRef.current?.focus() }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="flex-1"
+              disabled={!granelCantidad || parseFloat(granelCantidad) <= 0}
+              onClick={confirmarGranel}
+            >
+              Agregar
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="flex flex-col gap-4 md:flex-row md:h-[calc(100svh-8rem)]">
       {/* ── Panel izquierdo: ticket ─────────────────────────────────────── */}
       <div className="flex flex-1 flex-col min-w-0 gap-3">
@@ -352,31 +445,47 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
                   <tr key={item.productoId}>
                     <td className="px-4 py-2.5 font-medium truncate max-w-[200px]">{item.nombre}</td>
                     <td className="px-3 py-2 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => cambiarCantidad(item.productoId, -1)}
-                          className="flex h-8 w-8 items-center justify-center rounded-md border hover:bg-accent"
-                        >
-                          <Minus className="h-3 w-3" />
-                        </button>
-                        <input
-                          type="number"
-                          min="1"
-                          value={item.cantidad}
-                          onChange={(e) => setCantidadDirecta(item.productoId, parseInt(e.target.value, 10))}
-                          onFocus={(e) => e.target.select()}
-                          className="w-12 rounded-md border bg-background py-1 text-center font-mono font-bold outline-none focus:ring-2 focus:ring-ring"
-                        />
-                        <button
-                          onClick={() => cambiarCantidad(item.productoId, 1)}
-                          className="flex h-8 w-8 items-center justify-center rounded-md border hover:bg-accent"
-                        >
-                          <Plus className="h-3 w-3" />
-                        </button>
-                      </div>
+                      {!esGranel(item.unidad) ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => cambiarCantidad(item.productoId, -1)}
+                            className="flex h-8 w-8 items-center justify-center rounded-md border hover:bg-accent"
+                          >
+                            <Minus className="h-3 w-3" />
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={item.cantidad}
+                            onChange={(e) => setCantidadDirecta(item.productoId, parseInt(e.target.value, 10))}
+                            onFocus={(e) => e.target.select()}
+                            className="w-12 rounded-md border bg-background py-1 text-center font-mono font-bold outline-none focus:ring-2 focus:ring-ring"
+                          />
+                          <button
+                            onClick={() => cambiarCantidad(item.productoId, 1)}
+                            className="flex h-8 w-8 items-center justify-center rounded-md border hover:bg-accent"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-1">
+                          <input
+                            type="number"
+                            min={minCantidad(item.unidad)}
+                            step={stepCantidad(item.unidad)}
+                            value={item.cantidad}
+                            onChange={(e) => setCantidadDirecta(item.productoId, parseFloat(e.target.value))}
+                            onFocus={(e) => e.target.select()}
+                            className="w-16 rounded-md border bg-background py-1 text-center font-mono font-bold outline-none focus:ring-2 focus:ring-ring"
+                          />
+                          <span className="text-xs text-muted-foreground">{item.unidad}</span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-2.5 text-right font-semibold tabular-nums">
-                      {formatMXN(item.precio * item.cantidad)}
+                      {formatMXN(Math.round(item.precio * item.cantidad))}
                     </td>
                     <td className="px-2 py-2 text-center">
                       <input
@@ -642,5 +751,6 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
         )}
       </div>
     </div>
+    </>
   )
 }

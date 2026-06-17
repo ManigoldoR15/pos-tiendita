@@ -1,8 +1,9 @@
 'use client'
 
 import { formatMXN } from '@/lib/dinero'
+import { formatCantidad } from '@/lib/unidades'
 
-export type ItemTicket = { nombre: string; cantidad: number; precio: number; fiado?: boolean }
+export type ItemTicket = { nombre: string; cantidad: number; precio: number; fiado?: boolean; unidad?: string }
 
 export type DatosTicket = {
   items: ItemTicket[]
@@ -44,8 +45,8 @@ export default function TicketImprimible({ negocioNombre, datos }: Props) {
       <div className="my-2 border-t border-dashed border-black" />
       {datos.items.map((it, i) => (
         <div key={i} className="flex justify-between gap-2">
-          <span>{it.cantidad} x {it.nombre}{it.fiado ? ' (fiado)' : ''}</span>
-          <span>{formatMXN(it.precio * it.cantidad)}</span>
+          <span>{formatCantidad(it.cantidad, it.unidad ?? 'pieza')} x {it.nombre}{it.fiado ? ' (fiado)' : ''}</span>
+          <span>{formatMXN(Math.round(it.precio * it.cantidad))}</span>
         </div>
       ))}
       <div className="my-2 border-t border-dashed border-black" />

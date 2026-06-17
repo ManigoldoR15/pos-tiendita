@@ -1,0 +1,116 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { getNegocioActual } from '@/lib/negocio'
+import { formatCantidad } from '@/lib/unidades'
+import { fmtFechaCorta } from '@/lib/fecha'
+import AjusteForm from './ajuste-form'
+
+export default async function CuadrePage() {
+  const negocio = await getNegocioActual()
+  if (!negocio) redirect('/crear-negocio')
+
+  const supabase = await createClient()
+
+  // Solo productos granel (unidad_medida != 'pieza') con lotes activos
+  const { data: productos } = await supabase
+    .from('productos')
+    .select(`
+      id, nombre, existencias, unidad_medida,
+      lotes_producto(id, cantidad_actual, fecha_recepcion, fecha_caducidad, notas, activo)
+    `)
+    .eq('negocio_id', negocio.id)
+    .eq('activo', true)
+    .neq('unidad_medida', 'pieza')
+    .order('nombre')
+
+  // Ajustes recientes (últimos 30)
+  const { data: ajustes } = await supabase
+    .from('ajustes_inventario')
+    .select('id, delta, cantidad_antes, cantidad_despues, motivo, notas, created_at, producto_id, productos(nombre)')
+    .eq('negocio_id', negocio.id)
+    .order('created_at', { ascending: false })
+    .limit(30)
+
+  const productosConLotes = (productos ?? []).map((p) => ({
+    ...p,
+    existencias: Number(p.existencias),
+    lotes: (p.lotes_producto ?? [])
+      .filter((l) => l.activo && Number(l.cantidad_actual) >= 0)
+      .map((l) => ({ ...l, cantidad_actual: Number(l.cantidad_actual) }))
+      .sort((a, b) => new Date(a.fecha_recepcion).getTime() - new Date(b.fecha_recepcion).getTime()),
+  }))
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold">Cuadre de inventario</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Compara el stock físico con el sistema y registra ajustes con auditoría.
+        </p>
+      </div>
+
+      {productosConLotes.length === 0 ? (
+        <div className="card-soft p-8 text-center text-muted-foreground">
+          <p>No hay productos granel / por peso registrados.</p>
+          <p className="text-sm mt-1">
+            Crea un producto con unidad kg, g, litro o ml para usar el cuadre.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {productosConLotes.map((prod) => (
+            <section key={prod.id} className="card-soft overflow-hidden">
+              <div className="flex items-center justify-between border-b bg-muted/30 px-5 py-4">
+                <div>
+                  <h2 className="font-semibold">{prod.nombre}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Total en sistema: {formatCantidad(prod.existencias, prod.unidad_medida)}
+                  </p>
+                </div>
+                <span className="rounded-full bg-primary/10 px-3 py-0.5 text-xs font-semibold text-primary">
+                  {prod.unidad_medida}
+                </span>
+              </div>
+
+              <div className="p-5">
+                <AjusteForm
+                  productoId={prod.id}
+                  productoNombre={prod.nombre}
+                  unidadMedida={prod.unidad_medida}
+                  lotes={prod.lotes}
+                />
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+
+      {/* Historial de ajustes */}
+      {(ajustes ?? []).length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-base font-semibold">Historial de ajustes</h2>
+          <div className="card-soft divide-y">
+            {(ajustes ?? []).map((aj) => {
+              const nombre = (aj.productos as unknown as { nombre: string } | null)?.nombre ?? 'Producto eliminado'
+              const delta = Number(aj.delta)
+              return (
+                <div key={aj.id} className="flex items-start justify-between px-5 py-3 text-sm">
+                  <div className="space-y-0.5">
+                    <p className="font-medium">{nombre}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {fmtFechaCorta(aj.created_at)} · {aj.motivo}
+                      {aj.notas ? ` · ${aj.notas}` : ''}
+                    </p>
+                  </div>
+                  <p className={`font-bold tabular-nums ${delta < 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                    {delta > 0 ? '+' : ''}{delta.toLocaleString('es-MX', { maximumFractionDigits: 3 })}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+    </div>
+  )
+}

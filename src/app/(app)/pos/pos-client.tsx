@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { ShoppingCart, Plus, Minus, Trash2, CheckCircle, Search, X, AlertTriangle, User, Monitor, Grid3x3, Printer, HandCoins } from 'lucide-react'
+import { ShoppingCart, Plus, Minus, Trash2, CheckCircle, Search, X, AlertTriangle, User, Monitor, Grid3x3, Printer, HandCoins, Scale } from 'lucide-react'
 import { STOCK_MINIMO } from '@/lib/constantes'
 import { Button } from '@/components/ui/button'
 import { formatMXN, textoCentavos } from '@/lib/dinero'
@@ -11,6 +11,7 @@ import TicketImprimible, { imprimirTicket, type DatosTicket } from '@/components
 import { registrarVentaAction, buscarClientesAction, crearClienteAction } from './actions'
 import type { ClienteSugerido } from './actions'
 import PosMostrador from './pos-mostrador'
+import { esGranel, formatCantidad, stepCantidad, minCantidad } from '@/lib/unidades'
 
 export type Producto = {
   id: string
@@ -19,6 +20,7 @@ export type Producto = {
   existencias: number
   categoria_id: string | null
   codigo_barras: string | null
+  unidad_medida: string
 }
 
 type Categoria = { id: string; nombre: string; color: string | null }
@@ -30,6 +32,7 @@ type ItemCarrito = {
   precio: number
   cantidad: number
   fiado: boolean
+  unidad: string
 }
 
 type Props = {
@@ -53,6 +56,10 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
   const [errorVenta, setErrorVenta] = useState<string | null>(null)
   const [ventaExitosa, setVentaExitosa] = useState(false)
   const [ultimaVenta, setUltimaVenta] = useState<DatosTicket | null>(null)
+
+  // Granel: popup de cantidad al tocar producto
+  const [granelPendiente, setGranelPendiente] = useState<Producto | null>(null)
+  const [granelCantidad, setGranelCantidad] = useState('')
 
   // Fase 16: clientes frecuentes
   const [clienteSeleccionado, setClienteSeleccionado] = useState<ClienteSugerido | null>(null)
@@ -84,7 +91,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
       : productos
   }, [productos, categoriaActiva, busqueda])
 
-  const subtotal = carrito.reduce((s, i) => s + i.precio * i.cantidad, 0)
+  const subtotal = carrito.reduce((s, i) => s + Math.round(i.precio * i.cantidad), 0)
 
   const descuentoCentavos = useMemo(() => {
     const v = parseFloat(descuentoValor)
@@ -94,7 +101,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
   }, [descuentoValor, descuentoTipo, subtotal])
 
   const total = Math.max(0, subtotal - descuentoCentavos)
-  const totalFiado = carrito.reduce((s, i) => s + (i.fiado ? i.precio * i.cantidad : 0), 0)
+  const totalFiado = carrito.reduce((s, i) => s + (i.fiado ? Math.round(i.precio * i.cantidad) : 0), 0)
   const montoPagar = Math.max(0, total - totalFiado)
   const hayFiado = totalFiado > 0
   const pagoEnCentavos = textoCentavos(pagoRecibido)
@@ -111,6 +118,11 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
 
   function agregarProducto(producto: Producto) {
     if (producto.existencias <= 0) return
+    if (esGranel(producto.unidad_medida)) {
+      setGranelPendiente(producto)
+      setGranelCantidad('')
+      return
+    }
     setCarrito((prev) => {
       const existe = prev.find((i) => i.productoId === producto.id)
       if (existe) {
@@ -126,9 +138,37 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
           precio: producto.precio_venta,
           cantidad: 1,
           fiado: false,
+          unidad: producto.unidad_medida,
         },
       ]
     })
+  }
+
+  function confirmarGranel() {
+    if (!granelPendiente) return
+    const cantidad = parseFloat(granelCantidad)
+    if (isNaN(cantidad) || cantidad <= 0) return
+    setCarrito((prev) => {
+      const existe = prev.find((i) => i.productoId === granelPendiente.id)
+      if (existe) {
+        return prev.map((i) =>
+          i.productoId === granelPendiente.id ? { ...i, cantidad: i.cantidad + cantidad } : i,
+        )
+      }
+      return [
+        ...prev,
+        {
+          productoId: granelPendiente.id,
+          nombre: granelPendiente.nombre,
+          precio: granelPendiente.precio_venta,
+          cantidad,
+          fiado: false,
+          unidad: granelPendiente.unidad_medida,
+        },
+      ]
+    })
+    setGranelPendiente(null)
+    setGranelCantidad('')
   }
 
   function toggleFiadoItem(productoId: string) {
@@ -155,10 +195,14 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
   }
 
   function setCantidadDirecta(productoId: string, valor: number) {
-    const nueva = Math.max(1, Math.floor(valor) || 1)
-    setCarrito((prev) =>
-      prev.map((i) => (i.productoId === productoId ? { ...i, cantidad: nueva } : i)),
-    )
+    setCarrito((prev) => {
+      const item = prev.find((i) => i.productoId === productoId)
+      if (!item) return prev
+      const nueva = esGranel(item.unidad)
+        ? Math.max(minCantidad(item.unidad), valor || minCantidad(item.unidad))
+        : Math.max(1, Math.floor(valor) || 1)
+      return prev.map((i) => (i.productoId === productoId ? { ...i, cantidad: nueva } : i))
+    })
   }
 
   function abrirCobro() {
@@ -226,7 +270,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
       setErrorVenta(result.error)
     } else {
       setUltimaVenta({
-        items: carrito.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, fiado: i.fiado })),
+        items: carrito.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, fiado: i.fiado, unidad: i.unidad })),
         total,
         metodoPagoNombre,
         cambio: esEfectivo && cambio !== null && cambio > 0 ? cambio : null,
@@ -395,13 +439,16 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                     <p className="text-2xl font-black tracking-tight text-primary">
                       {formatMXN(producto.precio_venta)}
                     </p>
+                    {esGranel(producto.unidad_medida) && (
+                      <p className="text-xs text-muted-foreground">/ {producto.unidad_medida}</p>
+                    )}
                     {sinStock && (
                       <p className="mt-1.5 text-xs font-medium text-destructive">Agotado</p>
                     )}
                     {!sinStock && producto.existencias <= STOCK_MINIMO && (
                       <p className="mt-1.5 flex items-center gap-0.5 text-xs font-medium text-orange-500">
                         <AlertTriangle className="h-3 w-3" />
-                        {producto.existencias} u.
+                        {formatCantidad(Number(producto.existencias), producto.unidad_medida)}
                       </p>
                     )}
                   </button>
@@ -419,7 +466,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
           <span className="font-bold">Carrito</span>
           {carrito.length > 0 && (
             <span className="ml-auto text-xs text-muted-foreground">
-              {carrito.reduce((s, i) => s + i.cantidad, 0)} items
+              {carrito.length} producto{carrito.length !== 1 ? 's' : ''}
             </span>
           )}
         </div>
@@ -437,32 +484,52 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                   <div className="flex items-center gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium leading-tight">{item.nombre}</p>
-                      <p className="text-xs text-muted-foreground">{formatMXN(item.precio)} c/u</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatMXN(item.precio)}/{item.unidad}
+                      </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        onClick={() => cambiarCantidad(item.productoId, -1)}
-                        className="flex h-8 w-8 items-center justify-center rounded-full border hover:bg-accent"
-                      >
-                        <Minus className="h-3.5 w-3.5" />
-                      </button>
-                      <input
-                        type="number"
-                        min="1"
-                        value={item.cantidad}
-                        onChange={(e) => setCantidadDirecta(item.productoId, parseInt(e.target.value, 10))}
-                        onFocus={(e) => e.target.select()}
-                        className="w-12 rounded-md border bg-background py-1 text-center text-sm font-bold outline-none focus:ring-2 focus:ring-ring"
-                      />
-                      <button
-                        onClick={() => cambiarCantidad(item.productoId, 1)}
-                        className="flex h-8 w-8 items-center justify-center rounded-full border hover:bg-accent"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
+                      {!esGranel(item.unidad) ? (
+                        <>
+                          <button
+                            onClick={() => cambiarCantidad(item.productoId, -1)}
+                            className="flex h-8 w-8 items-center justify-center rounded-full border hover:bg-accent"
+                          >
+                            <Minus className="h-3.5 w-3.5" />
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={item.cantidad}
+                            onChange={(e) => setCantidadDirecta(item.productoId, parseInt(e.target.value, 10))}
+                            onFocus={(e) => e.target.select()}
+                            className="w-12 rounded-md border bg-background py-1 text-center text-sm font-bold outline-none focus:ring-2 focus:ring-ring"
+                          />
+                          <button
+                            onClick={() => cambiarCantidad(item.productoId, 1)}
+                            className="flex h-8 w-8 items-center justify-center rounded-full border hover:bg-accent"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={minCantidad(item.unidad)}
+                            step={stepCantidad(item.unidad)}
+                            value={item.cantidad}
+                            onChange={(e) => setCantidadDirecta(item.productoId, parseFloat(e.target.value))}
+                            onFocus={(e) => e.target.select()}
+                            className="w-16 rounded-md border bg-background py-1 text-center text-sm font-bold outline-none focus:ring-2 focus:ring-ring"
+                          />
+                          <span className="text-xs text-muted-foreground">{item.unidad}</span>
+                        </div>
+                      )}
                     </div>
                     <p className="w-14 shrink-0 text-right text-sm font-semibold">
-                      {formatMXN(item.precio * item.cantidad)}
+                      {formatMXN(Math.round(item.precio * item.cantidad))}
                     </p>
                   </div>
                   <label className="flex items-center gap-1.5 pl-0.5 text-xs text-muted-foreground">
@@ -502,6 +569,52 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
           </>
         )}
       </div>
+
+      {/* ── Modal granel: captura de peso/volumen ── */}
+      {granelPendiente && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-xs space-y-4 rounded-2xl bg-background p-6 shadow-2xl">
+            <div className="flex items-center gap-2">
+              <Scale className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-bold">¿Cuánto vendes?</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">{granelPendiente.nombre}</p>
+            <div className="relative">
+              <input
+                autoFocus
+                type="number"
+                min={minCantidad(granelPendiente.unidad_medida)}
+                step={stepCantidad(granelPendiente.unidad_medida)}
+                placeholder="0"
+                value={granelCantidad}
+                onChange={(e) => setGranelCantidad(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && confirmarGranel()}
+                className="w-full rounded-lg border border-input bg-background px-3 py-3 pr-16 text-xl font-bold outline-none focus:ring-2 focus:ring-ring"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                {granelPendiente.unidad_medida}
+              </span>
+            </div>
+            {granelCantidad && parseFloat(granelCantidad) > 0 && (
+              <p className="text-sm font-medium text-primary">
+                Subtotal: {formatMXN(Math.round(granelPendiente.precio_venta * parseFloat(granelCantidad)))}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setGranelPendiente(null)}>
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1"
+                disabled={!granelCantidad || parseFloat(granelCantidad) <= 0}
+                onClick={confirmarGranel}
+              >
+                Agregar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Modal cobro ── */}
       {modalAbierto && (

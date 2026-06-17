@@ -1,25 +1,27 @@
-import { redirect } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { hoyMX } from '@/lib/fecha'
-import { seedCategoriasIfEmpty } from '../../caducidad/actions'
-import ProductoForm from '../producto-form'
-import { crearProductoAction } from '../actions'
+import { agregarLoteAction } from '../../../actions'
+import ReabastoForm from './reabasto-form'
 
-export default async function NuevoProductoPage() {
+export default async function NuevoLoteProductoPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
-
-  await seedCategoriasIfEmpty(negocio!.id)
-
   const supabase = await createClient()
 
-  const [{ data: categorias }, { data: categoriasPerecedero }] = await Promise.all([
+  const [{ data: producto }, { data: categoriasPerecedero }] = await Promise.all([
     supabase
-      .from('categorias_producto')
-      .select('id, nombre')
+      .from('productos')
+      .select('id, nombre, tipo_caducidad, existencias, unidad_medida')
+      .eq('id', id)
       .eq('negocio_id', negocio!.id)
-      .order('nombre'),
+      .single(),
     supabase
       .from('categorias_perecedero')
       .select('id, nombre, dias_refri, dias_congelador, dias_ambiente')
@@ -28,13 +30,14 @@ export default async function NuevoProductoPage() {
       .order('nombre'),
   ])
 
+  if (!producto) notFound()
+
   return (
-    <ProductoForm
-      action={crearProductoAction}
-      categorias={categorias ?? []}
+    <ReabastoForm
+      action={agregarLoteAction}
+      producto={producto}
       categoriasPerecedero={categoriasPerecedero ?? []}
       hoy={hoyMX()}
-      titulo="Nuevo producto"
     />
   )
 }
