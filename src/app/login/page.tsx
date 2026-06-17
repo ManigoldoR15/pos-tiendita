@@ -1,7 +1,6 @@
 'use client'
 
 import { useActionState } from 'react'
-import Link from 'next/link'
 import { loginAction, type AuthState } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from 'next-intl'
@@ -66,16 +65,6 @@ export default function LoginPage() {
             {pending ? t('cargando') : t('botonEntrar')}
           </Button>
         </form>
-
-        <p className="text-center text-sm text-muted-foreground">
-          {t('noTieneCuenta')}{' '}
-          <Link
-            href="/registro"
-            className="font-medium text-foreground underline underline-offset-4"
-          >
-            {t('linkRegistro')}
-          </Link>
-        </p>
       </div>
     </div>
   )

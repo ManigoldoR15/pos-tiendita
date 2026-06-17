@@ -42,7 +42,7 @@ export function SalesChart({ data }: { data: DiaVenta[] }) {
           Sin ventas en los últimos 7 días
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={176} minWidth={0}>
           <BarChart data={chartData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
             <XAxis
