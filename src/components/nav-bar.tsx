@@ -37,6 +37,7 @@ const CATALOGO_DUENO: NavLink[] = [
   { href: '/productos', label: 'Productos', Icon: Package },
   { href: '/categorias', label: 'Categorías', Icon: Tag },
   { href: '/proveedores', label: 'Proveedores', Icon: Truck },
+  { href: '/listas-precio', label: 'Listas precio', Icon: Tag },
 ]
 
 const DIRECT_ADMIN: NavLink[] = [
@@ -55,6 +56,7 @@ const DIRECT_ADMIN: NavLink[] = [
 const CATALOGO_ADMIN: NavLink[] = [
   { href: '/productos', label: 'Productos', Icon: Package },
   { href: '/proveedores', label: 'Proveedores', Icon: Truck },
+  { href: '/listas-precio', label: 'Listas precio', Icon: Tag },
 ]
 
 const DIRECT_EMPLEADO: NavLink[] = [

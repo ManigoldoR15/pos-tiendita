@@ -25,6 +25,7 @@ export type Producto = {
 
 type Categoria = { id: string; nombre: string; color: string | null }
 export type MetodoPago = { id: string; nombre: string }
+export type ListaPrecio = { id: string; nombre: string; items: Record<string, number> }
 
 type ItemCarrito = {
   productoId: string
@@ -40,9 +41,10 @@ type Props = {
   categorias: Categoria[]
   metodosPago: MetodoPago[]
   negocioNombre: string
+  listas: ListaPrecio[]
 }
 
-export default function PosClient({ productos, categorias, metodosPago, negocioNombre }: Props) {
+export default function PosClient({ productos, categorias, metodosPago, negocioNombre, listas }: Props) {
   const [modo, setModo] = useState<'tactil' | 'mostrador'>('tactil')
   const [carrito, setCarrito] = useState<ItemCarrito[]>([])
   const [busqueda, setBusqueda] = useState('')
@@ -56,6 +58,26 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
   const [errorVenta, setErrorVenta] = useState<string | null>(null)
   const [ventaExitosa, setVentaExitosa] = useState(false)
   const [ultimaVenta, setUltimaVenta] = useState<DatosTicket | null>(null)
+
+  // Lista de precios activa
+  const [listaActivaId, setListaActivaId] = useState<string | null>(null)
+
+  function getPrecioEfectivo(producto: Producto, listaId = listaActivaId): number {
+    if (!listaId) return producto.precio_venta
+    const lista = listas.find((l) => l.id === listaId)
+    return lista?.items[producto.id] ?? producto.precio_venta
+  }
+
+  function cambiarLista(listaId: string | null) {
+    setListaActivaId(listaId)
+    setCarrito((prev) =>
+      prev.map((item) => {
+        const prod = productos.find((p) => p.id === item.productoId)
+        if (!prod) return item
+        return { ...item, precio: getPrecioEfectivo(prod, listaId) }
+      }),
+    )
+  }
 
   // Granel: popup de cantidad al tocar producto
   const [granelPendiente, setGranelPendiente] = useState<Producto | null>(null)
@@ -145,7 +167,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
         {
           productoId: producto.id,
           nombre: producto.nombre,
-          precio: producto.precio_venta,
+          precio: getPrecioEfectivo(producto),
           cantidad: 1,
           fiado: false,
           unidad: producto.unidad_medida,
@@ -170,7 +192,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
         {
           productoId: granelPendiente.id,
           nombre: granelPendiente.nombre,
-          precio: granelPendiente.precio_venta,
+          precio: getPrecioEfectivo(granelPendiente),
           cantidad,
           fiado: false,
           unidad: granelPendiente.unidad_medida,
@@ -350,7 +372,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
             ⚠ {alertaStock}
           </div>
         )}
-        <div className="mb-3 flex items-center gap-2 shrink-0">
+        <div className="mb-3 flex flex-wrap items-center gap-2 shrink-0">
           <div className="flex rounded-lg border p-0.5 bg-muted/40">
             <button
               className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium bg-card shadow-sm text-foreground"
@@ -366,6 +388,39 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
               Mostrador
             </button>
           </div>
+
+          {listas.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Lista:</span>
+              <div className="flex flex-wrap gap-1">
+                <button
+                  onClick={() => cambiarLista(null)}
+                  className={cn(
+                    'rounded-full px-2.5 py-1 text-xs font-medium transition-colors border',
+                    listaActivaId === null
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-card text-muted-foreground hover:bg-accent border-border',
+                  )}
+                >
+                  Normal
+                </button>
+                {listas.map((l) => (
+                  <button
+                    key={l.id}
+                    onClick={() => cambiarLista(l.id)}
+                    className={cn(
+                      'rounded-full px-2.5 py-1 text-xs font-medium transition-colors border',
+                      listaActivaId === l.id
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-card text-muted-foreground hover:bg-accent border-border',
+                    )}
+                  >
+                    {l.nombre}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Búsqueda */}
@@ -461,8 +516,13 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                       {producto.nombre}
                     </p>
                     <p className="text-2xl font-black tracking-tight text-primary">
-                      {formatMXN(producto.precio_venta)}
+                      {formatMXN(getPrecioEfectivo(producto))}
                     </p>
+                    {listaActivaId && getPrecioEfectivo(producto) !== producto.precio_venta && (
+                      <p className="text-[10px] text-muted-foreground line-through">
+                        {formatMXN(producto.precio_venta)}
+                      </p>
+                    )}
                     {esGranel(producto.unidad_medida) && (
                       <p className="text-xs text-muted-foreground">/ {producto.unidad_medida}</p>
                     )}
