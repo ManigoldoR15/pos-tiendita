@@ -49,7 +49,7 @@ export default async function AppLayout({
         notifNoLeidas={notifNoLeidas ?? 0}
         rol={rol}
       />
-      <main className="mx-auto max-w-5xl px-4 py-6 print:max-w-none print:px-8 print:py-4">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-6 print:max-w-none print:px-8 print:py-4">{children}</main>
     </div>
   )
 }

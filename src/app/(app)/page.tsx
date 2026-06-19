@@ -318,7 +318,7 @@ export default async function DashboardPage({
       )}
 
       {/* KPIs secundarios */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-3 gap-3">
         <KpiCard
           label="Ganancia bruta"
           value={formatMXN(gananciaBruta)}
@@ -489,10 +489,10 @@ function KpiCard({
   }[accent]
 
   return (
-    <div className="card-soft p-6">
-      <p className="eyebrow mb-2">{label}</p>
-      <p className={cn('text-2xl font-black tracking-tight leading-tight', valueColor)}>{value}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
+    <div className="card-soft p-3 sm:p-5">
+      <p className="eyebrow mb-1 text-[10px] sm:text-xs">{label}</p>
+      <p className={cn('text-base sm:text-2xl font-black tracking-tight leading-tight', valueColor)}>{value}</p>
+      <p className="mt-0.5 text-[10px] sm:text-xs text-muted-foreground hidden sm:block">{sub}</p>
     </div>
   )
 }

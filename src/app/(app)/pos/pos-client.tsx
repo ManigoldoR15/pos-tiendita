@@ -427,7 +427,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                 : 'No hay productos activos.'}
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
               {productosFiltrados.map((producto) => {
                 const sinStock = producto.existencias <= 0
                 const enCarrito = carrito.find((i) => i.productoId === producto.id)
@@ -457,7 +457,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                     {colorCat && (
                       <span className={cn('absolute left-2.5 top-2.5 h-2.5 w-2.5 rounded-full', colorCat.dot)} />
                     )}
-                    <p className="mb-2.5 line-clamp-2 text-sm font-semibold leading-tight">
+                    <p className="mb-2.5 line-clamp-2 break-words text-sm font-semibold leading-tight">
                       {producto.nombre}
                     </p>
                     <p className="text-2xl font-black tracking-tight text-primary">
@@ -487,7 +487,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
       </div>
 
       {/* ── Carrito ── */}
-      <div className="card-soft flex w-full flex-col md:w-80 md:shrink-0 md:overflow-hidden">
+      <div className="card-soft flex w-full flex-col md:w-80 lg:w-96 md:shrink-0 md:overflow-hidden">
         <div className="flex shrink-0 items-center gap-2 border-b px-5 py-4">
           <ShoppingCart className="h-5 w-5 text-muted-foreground" />
           <span className="font-bold">Carrito</span>
