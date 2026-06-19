@@ -60,6 +60,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
   // Granel: popup de cantidad al tocar producto
   const [granelPendiente, setGranelPendiente] = useState<Producto | null>(null)
   const [granelCantidad, setGranelCantidad] = useState('')
+  const [alertaStock, setAlertaStock] = useState<string | null>(null)
 
   // Fase 16: clientes frecuentes
   const [clienteSeleccionado, setClienteSeleccionado] = useState<ClienteSugerido | null>(null)
@@ -116,6 +117,11 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
     metodosPago.find((m) => m.id !== metodoEfectivo?.id) ??
     metodosPago[0]
 
+  function mostrarAlertaStock(msg: string) {
+    setAlertaStock(msg)
+    setTimeout(() => setAlertaStock(null), 3000)
+  }
+
   function agregarProducto(producto: Producto) {
     if (producto.existencias <= 0) return
     if (esGranel(producto.unidad_medida)) {
@@ -126,6 +132,10 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
     setCarrito((prev) => {
       const existe = prev.find((i) => i.productoId === producto.id)
       if (existe) {
+        if (existe.cantidad >= producto.existencias) {
+          mostrarAlertaStock(`Solo quedan ${formatCantidad(Number(producto.existencias), producto.unidad_medida)} de ${producto.nombre}`)
+          return prev
+        }
         return prev.map((i) =>
           i.productoId === producto.id ? { ...i, cantidad: i.cantidad + 1 } : i,
         )
@@ -190,6 +200,13 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
       if (!item) return prev
       const nueva = item.cantidad + delta
       if (nueva <= 0) return prev.filter((i) => i.productoId !== productoId)
+      if (delta > 0) {
+        const prod = productos.find((p) => p.id === productoId)
+        if (prod && nueva > prod.existencias) {
+          mostrarAlertaStock(`Solo quedan ${formatCantidad(Number(prod.existencias), prod.unidad_medida)} de ${prod.nombre}`)
+          return prev.map((i) => (i.productoId === productoId ? { ...i, cantidad: prod.existencias } : i))
+        }
+      }
       return prev.map((i) => (i.productoId === productoId ? { ...i, cantidad: nueva } : i))
     })
   }
@@ -198,9 +215,11 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
     setCarrito((prev) => {
       const item = prev.find((i) => i.productoId === productoId)
       if (!item) return prev
+      const prod = productos.find((p) => p.id === productoId)
+      const maxStock = prod ? Number(prod.existencias) : Infinity
       const nueva = esGranel(item.unidad)
-        ? Math.max(minCantidad(item.unidad), valor || minCantidad(item.unidad))
-        : Math.max(1, Math.floor(valor) || 1)
+        ? Math.min(maxStock, Math.max(minCantidad(item.unidad), valor || minCantidad(item.unidad)))
+        : Math.min(maxStock, Math.max(1, Math.floor(valor) || 1))
       return prev.map((i) => (i.productoId === productoId ? { ...i, cantidad: nueva } : i))
     })
   }
@@ -326,6 +345,11 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
       {/* ── Grilla de productos ── */}
       <div className="flex min-w-0 flex-1 flex-col md:overflow-hidden">
         {/* Toggle de modo */}
+        {alertaStock && (
+          <div className="mb-3 shrink-0 rounded-xl border border-orange-200 bg-orange-50 dark:border-orange-800/40 dark:bg-orange-950/20 px-4 py-2.5 text-sm font-medium text-orange-700 dark:text-orange-400">
+            ⚠ {alertaStock}
+          </div>
+        )}
         <div className="mb-3 flex items-center gap-2 shrink-0">
           <div className="flex rounded-lg border p-0.5 bg-muted/40">
             <button
@@ -442,13 +466,16 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                     {esGranel(producto.unidad_medida) && (
                       <p className="text-xs text-muted-foreground">/ {producto.unidad_medida}</p>
                     )}
-                    {sinStock && (
+                    {sinStock ? (
                       <p className="mt-1.5 text-xs font-medium text-destructive">Agotado</p>
-                    )}
-                    {!sinStock && producto.existencias <= STOCK_MINIMO && (
+                    ) : producto.existencias <= STOCK_MINIMO ? (
                       <p className="mt-1.5 flex items-center gap-0.5 text-xs font-medium text-orange-500">
                         <AlertTriangle className="h-3 w-3" />
-                        {formatCantidad(Number(producto.existencias), producto.unidad_medida)}
+                        {formatCantidad(Number(producto.existencias), producto.unidad_medida)} disp.
+                      </p>
+                    ) : (
+                      <p className="mt-1.5 text-xs text-muted-foreground">
+                        {formatCantidad(Number(producto.existencias), producto.unidad_medida)} disp.
                       </p>
                     )}
                   </button>

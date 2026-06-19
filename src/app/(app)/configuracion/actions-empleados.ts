@@ -2,10 +2,85 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
 
-export type EmpleadoState = { error?: string; ok?: boolean } | null
+export type EmpleadoState = { error?: string; ok?: boolean; mensaje?: string } | null
+
+export async function crearNuevoEmpleadoAction(
+  _prev: EmpleadoState,
+  formData: FormData,
+): Promise<EmpleadoState> {
+  const rol = await getRolActual()
+  if (rol !== 'dueno') return { error: 'Solo el dueño puede gestionar empleados.' }
+
+  const negocio = await getNegocioActual()
+  if (!negocio) return { error: 'Sin negocio activo.' }
+
+  const email = (formData.get('email') as string)?.trim().toLowerCase()
+  const password = (formData.get('password') as string)?.trim()
+  const rolNuevo = (formData.get('rol') as string) ?? 'empleado'
+
+  if (!email) return { error: 'Ingresa un correo electrónico.' }
+  if (!password || password.length < 6) return { error: 'La contraseña debe tener al menos 6 caracteres.' }
+  if (!['empleado', 'administrador'].includes(rolNuevo)) return { error: 'Rol inválido.' }
+
+  const supabase = await createClient()
+  const { data: { user: dueno } } = await supabase.auth.getUser()
+  if (!dueno) return { error: 'No autenticado.' }
+
+  const admin = createServiceClient()
+
+  // Verificar si ya existe una cuenta con ese email
+  const { data: usuarios } = await supabase.rpc('buscar_usuario_por_email', { p_email: email })
+
+  if (usuarios && usuarios.length > 0) {
+    const userId = usuarios[0].id
+    if (userId === dueno.id) return { error: 'Ese correo es el tuyo; no puedes agregarte como empleado.' }
+
+    // Ya existe cuenta — solo agregarla al negocio
+    const { data: existe } = await supabase
+      .from('usuarios_negocio')
+      .select('rol')
+      .eq('negocio_id', negocio.id)
+      .eq('user_id', userId)
+      .single()
+
+    if (existe) return { error: 'Ya existe un miembro con ese correo en tu negocio.' }
+
+    const { error: insErr } = await supabase
+      .from('usuarios_negocio')
+      .insert({ negocio_id: negocio.id, user_id: userId, rol: rolNuevo })
+
+    if (insErr) return { error: 'No se pudo agregar el empleado.' }
+    revalidatePath('/configuracion')
+    return { ok: true, mensaje: `${email} agregado como ${rolNuevo}.` }
+  }
+
+  // No existe — crear nueva cuenta
+  const { data: newUser, error: createErr } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  })
+
+  if (createErr || !newUser?.user) {
+    return { error: createErr?.message ?? 'No se pudo crear la cuenta.' }
+  }
+
+  const { error: insErr } = await supabase
+    .from('usuarios_negocio')
+    .insert({ negocio_id: negocio.id, user_id: newUser.user.id, rol: rolNuevo })
+
+  if (insErr) {
+    await admin.auth.admin.deleteUser(newUser.user.id)
+    return { error: 'No se pudo registrar al empleado en el negocio.' }
+  }
+
+  revalidatePath('/configuracion')
+  return { ok: true, mensaje: `Cuenta creada para ${email}. Contraseña temporal: ${password}` }
+}
 
 export async function agregarEmpleadoAction(
   _prev: EmpleadoState,
@@ -22,21 +97,18 @@ export async function agregarEmpleadoAction(
 
   const supabase = await createClient()
 
-  // Buscar usuario por email via función SECURITY DEFINER
   const { data: usuarios, error: busqErr } = await supabase
     .rpc('buscar_usuario_por_email', { p_email: email })
 
   if (busqErr) return { error: 'Error al buscar usuario.' }
   if (!usuarios || usuarios.length === 0)
-    return { error: 'No existe una cuenta con ese correo. Pídele que se registre primero.' }
+    return { error: 'No existe una cuenta con ese correo.' }
 
   const userId = usuarios[0].id
 
-  // Verificar que no sea el dueño mismo
   const { data: { user } } = await supabase.auth.getUser()
   if (userId === user?.id) return { error: 'Eres el dueño, no puedes agregarte como empleado.' }
 
-  // Verificar si ya es miembro
   const { data: existe } = await supabase
     .from('usuarios_negocio')
     .select('rol')

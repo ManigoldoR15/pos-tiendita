@@ -224,20 +224,34 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
   }
 
   function cambiarCantidad(id: string, delta: number) {
-    setTicket((prev) =>
-      prev
-        .map((i) => i.productoId === id ? { ...i, cantidad: i.cantidad + delta } : i)
-        .filter((i) => i.cantidad > 0),
-    )
+    setTicket((prev) => {
+      const updated = prev.map((i) => {
+        if (i.productoId !== id) return i
+        const nueva = i.cantidad + delta
+        if (nueva <= 0) return { ...i, cantidad: 0 }
+        if (delta > 0) {
+          const prod = productos.find((p) => p.id === id)
+          if (prod && nueva > prod.existencias) {
+            setScanError(`Solo quedan ${prod.existencias} de ${prod.nombre}`)
+            setTimeout(() => setScanError(''), 3000)
+            return { ...i, cantidad: prod.existencias }
+          }
+        }
+        return { ...i, cantidad: nueva }
+      })
+      return updated.filter((i) => i.cantidad > 0)
+    })
   }
 
   function setCantidadDirecta(id: string, valor: number) {
     setTicket((prev) => {
       const item = prev.find((i) => i.productoId === id)
       if (!item) return prev
+      const prod = productos.find((p) => p.id === id)
+      const maxStock = prod ? Number(prod.existencias) : Infinity
       const nueva = esGranel(item.unidad)
-        ? Math.max(minCantidad(item.unidad), valor || minCantidad(item.unidad))
-        : Math.max(1, Math.floor(valor) || 1)
+        ? Math.min(maxStock, Math.max(minCantidad(item.unidad), valor || minCantidad(item.unidad)))
+        : Math.min(maxStock, Math.max(1, Math.floor(valor) || 1))
       return prev.map((i) => (i.productoId === id ? { ...i, cantidad: nueva } : i))
     })
   }
