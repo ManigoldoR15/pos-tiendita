@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import {
   Home, Package, Tag, ShoppingCart, Receipt, Wallet, ClipboardList,
-  LogOut, Settings, Store, Truck, BarChart2, ChevronDown, Menu, X, CalendarCheck, HandCoins, Scale, Clock, Bell,
+  LogOut, Settings, Store, Truck, BarChart2, ChevronDown, Menu, X, CalendarCheck, HandCoins, Scale, Clock, Bell, FileText,
 } from 'lucide-react'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -27,6 +27,7 @@ const DIRECT_DUENO: NavLink[] = [
   { href: '/cuadre', label: 'Cuadre', Icon: Scale },
   { href: '/gastos', label: 'Gastos', Icon: Receipt },
   { href: '/finanzas', label: 'Finanzas', Icon: BarChart2 },
+  { href: '/reportes', label: 'Reportes', Icon: FileText },
   { href: '/caducidad', label: 'Caducidad', Icon: CalendarCheck },
   { href: '/turnos', label: 'Turnos', Icon: Clock },
 ]
@@ -45,6 +46,7 @@ const DIRECT_ADMIN: NavLink[] = [
   { href: '/fiados', label: 'Fiados', Icon: HandCoins },
   { href: '/cuadre', label: 'Cuadre', Icon: Scale },
   { href: '/gastos', label: 'Gastos', Icon: Receipt },
+  { href: '/reportes', label: 'Reportes', Icon: FileText },
   { href: '/caducidad', label: 'Caducidad', Icon: CalendarCheck },
 ]
 
