@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ShoppingCart, Receipt, AlertTriangle, Target, CalendarX, HandCoins } from 'lucide-react'
+import { ShoppingCart, Receipt, AlertTriangle, Target, CalendarX, HandCoins, Users, Clock } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
@@ -7,8 +7,9 @@ import { formatMXN } from '@/lib/dinero'
 import { getRango, PERIODOS, type Periodo } from '@/lib/periodo'
 import { STOCK_MINIMO } from '@/lib/constantes'
 import { cn } from '@/lib/utils'
-import { hoyMX, addDaysMX, mexicoDayRange } from '@/lib/fecha'
+import { hoyMX, addDaysMX, mexicoDayRange, TZ } from '@/lib/fecha'
 import { SalesChart, type DiaVenta } from '@/components/dashboard/sales-chart'
+import { getRolActual } from '@/lib/rol'
 
 export default async function DashboardPage({
   searchParams,
@@ -23,6 +24,7 @@ export default async function DashboardPage({
 
   const rango = getRango(periodo, desde, hasta)
   const supabase = await createClient()
+  const rol = await getRolActual()
 
   // 7-day chart range (fixed, not affected by period filter)
   const hoy = hoyMX()
@@ -118,6 +120,30 @@ export default async function DashboardPage({
       .select('cliente_id, deuda_total')
       .eq('negocio_id', negocio.id),
   ])
+
+  // Cajas abiertas (solo para dueño/admin)
+  const isDuenoOrAdmin = !rol || rol === 'dueno' || rol === 'administrador'
+  type CajaAbierta = { id: string; abierto_por: string; fecha_apertura: string; local_id: string | null }
+  type MiembroInfo = { user_id: string; email: string; rol: string }
+  let cajasAbiertas: CajaAbierta[] = []
+  let miembrosMap = new Map<string, string>()
+  let localesMap = new Map<string, string>()
+
+  if (isDuenoOrAdmin) {
+    const [{ data: cajas }, { data: miembros }, { data: localesList }] = await Promise.all([
+      supabase
+        .from('cortes_caja')
+        .select('id, abierto_por, fecha_apertura, local_id')
+        .eq('negocio_id', negocio.id)
+        .eq('estado', 'abierto')
+        .order('fecha_apertura', { ascending: true }),
+      supabase.rpc('get_miembros_negocio', { p_negocio_id: negocio.id }),
+      supabase.from('locales').select('id, nombre').eq('negocio_id', negocio.id),
+    ])
+    cajasAbiertas = (cajas ?? []) as CajaAbierta[]
+    miembrosMap = new Map((miembros as MiembroInfo[] ?? []).map((m) => [m.user_id, m.email]))
+    localesMap = new Map((localesList ?? []).map((l: { id: string; nombre: string }) => [l.id, l.nombre]))
+  }
 
   // 7-day chart data (Mexico calendar days)
   const diasChart: DiaVenta[] = Array.from({ length: 7 }, (_, i) => {
@@ -253,6 +279,43 @@ export default async function DashboardPage({
           {numVentas} {numVentas === 1 ? 'venta registrada' : 'ventas registradas'}
         </p>
       </div>
+
+      {/* Quién está trabajando (solo dueño/admin, solo si hay cajas abiertas) */}
+      {isDuenoOrAdmin && cajasAbiertas.length > 0 && (
+        <div className="card-soft p-5">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-sm font-semibold">En turno ahora</span>
+            </div>
+            <Link href="/turnos" className="text-xs font-medium text-primary hover:underline">
+              Turnos →
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {cajasAbiertas.map((caja) => {
+              const email = miembrosMap.get(caja.abierto_por) ?? caja.abierto_por.slice(0, 8) + '…'
+              const local = caja.local_id ? (localesMap.get(caja.local_id) ?? negocio.nombre) : negocio.nombre
+              const desde = new Date(caja.fecha_apertura).toLocaleTimeString('es-MX', {
+                timeZone: TZ, hour: '2-digit', minute: '2-digit',
+              })
+              return (
+                <div key={caja.id} className="flex items-center gap-3 rounded-lg bg-muted/40 px-3 py-2">
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{email}</p>
+                    <p className="text-xs text-muted-foreground">{local}</p>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                    <Clock className="h-3 w-3" />
+                    <span>desde {desde}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* KPIs secundarios */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

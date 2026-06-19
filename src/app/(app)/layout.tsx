@@ -18,7 +18,7 @@ export default async function AppLayout({
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
   const en3dias = new Date(Date.now() + 3 * 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
 
-  const [{ count: stockBajo }, rol, { count: lotesAlerta }] = await Promise.all([
+  const [{ count: stockBajo }, rol, { count: lotesAlerta }, { count: notifNoLeidas }] = await Promise.all([
     supabase
       .from('productos')
       .select('*', { count: 'exact', head: true })
@@ -33,11 +33,22 @@ export default async function AppLayout({
       .eq('negocio_id', negocio.id)
       .eq('activo', true)
       .or(`fecha_caducidad.lte.${en3dias},estado_manual.eq.negro`),
+    supabase
+      .from('notificaciones')
+      .select('*', { count: 'exact', head: true })
+      .eq('negocio_id', negocio.id)
+      .eq('leido', false),
   ])
 
   return (
     <div className="min-h-screen bg-background">
-      <NavBar negocioNombre={negocio.nombre} stockBajo={stockBajo ?? 0} lotesAlerta={lotesAlerta ?? 0} rol={rol} />
+      <NavBar
+        negocioNombre={negocio.nombre}
+        stockBajo={stockBajo ?? 0}
+        lotesAlerta={lotesAlerta ?? 0}
+        notifNoLeidas={notifNoLeidas ?? 0}
+        rol={rol}
+      />
       <main className="mx-auto max-w-5xl px-4 py-6 print:max-w-none print:px-8 print:py-4">{children}</main>
     </div>
   )

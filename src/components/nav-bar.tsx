@@ -5,13 +5,14 @@ import { usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import {
   Home, Package, Tag, ShoppingCart, Receipt, Wallet, ClipboardList,
-  LogOut, Settings, Store, Truck, BarChart2, ChevronDown, Menu, X, CalendarCheck, HandCoins, Scale, Clock,
+  LogOut, Settings, Store, Truck, BarChart2, ChevronDown, Menu, X, CalendarCheck, HandCoins, Scale, Clock, Bell,
 } from 'lucide-react'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
 import type { RolNegocio } from '@/lib/rol'
+import AvisoEmpleado from '@/components/aviso-empleado'
 
 // ── Link definitions ──────────────────────────────────────────────────────────
 
@@ -168,11 +169,13 @@ export default function NavBar({
   negocioNombre,
   stockBajo = 0,
   lotesAlerta = 0,
+  notifNoLeidas = 0,
   rol,
 }: {
   negocioNombre: string
   stockBajo?: number
   lotesAlerta?: number
+  notifNoLeidas?: number
   rol?: RolNegocio | null
 }) {
   const pathname = usePathname()
@@ -188,6 +191,7 @@ export default function NavBar({
   const allMobileLinks = [
     ...directLinks,
     ...(catalogoLinks ?? []),
+    ...((isDueno || isAdmin) ? [{ href: '/notificaciones', label: 'Notificaciones', Icon: Bell }] : []),
     ...(showConfig ? [{ href: '/configuracion', label: 'Configuración', Icon: Settings }] : []),
   ]
 
@@ -234,6 +238,31 @@ export default function NavBar({
         {/* Right actions — desktop */}
         <div className="hidden md:flex shrink-0 items-center gap-1">
           <ThemeToggle />
+
+          {/* Empleado: botón avisar al jefe */}
+          {!isDueno && !isAdmin && <AvisoEmpleado />}
+
+          {/* Dueño/Admin: campana de notificaciones */}
+          {(isDueno || isAdmin) && (
+            <Link
+              href="/notificaciones"
+              title="Notificaciones"
+              className={cn(
+                'relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors',
+                pathname.startsWith('/notificaciones')
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+              )}
+            >
+              <Bell className="h-4 w-4" />
+              {notifNoLeidas > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
+                  {notifNoLeidas > 9 ? '9+' : notifNoLeidas}
+                </span>
+              )}
+            </Link>
+          )}
+
           {showConfig && (
             <Link
               href="/configuracion"
@@ -259,6 +288,21 @@ export default function NavBar({
         {/* Mobile: right side */}
         <div className="flex md:hidden ml-auto items-center gap-0.5">
           <ThemeToggle />
+          {!isDueno && !isAdmin && <AvisoEmpleado />}
+          {(isDueno || isAdmin) && (
+            <Link
+              href="/notificaciones"
+              title="Notificaciones"
+              className="relative flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              <Bell className="h-5 w-5" />
+              {notifNoLeidas > 0 && (
+                <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
+                  {notifNoLeidas > 9 ? '9+' : notifNoLeidas}
+                </span>
+              )}
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => setMobileOpen((v) => !v)}

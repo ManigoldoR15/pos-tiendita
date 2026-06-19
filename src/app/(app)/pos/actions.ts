@@ -3,6 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
+import { notificar } from '@/lib/notificaciones'
+import { formatMXN } from '@/lib/dinero'
 
 type ItemVenta = { producto_id: string; cantidad: number; es_fiado?: boolean }
 
@@ -38,6 +40,30 @@ export async function registrarVentaAction(params: {
   })
 
   if (error) return { error: error.message }
+
+  // Fire-and-forget: notificar si hay fiado (no bloquea ni rompe si falla)
+  const esFiado = params.items.some((i) => i.es_fiado)
+  if (esFiado && params.cliente_id) {
+    const { data: cliente } = await supabase
+      .from('clientes')
+      .select('nombre, en_lista_negra')
+      .eq('id', params.cliente_id)
+      .eq('negocio_id', negocio.id)
+      .maybeSingle()
+
+    const esListaNegra = cliente?.en_lista_negra ?? false
+    notificar({
+      negocio_id: negocio.id,
+      tipo: esListaNegra ? 'fiado_lista_negra' : 'fiado',
+      titulo: esListaNegra
+        ? '¡Fiado a cliente en lista negra!'
+        : 'Se fió a un cliente',
+      mensaje: `${esListaNegra ? '⚠ ' : ''}Fiado a ${cliente?.nombre ?? 'cliente desconocido'}${esListaNegra ? ' (lista negra)' : ''}.`,
+      url: params.cliente_id ? `/fiados/${params.cliente_id}` : '/fiados',
+      creado_por: user?.id ?? null,
+    })
+  }
+
   return { venta_id: data as string }
 }
 
