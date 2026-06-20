@@ -2,9 +2,8 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, Download,
-  TrendingUp, TrendingDown, Scale,
-  AlertTriangle, Package, User,
-  ArrowUpRight, ArrowDownRight, Minus as MinusIcon,
+  User,
+  ArrowUpRight, ArrowDownRight,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
@@ -310,11 +309,11 @@ export default async function FinanzasPage({
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
 
       {/* ── Header ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xl font-black tracking-tight">Finanzas</h1>
+        <h1 className="text-2xl font-black tracking-tight">Finanzas</h1>
         <div className="flex flex-wrap items-center gap-2">
           <Link href={`/finanzas?mes=${prevMes(mesNorm)}`}
             className="flex h-8 w-8 items-center justify-center rounded-lg border hover:bg-accent transition-colors">
@@ -337,7 +336,7 @@ export default async function FinanzasPage({
       </div>
 
       {/* ── 1. Semáforo ── */}
-      <div className={cn('rounded-2xl border p-7', sd.bg)}>
+      <div className={cn('rounded-2xl border p-5 sm:p-6', sd.bg)}>
         <div className="flex items-start gap-3">
           <span className={cn('mt-1.5 h-3 w-3 shrink-0 rounded-full', sd.dot)} />
           <div>
@@ -349,7 +348,7 @@ export default async function FinanzasPage({
 
       {/* ── 2. Punto de equilibrio ── */}
       <div className="card-soft p-6">
-        <p className="text-sm font-semibold mb-1">Punto de equilibrio diario</p>
+        <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Punto de equilibrio diario</p>
         <p className="text-xs text-muted-foreground mb-4">
           {hayCostos
             ? 'Con tu margen de ganancia, necesitas vender esta cantidad al día solo para cubrir gastos.'
@@ -382,21 +381,15 @@ export default async function FinanzasPage({
 
       {/* ── 3. KPIs ── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="card-soft p-6">
-          <div className="mb-2 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            <span className="eyebrow">Ingresos</span>
-          </div>
-          <p className="text-3xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">{formatMXN(ingresosMes)}</p>
+        <div className="card-soft p-4 sm:p-5">
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Ingresos</p>
+          <p className="text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">{formatMXN(ingresosMes)}</p>
           <p className="mt-1 text-xs text-muted-foreground">{numVentas} ventas · ticket promedio {formatMXN(ticketPromedio)}</p>
         </div>
 
-        <div className="card-soft p-6">
-          <div className="mb-2 flex items-center gap-2">
-            <TrendingDown className="h-4 w-4 text-muted-foreground" />
-            <span className="eyebrow">Egresos del negocio</span>
-          </div>
-          <p className="text-3xl font-black tracking-tight text-red-600 dark:text-red-400">{formatMXN(egresosMes)}</p>
+        <div className="card-soft p-4 sm:p-5">
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Egresos del negocio</p>
+          <p className="text-2xl font-black tracking-tight text-red-600 dark:text-red-400">{formatMXN(egresosMes)}</p>
           {egresosPrev > 0 && (
             <p className={cn('mt-1 text-xs font-medium', egresosMes > egresosPrev ? 'text-red-500' : 'text-emerald-600')}>
               {egresosMes > egresosPrev ? '↑' : '↓'} {Math.abs(Math.round(((egresosMes - egresosPrev) / egresosPrev) * 100))}% vs mes anterior
@@ -404,13 +397,10 @@ export default async function FinanzasPage({
           )}
         </div>
 
-        <div className={cn('card-soft p-6',
+        <div className={cn('card-soft p-4 sm:p-5',
           balanceMes >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/20' : 'bg-red-50 dark:bg-red-950/20')}>
-          <div className="mb-2 flex items-center gap-2">
-            <Scale className="h-4 w-4 text-muted-foreground" />
-            <span className="eyebrow">Balance</span>
-          </div>
-          <p className={cn('text-3xl font-bold', balanceMes >= 0
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Balance</p>
+          <p className={cn('text-2xl font-black tracking-tight', balanceMes >= 0
             ? 'text-emerald-700 dark:text-emerald-300'
             : 'text-red-700 dark:text-red-300')}>
             {formatMXN(balanceMes)}
@@ -426,7 +416,7 @@ export default async function FinanzasPage({
 
         {/* Crecimiento */}
         <div className="card-soft p-6">
-          <p className="eyebrow mb-2">Crecimiento vs mes anterior</p>
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Crecimiento vs mes anterior</p>
           {crecimientoPct !== null ? (
             <>
               <div className="flex items-baseline gap-2">
@@ -449,7 +439,7 @@ export default async function FinanzasPage({
 
         {/* Margen bruto */}
         <div className="card-soft p-6">
-          <p className="eyebrow mb-2">Margen bruto</p>
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Margen bruto</p>
           {margenBrutoPct !== null ? (
             <>
               <p className="text-2xl font-black tracking-tight text-primary">{margenBrutoPct}%</p>
@@ -466,7 +456,7 @@ export default async function FinanzasPage({
 
         {/* Gastos sobre ventas */}
         <div className="card-soft p-6">
-          <p className="eyebrow mb-2">Gastos sobre ventas</p>
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Gastos sobre ventas</p>
           {gastosSobreVentasPct !== null ? (
             <>
               <p className={cn('text-2xl font-black tracking-tight',
@@ -493,7 +483,7 @@ export default async function FinanzasPage({
 
         {/* Mejores días */}
         <div className="card-soft p-6">
-          <p className="eyebrow mb-1">Ventas por día de la semana</p>
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Ventas por día de la semana</p>
           {mejorDia && mejorDia.total > 0 && (
             <p className="text-xs text-muted-foreground mb-2">
               Tu mejor día es <strong>{mejorDia.dia}</strong> con {formatMXN(mejorDia.total)} acumulados
@@ -504,7 +494,7 @@ export default async function FinanzasPage({
 
         {/* Inventario a costo */}
         <div className="card-soft p-6">
-          <p className="eyebrow mb-2">Valor del inventario</p>
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Valor del inventario</p>
           {inventarioValor > 0 ? (
             <>
               <p className="text-2xl font-black tracking-tight">{formatMXN(inventarioValor)}</p>
@@ -521,7 +511,7 @@ export default async function FinanzasPage({
 
         {/* Productos sin movimiento */}
         <div className="card-soft p-6">
-          <p className="eyebrow mb-2">
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">
             Productos parados este mes ({sinMovimiento.length})
           </p>
           {sinMovimiento.length === 0 ? (
@@ -554,7 +544,7 @@ export default async function FinanzasPage({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
         <div className="lg:col-span-3 card-soft overflow-hidden">
           <div className="px-6 py-4 border-b border-border/60">
-            <p className="eyebrow mb-1">Egresos por categoría</p>
+            <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Egresos por categoría</p>
             <p className="text-xs text-muted-foreground">
               Escribe un presupuesto y presiona Enter o Tab para guardarlo. Rojo = se pasó del presupuesto.
             </p>
@@ -601,7 +591,7 @@ export default async function FinanzasPage({
         </div>
 
         <div className="lg:col-span-2 card-soft p-6">
-          <p className="eyebrow mb-3">Distribución de egresos</p>
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Distribución de egresos</p>
           <DonutEgresos data={donutData} />
           <div className="mt-2 space-y-1">
             {donutData.slice(0, 5).map((d, i) => (
@@ -619,7 +609,7 @@ export default async function FinanzasPage({
 
       {/* ── 6. Barras 6 meses ── */}
       <div className="card-soft p-6 sm:p-7">
-        <p className="eyebrow mb-1">Ingresos vs Egresos — últimos 6 meses</p>
+        <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Ingresos vs Egresos — últimos 6 meses</p>
         <p className="mb-5 text-xs text-muted-foreground">Compara cómo ha ido tu negocio mes a mes.</p>
         <BarrasSeisM data={seisM} />
       </div>
@@ -628,7 +618,7 @@ export default async function FinanzasPage({
       {top10.length > 0 && (
         <div className="card-soft overflow-hidden">
           <div className="px-6 py-4 border-b border-border/60">
-            <p className="eyebrow mb-1">Productos que más te dejan</p>
+            <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Productos que más te dejan</p>
             <p className="text-xs text-muted-foreground">Ganancia = unidades vendidas × (precio de venta − precio de costo)</p>
           </div>
           <div className="overflow-x-auto">
