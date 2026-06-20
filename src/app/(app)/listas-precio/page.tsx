@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Tag, ChevronRight, ToggleLeft, Trash2 } from 'lucide-react'
+import { Tag, ChevronRight, ToggleLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
 import { cn } from '@/lib/utils'
-import { toggleListaAction, eliminarListaAction } from '@/app/actions/listas-precio'
+import { toggleListaAction } from '@/app/actions/listas-precio'
 import CrearListaForm from './crear-lista-form'
+import EliminarListaButton from './eliminar-lista-button'
 
 export default async function ListasPrecioPage() {
   const negocio = await getNegocioActual()
@@ -67,18 +68,7 @@ export default async function ListasPrecioPage() {
                     <ToggleLeft className="h-4 w-4" />
                   </button>
                 </form>
-                <form action={eliminarListaAction.bind(null, lista.id)}>
-                  <button
-                    type="submit"
-                    title="Eliminar lista"
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-                    onClick={(e) => {
-                      if (!confirm(`¿Eliminar "${lista.nombre}"? Se borrarán todos sus precios.`)) e.preventDefault()
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </form>
+                <EliminarListaButton listaId={lista.id} nombre={lista.nombre} />
                 <Link
                   href={`/listas-precio/${lista.id}`}
                   className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent hover:text-foreground"
