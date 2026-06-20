@@ -83,7 +83,7 @@ export default async function ListasPrecioPage() {
 
       {/* Crear nueva lista */}
       <div className="card-soft p-5">
-        <h2 className="mb-4 font-semibold">Crear lista de precios</h2>
+        <h2 className="eyebrow mb-1.5 text-[10px] sm:text-xs">Crear lista de precios</h2>
         <CrearListaForm />
       </div>
     </div>

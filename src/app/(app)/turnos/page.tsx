@@ -77,7 +77,7 @@ export default async function TurnosPage({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Turnos de caja</h1>
+          <h1 className="text-2xl font-black tracking-tight">Turnos de caja</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Historial de turnos cerrados por cajero · solo visible para el dueño
           </p>
@@ -186,12 +186,12 @@ export default async function TurnosPage({
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/30">
               <tr>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Cierre</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Abrió</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Cerró</th>
-                <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Ventas</th>
-                <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Total</th>
-                <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Diferencia</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Cierre</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Abrió</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Cerró</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-muted-foreground">Ventas</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-muted-foreground">Total</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-muted-foreground">Diferencia</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>

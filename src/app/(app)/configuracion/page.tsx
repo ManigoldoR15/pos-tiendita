@@ -48,13 +48,12 @@ export default async function ConfiguracionPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-8">
-      <h1 className="text-2xl font-bold">Configuración</h1>
-
+    <div className="mx-auto max-w-lg space-y-6">
+      <h1 className="text-2xl font-black tracking-tight">Configuración</h1>
 
       {/* — Negocio ———————————————————————— */}
-      <section className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
-        <h2 className="font-semibold text-base">Negocio</h2>
+      <section className="card-soft p-5 space-y-4">
+        <h2 className="text-sm font-bold">Negocio</h2>
         <div className="space-y-1.5">
           <label className="text-sm text-muted-foreground">Nombre del negocio</label>
           <FormNombre nombreActual={negocio.nombre} />
@@ -62,8 +61,8 @@ export default async function ConfiguracionPage() {
       </section>
 
       {/* — Métodos de pago ——————————————————— */}
-      <section className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
-        <h2 className="font-semibold text-base">Métodos de pago</h2>
+      <section className="card-soft p-5 space-y-4">
+        <h2 className="text-sm font-bold">Métodos de pago</h2>
 
         <ul className="divide-y -mx-5">
           {(metodos ?? []).map((m) => (
@@ -114,9 +113,9 @@ export default async function ConfiguracionPage() {
 
       {/* — Meta del mes (solo dueño) ——————————————— */}
       {rolActual === 'dueno' && (
-        <section className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
+        <section className="card-soft p-5 space-y-4">
           <div>
-            <h2 className="font-semibold text-base">Meta de ventas del mes</h2>
+            <h2 className="text-sm font-bold">Meta de ventas del mes</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               Establece tu objetivo mensual para ver el avance en el dashboard.
             </p>
@@ -127,8 +126,8 @@ export default async function ConfiguracionPage() {
 
       {/* — Empleados (solo dueño) ——————————————— */}
       {rolActual === 'dueno' && (
-        <section className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
-          <h2 className="font-semibold text-base">Equipo</h2>
+        <section className="card-soft p-5 space-y-4">
+          <h2 className="text-sm font-bold">Equipo</h2>
 
           <ul className="divide-y -mx-5">
             {miembros.map((m) => (

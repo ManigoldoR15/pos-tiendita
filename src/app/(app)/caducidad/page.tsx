@@ -109,12 +109,12 @@ export default async function CaducidadPage({
     <div className="space-y-5">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Caducidad</h1>
+        <h1 className="text-2xl font-black tracking-tight">Caducidad</h1>
         <div className="flex flex-wrap items-center gap-2">
           {puedeGestionarStock && (
             <Link
               href="/caducidad/configuracion"
-              className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent transition-colors"
+              className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
             >
               <Settings className="h-4 w-4" />
               Categorías
@@ -137,7 +137,7 @@ export default async function CaducidadPage({
         <Link
           href="/caducidad"
           className={cn(
-            'rounded-full border px-3 py-1 text-sm font-medium transition-colors',
+            'rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
             !filtroEstado ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
           )}
         >
@@ -151,7 +151,7 @@ export default async function CaducidadPage({
               key={e}
               href={`/caducidad?estado=${e}`}
               className={cn(
-                'flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors',
+                'flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
                 filtroEstado === e ? `${cfg.bg} ${cfg.text} ${cfg.border}` : 'hover:bg-accent',
               )}
             >

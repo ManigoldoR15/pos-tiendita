@@ -71,7 +71,7 @@ export default async function DetalleVentaPage({
       </div>
 
       <div>
-        <h1 className="text-xl font-bold">{fechaCompleta.charAt(0).toUpperCase() + fechaCompleta.slice(1)}</h1>
+        <h1 className="text-xl font-black tracking-tight">{fechaCompleta.charAt(0).toUpperCase() + fechaCompleta.slice(1)}</h1>
         <div className="mt-1 flex items-center gap-2">
           <span className="text-sm text-muted-foreground">{metodoPago}</span>
           {venta.estado === 'cancelada' && (
@@ -83,7 +83,7 @@ export default async function DetalleVentaPage({
       </div>
 
       {/* Items */}
-      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+      <div className="card-soft overflow-hidden">
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/50">
             <tr>
@@ -163,7 +163,7 @@ export default async function DetalleVentaPage({
       </div>
 
       {venta.notas && (
-        <div className="rounded-xl border bg-card px-4 py-3 text-sm text-muted-foreground">
+        <div className="card-soft px-4 py-3 text-sm text-muted-foreground">
           <span className="font-medium text-foreground">Nota: </span>
           {venta.notas}
         </div>

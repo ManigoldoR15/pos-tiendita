@@ -59,13 +59,13 @@ export default async function ProductosPage({
   }
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Productos</h1>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-black tracking-tight">Productos</h1>
         <div className="flex flex-wrap items-center gap-2">
           <a
             href="/api/export/productos"
-            className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent transition-colors"
+            className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
           >
             <Download className="h-4 w-4" />
             Excel
@@ -86,11 +86,11 @@ export default async function ProductosPage({
       </div>
 
       {/* Filtros */}
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
         <Link
           href="/productos"
           className={cn(
-            'rounded-full border px-3 py-1 text-sm font-medium transition-colors',
+            'rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
             !categoriaFiltro && !soloStockBajo ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
           )}
         >
@@ -99,7 +99,7 @@ export default async function ProductosPage({
         <Link
           href="/productos?alerta=bajo"
           className={cn(
-            'flex items-center gap-1 rounded-full border px-3 py-1 text-sm font-medium transition-colors',
+            'flex items-center gap-1 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
             soloStockBajo
               ? 'border-orange-400 bg-orange-500 text-white'
               : 'border-orange-300 text-orange-600 hover:bg-orange-50',
@@ -113,7 +113,7 @@ export default async function ProductosPage({
             key={cat.id}
             href={`/productos?categoria=${cat.id}`}
             className={cn(
-              'rounded-full border px-3 py-1 text-sm font-medium transition-colors',
+              'rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
               categoriaFiltro === cat.id ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
             )}
           >
@@ -152,7 +152,7 @@ export default async function ProductosPage({
               <div
                 key={producto.id}
                 className={cn(
-                  'relative flex flex-col overflow-hidden rounded-xl border bg-card p-3 shadow-sm',
+                  'relative flex flex-col overflow-hidden card-soft p-3',
                   !producto.activo && 'opacity-50',
                 )}
               >
@@ -174,7 +174,7 @@ export default async function ProductosPage({
 
                 {/* Precio + margen */}
                 <div className="mb-1 flex items-center gap-2">
-                  <p className="text-lg font-bold text-primary">
+                  <p className="text-lg font-black tracking-tight text-primary">
                     {formatMXN(producto.precio_venta)}
                   </p>
                   {margen !== null && (

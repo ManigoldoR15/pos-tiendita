@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import {
-  FileText, ShoppingCart, Receipt, Package, HandCoins, Wallet,
+  ShoppingCart, Receipt, Package, HandCoins, Wallet,
   ArrowRight,
 } from 'lucide-react'
 import { getNegocioActual } from '@/lib/negocio'
@@ -65,13 +65,10 @@ export default async function ReportesPage() {
   if (rol === 'empleado') redirect('/')
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-1">
-          <FileText className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Reportes</h1>
-        </div>
-        <p className="text-sm text-muted-foreground">
+    <div className="mx-auto max-w-2xl space-y-5">
+      <div>
+        <h1 className="text-2xl font-black tracking-tight">Reportes</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Genera e imprime reportes de tu negocio. Usa el botón{' '}
           <span className="font-medium text-foreground">Imprimir / Guardar PDF</span>{' '}
           en cada reporte para exportarlo.
@@ -83,7 +80,7 @@ export default async function ReportesPage() {
           <Link
             key={href}
             href={href}
-            className="group flex items-center gap-4 rounded-xl border bg-card p-5 shadow-sm transition-colors hover:bg-accent/50"
+            className="group card-soft flex items-center gap-4 p-5 transition-colors hover:bg-accent/50"
           >
             <div className={`shrink-0 rounded-xl bg-muted p-3 ${color}`}>
               <Icon className="h-5 w-5" />

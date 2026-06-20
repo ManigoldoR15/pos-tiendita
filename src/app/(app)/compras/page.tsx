@@ -97,12 +97,12 @@ export default async function ComprasPage({
       {/* KPI */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <div className="card-soft p-5">
-          <p className="eyebrow mb-1">{labelPeriodo[periodo]}</p>
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">{labelPeriodo[periodo]}</p>
           <p className="text-2xl font-black tracking-tight">{formatMXN(totalPeriodo)}</p>
           <p className="mt-1 text-xs text-muted-foreground">total en compras</p>
         </div>
         <div className="card-soft p-5">
-          <p className="eyebrow mb-1">Entradas</p>
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Entradas</p>
           <p className="text-2xl font-black tracking-tight">{(compras ?? []).length}</p>
           <p className="mt-1 text-xs text-muted-foreground">registros en el periodo</p>
         </div>
@@ -142,7 +142,7 @@ export default async function ComprasPage({
                   )}
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="font-bold text-primary">{formatMXN(c.total)}</p>
+                  <p className="font-black tracking-tight text-primary">{formatMXN(c.total)}</p>
                   <p className="text-xs text-muted-foreground">
                     {new Date(c.fecha + 'T12:00:00Z').toLocaleDateString('es-MX', {
                       day: 'numeric',

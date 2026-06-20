@@ -146,7 +146,7 @@ export default async function TurnoDetallePage({
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
+    <div className="mx-auto max-w-4xl space-y-6">
       {/* Back + print */}
       <div className="flex items-center justify-between gap-4 print:hidden">
         <Link
@@ -169,12 +169,12 @@ export default async function TurnoDetallePage({
         </div>
         <div className="grid grid-cols-2 gap-6 p-5 sm:grid-cols-4">
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Abrió</p>
+            <p className="eyebrow text-[10px] mb-1">Abrió</p>
             <p className="font-semibold">{emailCajero(t.apertura_email as string)}</p>
             <BadgeRol rol={t.apertura_rol as string} />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Cerró</p>
+            <p className="eyebrow text-[10px] mb-1">Cerró</p>
             {t.cerrado_por ? (
               <>
                 <p className="font-semibold">{emailCajero(t.cierre_email as string | null)}</p>
@@ -183,11 +183,11 @@ export default async function TurnoDetallePage({
             ) : <p className="text-sm text-muted-foreground">—</p>}
           </div>
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Apertura</p>
+            <p className="eyebrow text-[10px] mb-1">Apertura</p>
             <p className="text-sm">{fmtFechaHora(t.fecha_apertura as string)}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Cierre · {Number(t.duracion_min)} min</p>
+            <p className="eyebrow text-[10px] mb-1">Cierre · {Number(t.duracion_min)} min</p>
             <p className="text-sm">{fmtFechaHora(t.fecha_cierre as string)}</p>
           </div>
         </div>
@@ -201,20 +201,20 @@ export default async function TurnoDetallePage({
         <div className="p-5 space-y-3">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div className="rounded-xl bg-muted/30 p-4">
-              <p className="text-xs text-muted-foreground">Fondo inicial</p>
-              <p className="text-xl font-bold tabular-nums">{formatMXN(t.monto_inicial as number)}</p>
+              <p className="eyebrow text-[10px] mb-1">Fondo inicial</p>
+              <p className="text-xl font-black tracking-tight tabular-nums">{formatMXN(t.monto_inicial as number)}</p>
             </div>
             <div className="rounded-xl bg-muted/30 p-4">
-              <p className="text-xs text-muted-foreground">Ventas efectivo</p>
-              <p className="text-xl font-bold tabular-nums">{formatMXN(Number(t.ventas_efectivo))}</p>
+              <p className="eyebrow text-[10px] mb-1">Ventas efectivo</p>
+              <p className="text-xl font-black tracking-tight tabular-nums">{formatMXN(Number(t.ventas_efectivo))}</p>
             </div>
             <div className="rounded-xl bg-muted/30 p-4">
-              <p className="text-xs text-muted-foreground">Otros métodos</p>
-              <p className="text-xl font-bold tabular-nums">{formatMXN(Number(t.ventas_otros))}</p>
+              <p className="eyebrow text-[10px] mb-1">Otros métodos</p>
+              <p className="text-xl font-black tracking-tight tabular-nums">{formatMXN(Number(t.ventas_otros))}</p>
             </div>
             <div className="rounded-xl bg-muted/30 p-4">
-              <p className="text-xs text-muted-foreground">Total ventas</p>
-              <p className="text-xl font-bold tabular-nums">{formatMXN(Number(t.total_ventas))}</p>
+              <p className="eyebrow text-[10px] mb-1">Total ventas</p>
+              <p className="text-xl font-black tracking-tight tabular-nums">{formatMXN(Number(t.total_ventas))}</p>
             </div>
           </div>
 

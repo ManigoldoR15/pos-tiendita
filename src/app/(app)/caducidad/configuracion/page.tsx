@@ -35,7 +35,7 @@ export default async function CaducidadConfigPage() {
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">Categorías de perecedero</h1>
+          <h1 className="text-2xl font-black tracking-tight">Categorías de perecedero</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             Días de vida útil por tipo de producto según almacenamiento.
             Valores base: FDA / FAO / AESAN — ajusta según tu equipo real.
@@ -44,7 +44,7 @@ export default async function CaducidadConfigPage() {
       </div>
 
       {/* Tabla de categorías */}
-      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+      <div className="card-soft overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[480px] text-sm">
             <thead>
@@ -97,8 +97,8 @@ export default async function CaducidadConfigPage() {
       </div>
 
       {/* Formulario para nueva categoría */}
-      <div className="rounded-xl border bg-card p-5 shadow-sm">
-        <h2 className="mb-4 text-sm font-semibold">Agregar categoría</h2>
+      <div className="card-soft p-5">
+        <h2 className="eyebrow mb-1.5 text-[10px] sm:text-xs">Agregar categoría</h2>
         <CatForm action={crearCategoriaAction} />
       </div>
     </div>

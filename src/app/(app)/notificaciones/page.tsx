@@ -145,7 +145,7 @@ export default async function NotificacionesPage({
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Notificaciones</h1>
+          <h1 className="text-2xl font-black tracking-tight">Notificaciones</h1>
           {noLeidas > 0 && (
             <p className="mt-0.5 text-sm text-muted-foreground">
               {noLeidas} sin leer
@@ -231,7 +231,7 @@ export default async function NotificacionesPage({
           <p>Sin notificaciones aquí.</p>
         </div>
       ) : (
-        <div className="divide-y rounded-xl border bg-card shadow-sm overflow-hidden">
+        <div className="card-soft divide-y overflow-hidden">
           {visibles.map((n) => (
             <NotifRow key={n.id} notif={n} />
           ))}

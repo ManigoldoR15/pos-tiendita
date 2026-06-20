@@ -70,7 +70,7 @@ export default async function FiadosPage({
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Fiados</h1>
+        <h1 className="text-2xl font-black tracking-tight">Fiados</h1>
         <div className="flex rounded-lg border p-0.5 bg-muted/40">
           <Link
             href="/fiados"
@@ -125,8 +125,8 @@ export default async function FiadosPage({
       ) : (
         <>
           {/* Total por cobrar */}
-          <div className="card-soft relative overflow-hidden bg-primary/[0.05] p-7">
-            <p className="eyebrow mb-3 flex items-center gap-1.5">
+          <div className="card-soft relative overflow-hidden bg-primary/[0.05] p-5 sm:p-6">
+            <p className="eyebrow mb-1.5 text-[10px] sm:text-xs flex items-center gap-1.5">
               <HandCoins className="h-3.5 w-3.5" />
               Por cobrar
             </p>
@@ -145,7 +145,7 @@ export default async function FiadosPage({
               <Link
                 href="/fiados?orden=monto"
                 className={cn(
-                  'rounded-full border px-3 py-1 font-medium transition-colors',
+                  'rounded-full border px-4 py-1.5 font-medium transition-colors',
                   orden === 'monto' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
                 )}
               >
@@ -154,7 +154,7 @@ export default async function FiadosPage({
               <Link
                 href="/fiados?orden=antiguedad"
                 className={cn(
-                  'rounded-full border px-3 py-1 font-medium transition-colors',
+                  'rounded-full border px-4 py-1.5 font-medium transition-colors',
                   orden === 'antiguedad' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
                 )}
               >

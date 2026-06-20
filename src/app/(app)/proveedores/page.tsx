@@ -22,17 +22,17 @@ export default async function ProveedoresPage() {
     .order('nombre')
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Proveedores</h1>
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-black tracking-tight">Proveedores</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Contactos de quienes surtes tu negocio.
         </p>
       </div>
 
       {/* Formulario nuevo proveedor */}
-      <div className="mb-8 rounded-xl border bg-card p-5 shadow-sm">
-        <h2 className="mb-4 font-semibold text-sm">Nuevo proveedor</h2>
+      <div className="card-soft p-5">
+        <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Nuevo proveedor</p>
         <FormProveedor action={crearProveedorAction} />
       </div>
 

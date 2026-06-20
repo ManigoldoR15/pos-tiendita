@@ -84,7 +84,7 @@ export default async function DetalleClienteFiadoPage({
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{cliente.nombre}</h1>
+          <h1 className="text-2xl font-black tracking-tight">{cliente.nombre}</h1>
           {cliente.telefono && (
             <p className="text-muted-foreground">{cliente.telefono}</p>
           )}
@@ -105,8 +105,8 @@ export default async function DetalleClienteFiadoPage({
       </div>
 
       {/* Deuda total */}
-      <div className="card-soft relative overflow-hidden bg-primary/[0.05] p-7">
-        <p className="eyebrow mb-2">Deuda total</p>
+      <div className="card-soft relative overflow-hidden bg-primary/[0.05] p-5 sm:p-6">
+        <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Deuda total</p>
         <p className="text-5xl font-black tracking-tight text-primary">
           {formatMXN(deudaTotal)}
         </p>
@@ -130,7 +130,7 @@ export default async function DetalleClienteFiadoPage({
 
       {/* Desglose de notas */}
       <section className="space-y-4">
-        <h2 className="text-base font-semibold">Notas (ventas fiadas)</h2>
+        <h2 className="text-sm font-bold">Notas (ventas fiadas)</h2>
         {(notas ?? []).length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin notas fiadas.</p>
         ) : (
@@ -140,7 +140,7 @@ export default async function DetalleClienteFiadoPage({
             return (
               <div
                 key={nota.venta_id}
-                className={`rounded-xl border bg-card shadow-sm overflow-hidden ${saldada ? 'opacity-60' : ''}`}
+                className={`card-soft overflow-hidden ${saldada ? 'opacity-60' : ''}`}
               >
                 <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
                   <div>
@@ -203,7 +203,7 @@ export default async function DetalleClienteFiadoPage({
       {/* Historial de abonos */}
       {(abonos ?? []).length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-base font-semibold">Historial de abonos</h2>
+          <h2 className="text-sm font-bold">Historial de abonos</h2>
           <div className="card-soft divide-y">
             {(abonos ?? []).map((ab) => (
               <div key={ab.id} className="flex items-center justify-between px-5 py-3">

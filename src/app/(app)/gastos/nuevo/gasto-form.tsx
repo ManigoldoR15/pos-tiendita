@@ -21,7 +21,7 @@ export default function GastoForm({
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="mb-6 text-2xl font-bold">Nuevo gasto</h1>
+      <h1 className="mb-6 text-2xl font-black tracking-tight">Nuevo gasto</h1>
 
       <form action={formAction} className="flex flex-col gap-5">
         {/* Categoría */}

@@ -21,13 +21,13 @@ export default async function CategoriasPage() {
     .order('nombre')
 
   return (
-    <div>
-      <h1 className="mb-6 text-2xl font-bold">Categorías</h1>
+    <div className="space-y-5">
+      <h1 className="text-2xl font-black tracking-tight">Categorías</h1>
 
       <FormNuevaCategoria />
 
       {categorias && categorias.length > 0 ? (
-        <ul className="mt-6 divide-y rounded-xl border">
+        <ul className="card-soft divide-y overflow-hidden">
           {categorias.map((cat) => {
             const total = (cat.productos as unknown as { count: number }[])?.[0]
               ?.count ?? 0

@@ -109,7 +109,7 @@ export default async function CompraDetallePage({
       {/* Tabla de ítems */}
       <div className="card-soft overflow-hidden">
         <div className="border-b px-5 py-3">
-          <h2 className="font-semibold">Productos recibidos</h2>
+          <h2 className="text-sm font-bold">Productos recibidos</h2>
         </div>
 
         <div className="divide-y">

@@ -51,7 +51,7 @@ export default function ProductoForm({
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="mb-6 text-2xl font-bold">{titulo}</h1>
+      <h1 className="mb-6 text-2xl font-black tracking-tight">{titulo}</h1>
 
       <form action={formAction} className="flex flex-col gap-5">
         {inicial.id && <input type="hidden" name="id" value={inicial.id} />}
