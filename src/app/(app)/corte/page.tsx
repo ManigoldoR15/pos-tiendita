@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { CheckCircle, Clock, Printer, TrendingUp, Wallet } from 'lucide-react'
+import { CheckCircle, Clock, Printer } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { formatMXN } from '@/lib/dinero'
@@ -67,45 +67,32 @@ export default async function CortePage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <h1 className="text-2xl font-bold">Corte de caja</h1>
+      <h1 className="text-2xl font-black tracking-tight">Corte de caja</h1>
 
       {corteAbierto ? (
         /* ── CAJA ABIERTA ── */
         <div className="space-y-4">
           {/* Estado */}
-          <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3">
+          <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 dark:border-green-800/40 dark:bg-green-950/20">
             <div className="h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-sm font-semibold text-green-700">Caja abierta</span>
-            <span className="ml-auto text-xs text-green-600">{fmtFecha(corteAbierto.fecha_apertura)}</span>
+            <span className="text-sm font-semibold text-green-700 dark:text-green-400">Caja abierta</span>
+            <span className="ml-auto text-xs text-green-600 dark:text-green-500">{fmtFecha(corteAbierto.fecha_apertura)}</span>
           </div>
 
           {/* Resumen del turno */}
           <div className="grid grid-cols-2 gap-3">
-            <KpiCorte
-              label="Fondo inicial"
-              value={formatMXN(corteAbierto.monto_inicial)}
-              icon={<Wallet className="h-4 w-4 text-muted-foreground" />}
-            />
+            <KpiCorte label="Fondo inicial" value={formatMXN(corteAbierto.monto_inicial)} />
             <KpiCorte
               label="Ventas del turno"
               value={formatMXN(totalVentas)}
               sub={`${numVentas} ${numVentas === 1 ? 'venta' : 'ventas'}`}
-              icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
             />
-            <KpiCorte
-              label="En efectivo"
-              value={formatMXN(ventasEfectivo)}
-              icon={<TrendingUp className="h-4 w-4 text-blue-600" />}
-            />
-            <KpiCorte
-              label="Otros métodos"
-              value={formatMXN(totalVentas - ventasEfectivo)}
-              icon={<TrendingUp className="h-4 w-4 text-purple-600" />}
-            />
+            <KpiCorte label="En efectivo" value={formatMXN(ventasEfectivo)} />
+            <KpiCorte label="Otros métodos" value={formatMXN(totalVentas - ventasEfectivo)} />
           </div>
 
           {/* Formulario de cierre */}
-          <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <div className="card-soft p-5">
             <h2 className="mb-4 text-base font-semibold">Cerrar caja</h2>
             <FormCerrarCorte
               corteId={corteAbierto.id}
@@ -118,9 +105,9 @@ export default async function CortePage() {
         <div className="space-y-4">
           {/* Resumen del último corte */}
           {ultimoCerrado && (
-            <div className="rounded-xl border bg-card p-5 shadow-sm space-y-3">
+            <div className="card-soft p-5 space-y-3">
               <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-muted-foreground" />
+                <CheckCircle className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-semibold text-muted-foreground">Último corte</span>
                 <span className="ml-auto text-xs text-muted-foreground">
                   {ultimoCerrado.fecha_cierre ? fmtFecha(ultimoCerrado.fecha_cierre) : ''}
@@ -134,25 +121,21 @@ export default async function CortePage() {
                 </Link>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 border-t pt-3">
+              <div className="grid grid-cols-3 gap-3 border-t border-border/60 pt-3">
                 <div className="text-center">
-                  <p className="text-xs text-muted-foreground">Esperado</p>
-                  <p className="font-bold">{formatMXN(ultimoCerrado.monto_esperado ?? 0)}</p>
+                  <p className="eyebrow text-[10px] mb-1">Esperado</p>
+                  <p className="font-black tracking-tight">{formatMXN(ultimoCerrado.monto_esperado ?? 0)}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-xs text-muted-foreground">Contado</p>
-                  <p className="font-bold">{formatMXN(ultimoCerrado.monto_contado ?? 0)}</p>
+                  <p className="eyebrow text-[10px] mb-1">Contado</p>
+                  <p className="font-black tracking-tight">{formatMXN(ultimoCerrado.monto_contado ?? 0)}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-xs text-muted-foreground">Diferencia</p>
-                  <p
-                    className={cn(
-                      'font-bold',
-                      (ultimoCerrado.diferencia ?? 0) >= 0
-                        ? 'num-income'
-                        : 'num-expense',
-                    )}
-                  >
+                  <p className="eyebrow text-[10px] mb-1">Diferencia</p>
+                  <p className={cn(
+                    'font-black tracking-tight',
+                    (ultimoCerrado.diferencia ?? 0) >= 0 ? 'num-income' : 'num-expense',
+                  )}>
                     {(ultimoCerrado.diferencia ?? 0) >= 0 ? '+' : ''}
                     {formatMXN(ultimoCerrado.diferencia ?? 0)}
                   </p>
@@ -162,9 +145,9 @@ export default async function CortePage() {
           )}
 
           {/* Formulario de apertura */}
-          <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <div className="card-soft p-5">
             <div className="mb-4 flex items-center gap-2">
-              <Clock className="h-5 w-5 text-muted-foreground" />
+              <Clock className="h-4 w-4 text-muted-foreground" />
               <h2 className="text-base font-semibold">Abrir nueva caja</h2>
             </div>
             <FormAbrirCorte />
@@ -175,24 +158,11 @@ export default async function CortePage() {
   )
 }
 
-function KpiCorte({
-  label,
-  value,
-  sub,
-  icon,
-}: {
-  label: string
-  value: string
-  sub?: string
-  icon?: React.ReactNode
-}) {
+function KpiCorte({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-xl border bg-card p-3 shadow-sm">
-      <div className="mb-1 flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{label}</span>
-        {icon}
-      </div>
-      <p className="font-bold num-neutral">{value}</p>
+    <div className="card-soft p-3 sm:p-4">
+      <p className="eyebrow text-[10px] mb-1">{label}</p>
+      <p className="font-black tracking-tight num-neutral">{value}</p>
       {sub && <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>}
     </div>
   )
