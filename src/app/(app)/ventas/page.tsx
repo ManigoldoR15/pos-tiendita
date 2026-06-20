@@ -69,7 +69,7 @@ function VentaRow({ venta, showDate = false }: { venta: Venta; showDate?: boolea
         </div>
         <p className="text-xs text-muted-foreground truncate">{metodoPago}</p>
       </div>
-      <span className="font-bold text-green-600 shrink-0">{formatMXN(venta.total)}</span>
+      <span className="font-bold shrink-0 num-income">{formatMXN(venta.total)}</span>
       <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
     </Link>
   )
@@ -140,7 +140,7 @@ export default async function VentasPage({
                     <span className="text-xs text-muted-foreground">
                       {completadasDia.length} venta{completadasDia.length !== 1 ? 's' : ''}
                     </span>
-                    <span className="font-bold text-green-600 text-sm">{formatMXN(totalDia)}</span>
+                    <span className="font-bold text-sm num-income">{formatMXN(totalDia)}</span>
                   </div>
                 ) : (
                   <span className="text-xs text-muted-foreground">Sin ventas</span>
@@ -232,7 +232,7 @@ export default async function VentasPage({
                 )}
               >
                 <span className="text-xs font-medium mt-0.5">{day}</span>
-                <span className="text-[10px] font-bold text-green-600 leading-tight">
+                <span className="text-[10px] font-bold leading-tight num-income">
                   {formatMXN(totalDia)}
                 </span>
                 <span className="text-[9px] text-muted-foreground">
@@ -352,7 +352,7 @@ export default async function VentasPage({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="rounded-xl border bg-card p-4 shadow-sm">
           <p className="text-xs text-muted-foreground">Total recaudado</p>
-          <p className="mt-1 text-xl font-bold text-green-600">{formatMXN(totalRecaudado)}</p>
+          <p className="mt-1 text-xl font-bold num-income">{formatMXN(totalRecaudado)}</p>
         </div>
         <div className="rounded-xl border bg-card p-4 shadow-sm">
           <p className="text-xs text-muted-foreground">Ventas</p>

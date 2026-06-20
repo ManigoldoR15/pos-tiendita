@@ -25,7 +25,7 @@ const REPORTES: ReporteCard[] = [
     descripcion: 'Total recaudado, ticket promedio, top productos y detalle por venta.',
     href: `/ventas/reporte?p=mes`,
     Icon: ShoppingCart,
-    color: 'text-green-600',
+    color: 'text-emerald-600',
   },
   {
     titulo: 'Gastos',

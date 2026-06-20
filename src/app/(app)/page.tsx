@@ -272,12 +272,21 @@ export default async function DashboardPage({
       {/* KPI principal — domina la pantalla */}
       <div className="card-soft relative overflow-hidden bg-primary/[0.05] p-7 sm:p-9">
         <p className="eyebrow mb-3">Ventas — {periodoLabel.toLowerCase()}</p>
-        <p className="text-5xl font-black tracking-tight text-primary sm:text-6xl">
+        <p className="num-neutral text-5xl font-black tracking-tight text-primary sm:text-6xl">
           {formatMXN(totalVentas)}
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
           {numVentas} {numVentas === 1 ? 'venta registrada' : 'ventas registradas'}
         </p>
+        {numVentas === 0 && (
+          <Link
+            href="/pos"
+            className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary/70 hover:text-primary transition-colors"
+          >
+            <ShoppingCart className="h-4 w-4" />
+            Registra tu primera venta desde el POS
+          </Link>
+        )}
       </div>
 
       {/* Quién está trabajando (solo dueño/admin, solo si hay cajas abiertas) */}
@@ -482,17 +491,17 @@ function KpiCard({
   sub: string
   accent: 'emerald' | 'red' | 'default'
 }) {
-  const valueColor = {
-    emerald: 'text-emerald-600 dark:text-emerald-400',
-    red: 'text-red-600 dark:text-red-400',
-    default: 'text-foreground',
+  const valueClass = {
+    emerald: 'num-income',
+    red: 'num-expense',
+    default: 'num-neutral',
   }[accent]
 
   return (
-    <div className="card-soft p-3 sm:p-5">
+    <div className="card-soft p-4 sm:p-5">
       <p className="eyebrow mb-1 text-[10px] sm:text-xs">{label}</p>
-      <p className={cn('text-base sm:text-2xl font-black tracking-tight leading-tight', valueColor)}>{value}</p>
-      <p className="mt-0.5 text-[10px] sm:text-xs text-muted-foreground hidden sm:block">{sub}</p>
+      <p className={cn('text-lg sm:text-2xl font-black tracking-tight leading-tight', valueClass)}>{value}</p>
+      <p className="mt-0.5 text-[10px] text-muted-foreground">{sub}</p>
     </div>
   )
 }

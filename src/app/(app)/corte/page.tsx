@@ -90,7 +90,7 @@ export default async function CortePage() {
               label="Ventas del turno"
               value={formatMXN(totalVentas)}
               sub={`${numVentas} ${numVentas === 1 ? 'venta' : 'ventas'}`}
-              icon={<TrendingUp className="h-4 w-4 text-green-600" />}
+              icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
             />
             <KpiCorte
               label="En efectivo"
@@ -149,8 +149,8 @@ export default async function CortePage() {
                     className={cn(
                       'font-bold',
                       (ultimoCerrado.diferencia ?? 0) >= 0
-                        ? 'text-green-600'
-                        : 'text-destructive',
+                        ? 'num-income'
+                        : 'num-expense',
                     )}
                   >
                     {(ultimoCerrado.diferencia ?? 0) >= 0 ? '+' : ''}
@@ -192,7 +192,7 @@ function KpiCorte({
         <span className="text-xs text-muted-foreground">{label}</span>
         {icon}
       </div>
-      <p className="font-bold">{value}</p>
+      <p className="font-bold num-neutral">{value}</p>
       {sub && <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>}
     </div>
   )

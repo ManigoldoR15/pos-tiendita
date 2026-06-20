@@ -5,7 +5,8 @@ import { usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import {
   Home, Package, Tag, ShoppingCart, Receipt, Wallet, ClipboardList,
-  LogOut, Settings, Store, Truck, BarChart2, ChevronDown, Menu, X, CalendarCheck, HandCoins, Scale, Clock, Bell, FileText, ShoppingBag,
+  LogOut, Settings, Store, Truck, BarChart2, ChevronDown, Menu, X,
+  CalendarCheck, HandCoins, Scale, Clock, Bell, FileText, ShoppingBag,
 } from 'lucide-react'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -18,47 +19,56 @@ import AvisoEmpleado from '@/components/aviso-empleado'
 
 type NavLink = { href: string; label: string; Icon: React.FC<{ className?: string }> }
 
+// Dueño: 3 directos + 3 dropdowns
 const DIRECT_DUENO: NavLink[] = [
   { href: '/', label: 'Inicio', Icon: Home },
   { href: '/pos', label: 'POS', Icon: ShoppingCart },
   { href: '/corte', label: 'Caja', Icon: Wallet },
+]
+const OPERACIONES_DUENO: NavLink[] = [
   { href: '/ventas', label: 'Ventas', Icon: ClipboardList },
   { href: '/fiados', label: 'Fiados', Icon: HandCoins },
   { href: '/cuadre', label: 'Cuadre', Icon: Scale },
   { href: '/gastos', label: 'Gastos', Icon: Receipt },
-  { href: '/finanzas', label: 'Finanzas', Icon: BarChart2 },
-  { href: '/reportes', label: 'Reportes', Icon: FileText },
   { href: '/compras', label: 'Compras', Icon: ShoppingBag },
-  { href: '/caducidad', label: 'Caducidad', Icon: CalendarCheck },
-  { href: '/turnos', label: 'Turnos', Icon: Clock },
 ]
-
 const CATALOGO_DUENO: NavLink[] = [
   { href: '/productos', label: 'Productos', Icon: Package },
   { href: '/categorias', label: 'Categorías', Icon: Tag },
   { href: '/proveedores', label: 'Proveedores', Icon: Truck },
   { href: '/listas-precio', label: 'Listas precio', Icon: Tag },
 ]
+const ANALISIS_DUENO: NavLink[] = [
+  { href: '/finanzas', label: 'Finanzas', Icon: BarChart2 },
+  { href: '/reportes', label: 'Reportes', Icon: FileText },
+  { href: '/turnos', label: 'Turnos', Icon: Clock },
+  { href: '/caducidad', label: 'Caducidad', Icon: CalendarCheck },
+]
 
+// Admin: misma estructura, sin Finanzas/Turnos propios del dueño
 const DIRECT_ADMIN: NavLink[] = [
   { href: '/', label: 'Inicio', Icon: Home },
   { href: '/pos', label: 'POS', Icon: ShoppingCart },
   { href: '/corte', label: 'Caja', Icon: Wallet },
+]
+const OPERACIONES_ADMIN: NavLink[] = [
   { href: '/ventas', label: 'Ventas', Icon: ClipboardList },
   { href: '/fiados', label: 'Fiados', Icon: HandCoins },
   { href: '/cuadre', label: 'Cuadre', Icon: Scale },
   { href: '/gastos', label: 'Gastos', Icon: Receipt },
-  { href: '/reportes', label: 'Reportes', Icon: FileText },
   { href: '/compras', label: 'Compras', Icon: ShoppingBag },
-  { href: '/caducidad', label: 'Caducidad', Icon: CalendarCheck },
 ]
-
 const CATALOGO_ADMIN: NavLink[] = [
   { href: '/productos', label: 'Productos', Icon: Package },
   { href: '/proveedores', label: 'Proveedores', Icon: Truck },
   { href: '/listas-precio', label: 'Listas precio', Icon: Tag },
 ]
+const ANALISIS_ADMIN: NavLink[] = [
+  { href: '/reportes', label: 'Reportes', Icon: FileText },
+  { href: '/caducidad', label: 'Caducidad', Icon: CalendarCheck },
+]
 
+// Empleado: 7 directos — caben sin desbordarse
 const DIRECT_EMPLEADO: NavLink[] = [
   { href: '/', label: 'Inicio', Icon: Home },
   { href: '/pos', label: 'POS', Icon: ShoppingCart },
@@ -99,18 +109,23 @@ function NavLinkItem({
   )
 }
 
-function CatalogoDropdown({
+function NavDropdown({
+  label,
+  Icon,
   links,
-  stockBajo,
   pathname,
+  badges = {},
 }: {
+  label: string
+  Icon: React.FC<{ className?: string }>
   links: NavLink[]
-  stockBajo: number
   pathname: string
+  badges?: Record<string, number>
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const anyActive = links.some(({ href }) => pathname.startsWith(href))
+  const totalBadge = Object.values(badges).reduce((s, v) => s + v, 0)
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -125,22 +140,27 @@ function CatalogoDropdown({
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors',
+          'relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors',
           anyActive
             ? 'bg-primary text-primary-foreground'
             : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
         )}
       >
-        <Package className="h-4 w-4" />
-        <span>Catálogo</span>
-        <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
+        <Icon className="h-4 w-4" />
+        <span>{label}</span>
+        <ChevronDown className={cn('h-3 w-3 transition-transform duration-150', open && 'rotate-180')} />
+        {!anyActive && totalBadge > 0 && (
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
+            {totalBadge > 9 ? '9+' : totalBadge}
+          </span>
+        )}
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 min-w-[160px] rounded-xl border bg-card shadow-lg py-1">
+        <div className="absolute left-0 top-full mt-1 z-50 min-w-[168px] rounded-xl border bg-card shadow-lg py-1">
           {links.map(({ href, label, Icon }) => {
             const active = pathname.startsWith(href)
-            const badge = href === '/productos' ? stockBajo : 0
+            const badge = badges[href] ?? 0
             return (
               <Link
                 key={href}
@@ -191,12 +211,21 @@ export default function NavBar({
   const isAdmin = rol === 'administrador'
 
   const directLinks = isDueno ? DIRECT_DUENO : isAdmin ? DIRECT_ADMIN : DIRECT_EMPLEADO
+  const operacionesLinks = isDueno ? OPERACIONES_DUENO : isAdmin ? OPERACIONES_ADMIN : null
   const catalogoLinks = isDueno ? CATALOGO_DUENO : isAdmin ? CATALOGO_ADMIN : null
+  const analisisLinks = isDueno ? ANALISIS_DUENO : isAdmin ? ANALISIS_ADMIN : null
   const showConfig = isDueno
+
+  const badges: Record<string, number> = {
+    '/productos': stockBajo,
+    '/caducidad': lotesAlerta,
+  }
 
   const allMobileLinks = [
     ...directLinks,
+    ...(operacionesLinks ?? []),
     ...(catalogoLinks ?? []),
+    ...(analisisLinks ?? []),
     ...((isDueno || isAdmin) ? [{ href: '/notificaciones', label: 'Notificaciones', Icon: Bell }] : []),
     ...(showConfig ? [{ href: '/configuracion', label: 'Configuración', Icon: Settings }] : []),
   ]
@@ -224,19 +253,36 @@ export default function NavBar({
               label={label}
               Icon={Icon}
               active={href === '/' ? pathname === '/' : pathname.startsWith(href)}
-              badge={
-                href === '/productos' ? stockBajo :
-                href === '/caducidad' ? lotesAlerta :
-                undefined
-              }
+              badge={badges[href]}
             />
           ))}
 
-          {catalogoLinks && (
-            <CatalogoDropdown
-              links={catalogoLinks}
-              stockBajo={stockBajo}
+          {operacionesLinks && (
+            <NavDropdown
+              label="Operaciones"
+              Icon={ClipboardList}
+              links={operacionesLinks}
               pathname={pathname}
+            />
+          )}
+
+          {catalogoLinks && (
+            <NavDropdown
+              label="Catálogo"
+              Icon={Package}
+              links={catalogoLinks}
+              pathname={pathname}
+              badges={{ '/productos': stockBajo }}
+            />
+          )}
+
+          {analisisLinks && (
+            <NavDropdown
+              label="Análisis"
+              Icon={BarChart2}
+              links={analisisLinks}
+              pathname={pathname}
+              badges={{ '/caducidad': lotesAlerta }}
             />
           )}
         </nav>
@@ -248,7 +294,7 @@ export default function NavBar({
           {/* Empleado: botón avisar al jefe */}
           {!isDueno && !isAdmin && <AvisoEmpleado />}
 
-          {/* Dueño/Admin: campana de notificaciones */}
+          {/* Dueño/Admin: campana */}
           {(isDueno || isAdmin) && (
             <Link
               href="/notificaciones"
@@ -283,6 +329,7 @@ export default function NavBar({
               <span>Config</span>
             </Link>
           )}
+
           <form action={logoutAction}>
             <Button type="submit" variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
               <LogOut className="h-4 w-4" />
@@ -325,9 +372,7 @@ export default function NavBar({
         <div className="md:hidden border-t bg-card px-4 py-3 space-y-1">
           {allMobileLinks.map(({ href, label, Icon }) => {
             const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
-            const badge =
-              href === '/productos' ? stockBajo :
-              href === '/caducidad' ? lotesAlerta : 0
+            const badge = badges[href] ?? 0
             return (
               <Link
                 key={href}

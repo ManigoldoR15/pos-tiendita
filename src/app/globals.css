@@ -139,10 +139,23 @@
 @layer components {
   /* Tarjeta premium: sombra suave en claro, borde sutil en oscuro — sin línea dura gris */
   .card-soft {
-    @apply rounded-2xl bg-card shadow-[0_1px_2px_rgb(0_0_0/0.04),0_10px_24px_-8px_rgb(0_0_0/0.08)] dark:border dark:border-border dark:shadow-none;
+    @apply rounded-2xl bg-card shadow-[0_1px_2px_rgb(0_0_0/0.04),0_10px_24px_-8px_rgb(0_0_0/0.08)] dark:border dark:border-border dark:shadow-none transition-[box-shadow] duration-200;
   }
   .eyebrow {
     @apply text-xs font-semibold uppercase tracking-widest text-muted-foreground;
+  }
+  /* Regla única de color para cifras monetarias */
+  .num-income  { @apply tabular-nums text-emerald-600 dark:text-emerald-400; }
+  .num-expense { @apply tabular-nums text-red-600 dark:text-red-400; }
+  .num-neutral { @apply tabular-nums; }
+  .prose-readable { max-width: 65ch; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
