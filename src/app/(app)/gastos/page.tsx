@@ -51,13 +51,14 @@ export default async function GastosPage({
     : todos
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Gastos</h1>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-black tracking-tight">Gastos</h1>
         <div className="flex flex-wrap items-center gap-2">
           <a
             href="/api/export/gastos"
-            className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent transition-colors"
+            className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
           >
             <Download className="h-4 w-4" />
             Excel
@@ -72,23 +73,23 @@ export default async function GastosPage({
       </div>
 
       {/* Resumen del mes */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground">Gastos del negocio</p>
-          <p className="mt-1 text-xl font-bold text-destructive">{formatMXN(totalNegocio)}</p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="card-soft p-4 sm:p-5">
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Gastos del negocio</p>
+          <p className="text-xl font-black tracking-tight text-destructive">{formatMXN(totalNegocio)}</p>
         </div>
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground">Gastos personales</p>
-          <p className="mt-1 text-xl font-bold text-orange-500">{formatMXN(totalPersonal)}</p>
+        <div className="card-soft p-4 sm:p-5">
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Gastos personales</p>
+          <p className="text-xl font-black tracking-tight text-orange-500">{formatMXN(totalPersonal)}</p>
         </div>
-        <div className="col-span-2 rounded-xl border bg-card p-4 shadow-sm sm:col-span-1">
-          <p className="text-xs text-muted-foreground">Total este mes</p>
-          <p className="mt-1 text-xl font-bold">{formatMXN(totalNegocio + totalPersonal)}</p>
+        <div className="card-soft col-span-2 p-4 sm:col-span-1 sm:p-5">
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Total este mes</p>
+          <p className="text-xl font-black tracking-tight num-neutral">{formatMXN(totalNegocio + totalPersonal)}</p>
         </div>
       </div>
 
       {/* Filtro tipo */}
-      <div className="mb-4 flex gap-2">
+      <div className="flex gap-2">
         {[
           { label: 'Todos', value: undefined },
           { label: 'Negocio', value: 'negocio' },
@@ -98,7 +99,7 @@ export default async function GastosPage({
             key={label}
             href={value ? `/gastos?tipo=${value}` : '/gastos'}
             className={cn(
-              'rounded-full border px-3 py-1 text-sm font-medium transition-colors',
+              'rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
               tipo === value || (!tipo && !value)
                 ? 'bg-primary text-primary-foreground'
                 : 'hover:bg-accent',
@@ -116,7 +117,7 @@ export default async function GastosPage({
           <p className="mt-1 text-sm">¡Agrega el primero!</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="divide-y rounded-xl border bg-card shadow-sm overflow-hidden">
           {gastosFiltrados.map((gasto) => {
             const catNombre = (
               gasto.categorias_gasto as unknown as { nombre: string } | null
@@ -131,13 +132,13 @@ export default async function GastosPage({
             return (
               <div
                 key={gasto.id}
-                className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm"
+                className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold">{catNombre}</span>
                     {gasto.es_personal && (
-                      <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
+                      <span className="rounded-full bg-orange-100 dark:bg-orange-950/30 px-2 py-0.5 text-[10px] font-medium text-orange-700 dark:text-orange-400">
                         Personal
                       </span>
                     )}
@@ -147,7 +148,7 @@ export default async function GastosPage({
                   )}
                 </div>
                 <span className="text-xs text-muted-foreground shrink-0">{fechaDisplay}</span>
-                <span className="font-bold text-destructive shrink-0">
+                <span className="font-bold text-destructive shrink-0 tabular-nums">
                   {formatMXN(gasto.monto)}
                 </span>
                 <form action={eliminarGastoAction} data-action="eliminar-gasto">
