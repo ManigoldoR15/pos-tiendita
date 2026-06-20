@@ -375,7 +375,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
         <div className="mb-3 flex flex-wrap items-center gap-2 shrink-0">
           <div className="flex rounded-lg border p-0.5 bg-muted/40">
             <button
-              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium bg-card shadow-sm text-foreground"
+              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold bg-background shadow-sm text-foreground ring-1 ring-border/30"
             >
               <Grid3x3 className="h-3.5 w-3.5" />
               Táctil
@@ -494,7 +494,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                     onClick={() => agregarProducto(producto)}
                     disabled={sinStock}
                     className={cn(
-                      'card-soft relative flex flex-col items-center justify-center overflow-hidden p-5 text-center transition-all duration-150',
+                      'card-soft relative flex flex-col items-center justify-center overflow-hidden p-5 text-center transition-all duration-150 ring-1 ring-border/20 dark:ring-border/40',
                       sinStock
                         ? 'cursor-not-allowed opacity-40'
                         : 'cursor-pointer hover:ring-2 hover:ring-primary/30 active:scale-[0.97]',
@@ -502,7 +502,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                     )}
                   >
                     {colorCat && (
-                      <span className={cn('absolute inset-x-0 top-0 h-1.5', colorCat.bar)} />
+                      <span className={cn('absolute inset-x-0 top-0 h-2', colorCat.bar)} />
                     )}
                     {enCarrito && (
                       <span className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-sm">
@@ -510,9 +510,9 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                       </span>
                     )}
                     {colorCat && (
-                      <span className={cn('absolute left-2.5 top-2.5 h-2.5 w-2.5 rounded-full', colorCat.dot)} />
+                      <span className={cn('absolute left-2.5 top-2.5 h-3 w-3 rounded-full', colorCat.dot)} />
                     )}
-                    <p className="mb-2.5 line-clamp-2 break-words text-sm font-semibold leading-tight">
+                    <p className="mb-2.5 line-clamp-2 break-words text-sm font-bold leading-tight">
                       {producto.nombre}
                     </p>
                     <p className="text-2xl font-black tracking-tight text-primary">
@@ -552,22 +552,27 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
           <ShoppingCart className="h-5 w-5 text-muted-foreground" />
           <span className="font-bold">Carrito</span>
           {carrito.length > 0 && (
-            <span className="ml-auto text-xs text-muted-foreground">
-              {carrito.length} producto{carrito.length !== 1 ? 's' : ''}
-            </span>
+            <>
+              <span className="text-xs text-muted-foreground">
+                {carrito.length} producto{carrito.length !== 1 ? 's' : ''}
+              </span>
+              <span className="ml-auto text-sm font-black tracking-tight text-primary">
+                {formatMXN(total)}
+              </span>
+            </>
           )}
         </div>
 
         {carrito.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-12 text-center">
             <ShoppingCart className="h-10 w-10 text-muted-foreground/30" />
             <p className="text-sm text-muted-foreground">Toca un producto para agregarlo</p>
           </div>
         ) : (
           <>
-            <div className="space-y-3 p-4 md:flex-1 md:overflow-y-auto">
+            <div className="divide-y divide-border/50 md:flex-1 md:overflow-y-auto">
               {carrito.map((item) => (
-                <div key={item.productoId} className="space-y-1.5">
+                <div key={item.productoId} className="space-y-1.5 px-4 py-3">
                   <div className="flex items-center gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium leading-tight">{item.nombre}</p>
@@ -624,7 +629,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                       type="checkbox"
                       checked={item.fiado}
                       onChange={() => toggleFiadoItem(item.productoId)}
-                      className="h-3.5 w-3.5 rounded accent-primary"
+                      className="h-4 w-4 rounded accent-primary"
                     />
                     Fiar este producto
                   </label>
