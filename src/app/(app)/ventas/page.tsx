@@ -47,27 +47,30 @@ function labelDiaLargo(fechaYMD: string): string {
 
 function VentaRow({ venta, showDate = false }: { venta: Venta; showDate?: boolean }) {
   const metodoPago = (venta.metodos_pago as { nombre: string } | null)?.nombre ?? '—'
+  const cancelada = venta.estado === 'cancelada'
   return (
     <Link
       href={`/ventas/${venta.id}`}
       className={cn(
         'flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent',
-        venta.estado === 'cancelada' && 'opacity-50',
+        cancelada && 'opacity-40',
       )}
     >
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold">{fmtHora(venta.created_at)}</span>
           {showDate && (
             <span className="text-xs text-muted-foreground">{fmtFechaCorta(venta.created_at)}</span>
           )}
-          {venta.estado === 'cancelada' && (
-            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            {metodoPago}
+          </span>
+          {cancelada && (
+            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
               Cancelada
             </span>
           )}
         </div>
-        <p className="text-xs text-muted-foreground truncate">{metodoPago}</p>
       </div>
       <span className="font-bold shrink-0 num-income">{formatMXN(venta.total)}</span>
       <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -131,28 +134,33 @@ export default async function VentasPage({
           const completadasDia = ventasDia.filter((v) => v.estado === 'completada')
           const totalDia = completadasDia.reduce((s, v) => s + v.total, 0)
 
-          return (
-            <div key={dia} className="rounded-xl border bg-card shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 bg-muted/40">
-                <span className="text-sm font-semibold capitalize">{labelDiaLargo(dia)}</span>
-                {completadasDia.length > 0 ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {completadasDia.length} venta{completadasDia.length !== 1 ? 's' : ''}
-                    </span>
-                    <span className="font-bold text-sm num-income">{formatMXN(totalDia)}</span>
-                  </div>
-                ) : (
-                  <span className="text-xs text-muted-foreground">Sin ventas</span>
-                )}
+            const labelDia = labelDiaLargo(dia).replace(/^\w/, (c) => c.toUpperCase())
+
+          if (ventasDia.length === 0) {
+            return (
+              <div key={dia} className="flex items-center justify-between rounded-xl border bg-card/50 px-4 py-2.5">
+                <span className="text-sm font-medium text-muted-foreground">{labelDia}</span>
+                <span className="text-xs text-muted-foreground/60">Sin ventas</span>
               </div>
-              {ventasDia.length > 0 && (
-                <div className="divide-y">
-                  {ventasDia.map((venta) => (
-                    <VentaRow key={venta.id} venta={venta} />
-                  ))}
+            )
+          }
+
+          return (
+            <div key={dia} className="overflow-hidden rounded-xl border bg-card shadow-sm">
+              <div className="flex items-center justify-between px-4 py-3 bg-muted/40">
+                <span className="text-sm font-semibold">{labelDia}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {completadasDia.length} venta{completadasDia.length !== 1 ? 's' : ''}
+                  </span>
+                  <span className="font-bold text-sm num-income">{formatMXN(totalDia)}</span>
                 </div>
-              )}
+              </div>
+              <div className="divide-y">
+                {ventasDia.map((venta) => (
+                  <VentaRow key={venta.id} venta={venta} />
+                ))}
+              </div>
             </div>
           )
         })}
@@ -272,24 +280,25 @@ export default async function VentasPage({
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold">Historial de ventas</h1>
-
-      {/* Botones exportar / imprimir */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <a
-          href="/api/export/ventas"
-          className="ml-auto flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
-        >
-          <Download className="h-4 w-4" />
-          Excel
-        </a>
-        <Link
-          href={`/ventas/reporte?p=${periodo}${desde ? `&desde=${desde}` : ''}${hasta ? `&hasta=${hasta}` : ''}`}
-          className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
-        >
-          <Printer className="h-4 w-4" />
-          Imprimir
-        </Link>
+      {/* Header — título + acciones en una fila */}
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-black tracking-tight">Historial de ventas</h1>
+        <div className="flex items-center gap-2 shrink-0">
+          <a
+            href="/api/export/ventas"
+            className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            Excel
+          </a>
+          <Link
+            href={`/ventas/reporte?p=${periodo}${desde ? `&desde=${desde}` : ''}${hasta ? `&hasta=${hasta}` : ''}`}
+            className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
+          >
+            <Printer className="h-4 w-4" />
+            Imprimir
+          </Link>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -350,18 +359,18 @@ export default async function VentasPage({
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground">Total recaudado</p>
-          <p className="mt-1 text-xl font-bold num-income">{formatMXN(totalRecaudado)}</p>
+        <div className="card-soft p-4 sm:p-5">
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Total recaudado</p>
+          <p className="text-xl font-black tracking-tight num-income">{formatMXN(totalRecaudado)}</p>
         </div>
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground">Ventas</p>
-          <p className="mt-1 text-xl font-bold">{numVentas}</p>
+        <div className="card-soft p-4 sm:p-5">
+          <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Ventas</p>
+          <p className="text-xl font-black tracking-tight num-neutral">{numVentas}</p>
         </div>
         {numVentas > 0 && (
-          <div className="col-span-2 rounded-xl border bg-card p-4 shadow-sm sm:col-span-1">
-            <p className="text-xs text-muted-foreground">Ticket promedio</p>
-            <p className="mt-1 text-xl font-bold">
+          <div className="card-soft col-span-2 p-4 sm:col-span-1 sm:p-5">
+            <p className="eyebrow mb-1.5 text-[10px] sm:text-xs">Ticket promedio</p>
+            <p className="text-xl font-black tracking-tight num-neutral">
               {formatMXN(Math.round(totalRecaudado / numVentas))}
             </p>
           </div>
