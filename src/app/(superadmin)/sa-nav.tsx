@@ -4,15 +4,16 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
-  LayoutDashboard, Store, BarChart3, Palette, Megaphone, ArrowLeft,
+  LayoutDashboard, Users, FlaskConical, BarChart3, Palette, Megaphone, ArrowLeft,
 } from 'lucide-react'
 
 const NAV = [
-  { href: '/superadmin', label: 'Dashboard', Icon: LayoutDashboard },
-  { href: '/superadmin/negocios', label: 'Negocios', Icon: Store },
-  { href: '/superadmin/estadisticas', label: 'Estadísticas', Icon: BarChart3 },
-  { href: '/superadmin/temas', label: 'Temas', Icon: Palette },
-  { href: '/superadmin/anuncios', label: 'Anuncios', Icon: Megaphone },
+  { href: '/superadmin',            label: 'Dashboard',   Icon: LayoutDashboard },
+  { href: '/superadmin/clientes',   label: 'Clientes',    Icon: Users },
+  { href: '/superadmin/estudios',   label: 'Estudios',    Icon: FlaskConical },
+  { href: '/superadmin/estadisticas', label: 'Mercado',   Icon: BarChart3 },
+  { href: '/superadmin/temas',      label: 'Temas',       Icon: Palette },
+  { href: '/superadmin/anuncios',   label: 'Anuncios',    Icon: Megaphone },
 ]
 
 export default function SaNav() {

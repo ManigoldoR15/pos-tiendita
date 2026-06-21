@@ -73,3 +73,27 @@ export async function eliminarMetodoPagoAction(formData: FormData): Promise<void
   revalidatePath('/configuracion')
   revalidatePath('/pos')
 }
+
+export async function actualizarPerfilNegocioAction(
+  _prev: ConfigState,
+  formData: FormData,
+): Promise<ConfigState> {
+  const tipo_negocio = (formData.get('tipo_negocio') as string) || 'tiendita'
+  const ciudad = (formData.get('ciudad') as string)?.trim() || null
+  const estado_mx = (formData.get('estado_mx') as string) || null
+  const inscrito_sat = formData.get('inscrito_sat') === 'on'
+
+  const negocio = await getNegocioActual()
+  if (!negocio) return { error: 'No hay negocio activo' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('negocios')
+    .update({ tipo_negocio, ciudad, estado_mx, inscrito_sat })
+    .eq('id', negocio.id)
+
+  if (error) return { error: 'No se pudo guardar. Intenta de nuevo.' }
+
+  revalidatePath('/configuracion')
+  return { success: 'Perfil actualizado' }
+}

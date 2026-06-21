@@ -7,6 +7,7 @@ import FormNombre from './form-nombre'
 import FormMetodoPago from './form-metodo-pago'
 import FormEmpleado from './form-empleado'
 import FormMeta from './form-meta'
+import FormPerfilNegocio from './form-perfil-negocio'
 import { toggleMetodoPagoAction, eliminarMetodoPagoAction } from './actions'
 import { eliminarEmpleadoAction } from './actions-empleados'
 import SelectorRolEmpleado from './selector-rol-empleado'
@@ -59,6 +60,24 @@ export default async function ConfiguracionPage() {
           <FormNombre nombreActual={negocio.nombre} />
         </div>
       </section>
+
+      {/* — Perfil del negocio (solo dueño) ————————————————— */}
+      {rolActual === 'dueno' && (
+        <section className="card-soft p-5 space-y-4">
+          <div>
+            <h2 className="text-sm font-bold">Perfil del negocio</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Nos ayuda a entender mejor el mercado y ofrecerte mejores herramientas.
+            </p>
+          </div>
+          <FormPerfilNegocio
+            tipoActual={(negocio as { tipo_negocio?: string }).tipo_negocio ?? 'tiendita'}
+            ciudadActual={(negocio as { ciudad?: string | null }).ciudad ?? null}
+            estadoActual={(negocio as { estado_mx?: string | null }).estado_mx ?? null}
+            inscritoSat={(negocio as { inscrito_sat?: boolean }).inscrito_sat ?? false}
+          />
+        </section>
+      )}
 
       {/* — Métodos de pago ——————————————————— */}
       <section className="card-soft p-5 space-y-4">

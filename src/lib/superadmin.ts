@@ -6,12 +6,8 @@ export async function requireSuperAdmin() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data } = await supabase
-    .from('superadmins')
-    .select('user_id')
-    .eq('user_id', user.id)
-    .maybeSingle()
-
+  // es_superadmin() es SECURITY DEFINER — bypasea RLS para leer la tabla superadmins
+  const { data } = await supabase.rpc('es_superadmin')
   if (!data) redirect('/')
   return { user, supabase }
 }
@@ -20,10 +16,6 @@ export async function isSuperAdmin(): Promise<boolean> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return false
-  const { data } = await supabase
-    .from('superadmins')
-    .select('user_id')
-    .eq('user_id', user.id)
-    .maybeSingle()
+  const { data } = await supabase.rpc('es_superadmin')
   return !!data
 }
