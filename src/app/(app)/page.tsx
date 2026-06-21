@@ -15,6 +15,7 @@ import { hoyMX, addDaysMX, mexicoDayRange, TZ } from '@/lib/fecha'
 import { SalesChart, type DiaVenta } from '@/components/dashboard/sales-chart'
 import { getRolActual } from '@/lib/rol'
 import AvisarJefeForm from './avisar-jefe-form'
+import MensajeEmpleadosForm from './mensaje-empleados-form'
 
 export default async function DashboardPage({
   searchParams,
@@ -150,6 +151,15 @@ export default async function DashboardPage({
         })
       : null
 
+    // Mensajes recientes del jefe para este empleado
+    const { data: mensajesJefe } = await supabase
+      .from('notificaciones')
+      .select('id, titulo, mensaje, created_at, leido')
+      .eq('negocio_id', negocio.id)
+      .eq('tipo', 'mensaje_jefe')
+      .order('created_at', { ascending: false })
+      .limit(3)
+
     return (
       <div className="space-y-5">
         {/* Header */}
@@ -227,6 +237,41 @@ export default async function DashboardPage({
           <AccesoRapido href="/productos" Icon={Package} label="Inventario" sub="Existencias" />
           <AccesoRapido href="/compras" Icon={Receipt} label="Entrada" sub="Recibir mercancía" />
         </div>
+
+        {/* Mensajes del jefe */}
+        {(mensajesJefe ?? []).length > 0 && (
+          <div className="card-soft overflow-hidden">
+            <div className="flex items-center gap-2 border-b px-5 py-4">
+              <span className="text-lg">📣</span>
+              <span className="text-sm font-semibold">Avisos del jefe</span>
+              <span className="ml-auto text-xs text-muted-foreground">
+                {(mensajesJefe ?? []).filter((m) => !m.leido).length > 0
+                  ? `${(mensajesJefe ?? []).filter((m) => !m.leido).length} nuevo${(mensajesJefe ?? []).filter((m) => !m.leido).length > 1 ? 's' : ''}`
+                  : ''}
+              </span>
+            </div>
+            <div className="divide-y">
+              {(mensajesJefe ?? []).map((m) => (
+                <div
+                  key={m.id}
+                  className={`px-5 py-3 ${!m.leido ? 'bg-primary/[0.03]' : ''}`}
+                >
+                  <p className={`text-sm ${!m.leido ? 'font-semibold' : 'font-medium'}`}>
+                    {m.mensaje}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {new Date(m.created_at).toLocaleString('es-MX', {
+                      timeZone: TZ,
+                      weekday: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Avisar al jefe */}
         <AvisarJefeForm />
@@ -804,6 +849,9 @@ export default async function DashboardPage({
           </Link>
         </div>
       )}
+
+      {/* Mensaje a empleados */}
+      <MensajeEmpleadosForm />
 
       {/* Accesos de administración (solo dueño, no admin) */}
       {rol === 'dueno' || !rol ? (

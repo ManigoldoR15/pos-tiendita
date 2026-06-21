@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import {
   Bell, AlertTriangle, CalendarX, ClipboardList,
-  Wallet, HandCoins, MessageSquare, CheckCheck,
+  Wallet, HandCoins, MessageSquare, CheckCheck, Megaphone,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
@@ -30,6 +30,7 @@ const TIPO_META: Record<string, { Icon: React.FC<{ className?: string }>; color:
   fiado:            { Icon: HandCoins,     color: 'text-amber-500'},
   fiado_lista_negra:{ Icon: HandCoins,     color: 'text-red-600'  },
   mensaje_empleado: { Icon: MessageSquare, color: 'text-violet-500'},
+  mensaje_jefe:     { Icon: Megaphone,     color: 'text-blue-500'  },
 }
 
 function NotifRow({ notif }: { notif: Notif }) {
