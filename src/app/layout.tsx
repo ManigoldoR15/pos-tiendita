@@ -51,7 +51,7 @@ export default async function RootLayout({
     >
       <head>
         {temaStyle && (
-          <style dangerouslySetInnerHTML={{ __html: `:root{${temaStyle}}` }} />
+          <style dangerouslySetInnerHTML={{ __html: `:root{${temaStyle}}html.dark{${temaStyle}}` }} />
         )}
       </head>
       <body className="min-h-full flex flex-col">
