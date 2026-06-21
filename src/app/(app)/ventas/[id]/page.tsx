@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Printer } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
@@ -70,16 +70,25 @@ export default async function DetalleVentaPage({
         </Link>
       </div>
 
-      <div>
-        <h1 className="text-xl font-black tracking-tight">{fechaCompleta.charAt(0).toUpperCase() + fechaCompleta.slice(1)}</h1>
-        <div className="mt-1 flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">{metodoPago}</span>
-          {venta.estado === 'cancelada' && (
-            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
-              Cancelada
-            </span>
-          )}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-black tracking-tight">{fechaCompleta.charAt(0).toUpperCase() + fechaCompleta.slice(1)}</h1>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{metodoPago}</span>
+            {venta.estado === 'cancelada' && (
+              <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                Cancelada
+              </span>
+            )}
+          </div>
         </div>
+        <Link
+          href={`/ventas/${id}/ticket`}
+          className="flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent transition-colors"
+        >
+          <Printer className="h-4 w-4" />
+          Ticket
+        </Link>
       </div>
 
       {/* Items */}

@@ -8,7 +8,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { formatMXN } from '@/lib/dinero'
-import { getRango, PERIODOS, type Periodo } from '@/lib/periodo'
+import { getRango, getRangoPrevio, PERIODOS, type Periodo } from '@/lib/periodo'
 import { STOCK_MINIMO } from '@/lib/constantes'
 import { cn } from '@/lib/utils'
 import { hoyMX, addDaysMX, mexicoDayRange, TZ } from '@/lib/fecha'
@@ -44,11 +44,15 @@ export default async function DashboardPage({
   }).format(now)
 
   // ── Alertas compartidas (ambos roles las ven, son datos operacionales) ────
+  const hace30 = addDaysMX(hoy, -30)
+  const { start: start30 } = mexicoDayRange(hace30)
+
   const [
     { count: numStockBajo },
     { count: numLotesAlerta },
     { data: productosAlertaLista },
     { data: lotesAlertaLista },
+    { data: velocidadRaw },
   ] = await Promise.all([
     supabase
       .from('productos')
@@ -65,7 +69,7 @@ export default async function DashboardPage({
       .or(`fecha_caducidad.lte.${en3dias},estado_manual.eq.negro`),
     supabase
       .from('productos')
-      .select('nombre, existencias')
+      .select('id, nombre, existencias')
       .eq('negocio_id', negocio.id)
       .eq('activo', true)
       .lte('existencias', STOCK_MINIMO)
@@ -80,7 +84,25 @@ export default async function DashboardPage({
       .or(`fecha_caducidad.lte.${en3dias},estado_manual.eq.negro`)
       .order('fecha_caducidad', { ascending: true })
       .limit(4),
+    // Velocidad de venta últimos 30 días para calcular días de stock
+    supabase
+      .from('venta_items')
+      .select('producto_id, cantidad, ventas!inner(created_at, estado)')
+      .eq('ventas.estado', 'completada')
+      .gte('ventas.created_at', start30),
   ])
+
+  // Mapa producto_id → unidades/día
+  const velocidadMap = new Map<string, number>()
+  for (const vi of velocidadRaw ?? []) {
+    velocidadMap.set(
+      vi.producto_id,
+      (velocidadMap.get(vi.producto_id) ?? 0) + vi.cantidad,
+    )
+  }
+  for (const [pid, total] of velocidadMap) {
+    velocidadMap.set(pid, total / 30)
+  }
 
   // ── Nombre personal para saludo ──────────────────────────────────────────
   const { data: { user: currentUser } } = await supabase.auth.getUser()
@@ -216,18 +238,23 @@ export default async function DashboardPage({
               <h3 className="eyebrow">Para reabastecer hoy</h3>
             </div>
             <div className="divide-y">
-              {(productosAlertaLista ?? []).map((prod, i) => (
-                <div
-                  key={`s${i}`}
-                  className="flex items-center gap-3 bg-orange-50 dark:bg-orange-950/20 px-5 py-3"
-                >
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-orange-500" />
-                  <span className="flex-1 min-w-0 text-sm font-medium truncate">{prod.nombre}</span>
-                  <span className="shrink-0 text-xs font-semibold text-orange-600 dark:text-orange-400">
-                    Quedan {prod.existencias}
-                  </span>
-                </div>
-              ))}
+              {(productosAlertaLista ?? []).map((prod, i) => {
+                const vel = velocidadMap.get(prod.id) ?? 0
+                const diasStock = vel > 0 ? Math.round(prod.existencias / vel) : null
+                return (
+                  <div
+                    key={`s${i}`}
+                    className="flex items-center gap-3 bg-orange-50 dark:bg-orange-950/20 px-5 py-3"
+                  >
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-orange-500" />
+                    <span className="flex-1 min-w-0 text-sm font-medium truncate">{prod.nombre}</span>
+                    <span className="shrink-0 text-right text-xs font-semibold text-orange-600 dark:text-orange-400">
+                      {prod.existencias} u
+                      {diasStock !== null && <span className="block font-normal opacity-75">~{diasStock}d</span>}
+                    </span>
+                  </div>
+                )
+              })}
               {(lotesAlertaLista ?? []).map((lote, i) => {
                 const nombre = (lote.productos as unknown as { nombre: string } | null)?.nombre ?? 'Producto'
                 const etiqueta =
@@ -350,6 +377,22 @@ export default async function DashboardPage({
 
     supabase.from('locales').select('id, nombre').eq('negocio_id', negocio.id),
   ])
+
+  // ── Periodo previo (comparación) ─────────────────────────────────────────
+  const rangoPrevio = getRangoPrevio(periodo, desde, hasta)
+  const { data: ventasPrevio } = await supabase
+    .from('ventas')
+    .select('total')
+    .eq('negocio_id', negocio.id)
+    .eq('estado', 'completada')
+    .gte('created_at', rangoPrevio.start)
+    .lte('created_at', rangoPrevio.end)
+
+  const totalPrevio = (ventasPrevio ?? []).reduce((s, v) => s + v.total, 0)
+  const variacionPct =
+    totalPrevio > 0
+      ? Math.round(((((ventas?.reduce((s, v) => s + v.total, 0) ?? 0) - totalPrevio) / totalPrevio) * 100))
+      : null
 
   // ── Cálculos KPI ─────────────────────────────────────────────────────────
   const totalVentas = ventas?.reduce((s, v) => s + v.total, 0) ?? 0
@@ -489,7 +532,19 @@ export default async function DashboardPage({
 
       {/* Hero ventas */}
       <div className={cn('card-soft p-6 sm:p-7', numVentas > 0 && 'bg-primary/[0.04] dark:bg-primary/[0.08]')}>
-        <p className="eyebrow mb-3">{`Ventas — ${periodoLabel.toLowerCase()}`}</p>
+        <div className="mb-3 flex items-center gap-3">
+          <p className="eyebrow">{`Ventas — ${periodoLabel.toLowerCase()}`}</p>
+          {variacionPct !== null && (
+            <span className={cn(
+              'rounded-full px-2 py-0.5 text-xs font-bold',
+              variacionPct >= 0
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+            )}>
+              {variacionPct >= 0 ? '+' : ''}{variacionPct}% vs anterior
+            </span>
+          )}
+        </div>
         <p className={cn(
           'text-5xl font-black tracking-tight leading-none tabular-nums sm:text-6xl',
           numVentas === 0 ? 'opacity-25' : 'text-primary',

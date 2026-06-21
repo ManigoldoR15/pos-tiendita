@@ -43,16 +43,19 @@ export default async function CortePage() {
     .ilike('nombre', 'efectivo')
     .maybeSingle()
 
+  // (variable usada para calcular desglose más abajo, se agrupa en memoria)
+
   // Si hay corte abierto, cargar sus ventas
   let totalVentas = 0
   let numVentas = 0
   let ventasEfectivo = 0
   let montoEsperado = 0
+  let desgloseMedios: { nombre: string; total: number; num: number }[] = []
 
   if (corteAbierto) {
     const { data: ventas } = await supabase
       .from('ventas')
-      .select('total, metodo_pago_id')
+      .select('total, metodo_pago_id, metodos_pago(nombre)')
       .eq('corte_id', corteAbierto.id)
       .eq('estado', 'completada')
 
@@ -63,6 +66,17 @@ export default async function CortePage() {
         ?.filter((v) => v.metodo_pago_id === metodoPagoEfectivo?.id)
         .reduce((s, v) => s + v.total, 0) ?? 0
     montoEsperado = corteAbierto.monto_inicial + ventasEfectivo
+
+    // Agrupar por método de pago
+    const medioMap = new Map<string, { nombre: string; total: number; num: number }>()
+    for (const v of ventas ?? []) {
+      const nombre = (v.metodos_pago as unknown as { nombre: string } | null)?.nombre ?? 'Otro'
+      const entry = medioMap.get(nombre) ?? { nombre, total: 0, num: 0 }
+      entry.total += v.total
+      entry.num += 1
+      medioMap.set(nombre, entry)
+    }
+    desgloseMedios = [...medioMap.values()].sort((a, b) => b.total - a.total)
   }
 
   return (
@@ -87,9 +101,41 @@ export default async function CortePage() {
               value={formatMXN(totalVentas)}
               sub={`${numVentas} ${numVentas === 1 ? 'venta' : 'ventas'}`}
             />
-            <KpiCorte label="En efectivo" value={formatMXN(ventasEfectivo)} />
-            <KpiCorte label="Otros métodos" value={formatMXN(totalVentas - ventasEfectivo)} />
+            <KpiCorte
+              label="Efectivo en caja"
+              value={formatMXN(montoEsperado)}
+              sub="fondo + ventas efectivo"
+            />
+            <KpiCorte
+              label="Otros medios"
+              value={formatMXN(totalVentas - ventasEfectivo)}
+              sub="tarjeta, SPEI…"
+            />
           </div>
+
+          {/* Desglose por método de pago */}
+          {desgloseMedios.length > 0 && (
+            <div className="card-soft overflow-hidden">
+              <div className="border-b px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Desglose por método de pago
+                </p>
+              </div>
+              <div className="divide-y">
+                {desgloseMedios.map((m) => (
+                  <div key={m.nombre} className="flex items-center justify-between px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium">{m.nombre}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {m.num} {m.num === 1 ? 'venta' : 'ventas'}
+                      </p>
+                    </div>
+                    <p className="font-bold tabular-nums">{formatMXN(m.total)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Formulario de cierre */}
           <div className="card-soft p-5">

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, Printer } from 'lucide-react'
+import { ArrowLeft, Printer, MessageCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
@@ -94,14 +94,29 @@ export default async function DetalleClienteFiadoPage({
             </p>
           )}
         </div>
-        <button
-          onClick={undefined}
-          id="btn-imprimir-estado"
-          className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent transition-colors print:hidden"
-        >
-          <Printer className="h-4 w-4" />
-          Imprimir estado
-        </button>
+        <div className="flex items-center gap-2 print:hidden">
+          {cliente.telefono && deudaTotal > 0 && (
+            <a
+              href={`https://wa.me/52${cliente.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(
+                `Hola ${cliente.nombre}, te recordamos que tienes un saldo pendiente de ${formatMXN(deudaTotal)} con ${negocio.nombre}. ¿Cuándo puedes venir a liquidar? 🙏`,
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Cobrar por WhatsApp
+            </a>
+          )}
+          <button
+            onClick={undefined}
+            id="btn-imprimir-estado"
+            className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent transition-colors"
+          >
+            <Printer className="h-4 w-4" />
+            Imprimir
+          </button>
+        </div>
       </div>
 
       {/* Deuda total */}

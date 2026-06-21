@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
 
+const MARGEN_MINIMO_PCT = 15 // alerta cuando margen baja de este %
+
 export type CompraItem = {
   producto_id: string
   cantidad: number
@@ -51,6 +53,45 @@ export async function registrarCompraAction(
   })
 
   if (error) return error.message
+
+  // ── Alerta de margen comprimido ──────────────────────────────────────────
+  const productoIds = items.map((i) => i.producto_id)
+  const { data: prods } = await supabase
+    .from('productos')
+    .select('id, nombre, precio_venta')
+    .in('id', productoIds)
+    .eq('negocio_id', negocio.id)
+
+  const alertasMargen: string[] = []
+  for (const item of items) {
+    if (item.costo_unitario <= 0) continue
+    const prod = prods?.find((p) => p.id === item.producto_id)
+    if (!prod) continue
+
+    if (item.costo_unitario >= prod.precio_venta) {
+      alertasMargen.push(
+        `${prod.nombre}: costo mayor al precio de venta — vendiendo a pérdida`,
+      )
+    } else {
+      const margen = ((prod.precio_venta - item.costo_unitario) / prod.precio_venta) * 100
+      if (margen < MARGEN_MINIMO_PCT) {
+        alertasMargen.push(
+          `${prod.nombre}: margen comprimido al ${Math.round(margen)}%`,
+        )
+      }
+    }
+  }
+
+  if (alertasMargen.length > 0) {
+    await supabase.from('notificaciones').insert({
+      negocio_id: negocio.id,
+      tipo: 'ajuste_inventario',
+      titulo: `Margen bajo en ${alertasMargen.length} producto${alertasMargen.length > 1 ? 's' : ''}`,
+      mensaje: alertasMargen.join('. ') + '. Considera actualizar el precio de venta.',
+      url: '/productos',
+      leido: false,
+    })
+  }
 
   redirect(`/compras/${data}`)
 }
