@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
 import { ThemeProvider } from '@/components/theme-provider'
+import { createServiceClient } from '@/lib/supabase/service'
 import './globals.css'
 
 const geistSans = Geist({
@@ -28,12 +29,31 @@ export default async function RootLayout({
   const locale = await getLocale()
   const messages = await getMessages()
 
+  // Load active seasonal theme CSS vars (public table, no auth needed)
+  const admin = createServiceClient()
+  const { data: tema } = await admin
+    .from('temas_estacionales')
+    .select('css_vars')
+    .eq('activo', true)
+    .neq('slug', 'default')
+    .maybeSingle()
+
+  const cssVars = tema?.css_vars as Record<string, string> | null
+  const temaStyle = cssVars && Object.keys(cssVars).length > 0
+    ? Object.entries(cssVars).map(([k, v]) => `${k}:${v}`).join(';')
+    : null
+
   return (
     <html
       lang={locale}
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {temaStyle && (
+          <style dangerouslySetInnerHTML={{ __html: `:root{${temaStyle}}` }} />
+        )}
+      </head>
       <body className="min-h-full flex flex-col">
         {/* Anti-flash: apply saved theme before React hydrates */}
         <script

@@ -18,7 +18,7 @@ export default async function AppLayout({
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
   const en3dias = new Date(Date.now() + 3 * 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
 
-  const [{ count: stockBajo }, rol, { count: lotesAlerta }, { count: notifNoLeidas }] = await Promise.all([
+  const [{ count: stockBajo }, rol, { count: lotesAlerta }, { count: notifNoLeidas }, { data: temaActivo }] = await Promise.all([
     supabase
       .from('productos')
       .select('*', { count: 'exact', head: true })
@@ -38,10 +38,23 @@ export default async function AppLayout({
       .select('*', { count: 'exact', head: true })
       .eq('negocio_id', negocio.id)
       .eq('leido', false),
+    supabase
+      .from('temas_estacionales')
+      .select('emoji, banner_texto')
+      .eq('activo', true)
+      .neq('slug', 'default')
+      .maybeSingle(),
   ])
+
+  const banner = temaActivo as { emoji: string; banner_texto: string | null } | null
 
   return (
     <div className="min-h-screen bg-background">
+      {banner?.banner_texto && (
+        <div className="sticky top-0 z-50 bg-primary text-primary-foreground py-2 text-center text-sm font-semibold shadow-sm">
+          {banner.emoji} {banner.banner_texto}
+        </div>
+      )}
       <NavBar
         negocioNombre={negocio.nombre}
         stockBajo={stockBajo ?? 0}
