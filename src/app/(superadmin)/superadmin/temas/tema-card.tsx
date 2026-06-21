@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { Check, Edit2, X } from 'lucide-react'
 import { activarTemaAction, guardarBannerAction } from './actions'
 import { cn } from '@/lib/utils'
@@ -17,6 +18,7 @@ type Tema = {
 }
 
 export default function TemaCard({ tema, esActivo }: { tema: Tema; esActivo: boolean }) {
+  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [editBanner, setEditBanner] = useState(false)
   const [bannerText, setBannerText] = useState(tema.banner_texto ?? '')
@@ -25,6 +27,10 @@ export default function TemaCard({ tema, esActivo }: { tema: Tema; esActivo: boo
   function activar() {
     startTransition(async () => {
       await activarTemaAction(tema.slug)
+      // Fuerza recarga completa del CSS en todos los clientes
+      router.refresh()
+      // Hard reload para que el <style> inyectado en <head> se actualice
+      window.location.reload()
     })
   }
 

@@ -29,6 +29,25 @@ type ClienteRow = {
   last_sign_in: string | null
 }
 
+function calcHealthScore(c: ClienteRow): number {
+  let s = 0
+  if (c.dias_sin_venta <= 7)       s += 40
+  else if (c.dias_sin_venta <= 30) s += 20
+  if (c.num_productos >= 20)       s += 20
+  else if (c.num_productos >= 5)   s += 10
+  if (c.num_usuarios > 1)          s += 20
+  if (c.ciudad)                    s += 10
+  if (c.ventas_mes > 0)            s += 10
+  return Math.min(s, 100)
+}
+
+function healthBadge(score: number) {
+  if (score >= 80) return { emoji: '🟢', label: 'Thriving',  bg: 'bg-emerald-900/40 text-emerald-400' }
+  if (score >= 60) return { emoji: '🟡', label: 'Sano',      bg: 'bg-yellow-900/40 text-yellow-400' }
+  if (score >= 40) return { emoji: '🟠', label: 'En riesgo', bg: 'bg-orange-900/40 text-orange-400' }
+  return             { emoji: '🔴', label: 'Crítico',   bg: 'bg-red-900/40 text-red-400' }
+}
+
 function diasLabel(dias: number) {
   if (dias === 9999) return 'Sin ventas'
   if (dias === 0) return 'Hoy'
@@ -185,6 +204,7 @@ export default async function ClientesPage({
                 <th className="text-right px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Ventas mes</th>
                 <th className="text-center px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Actividad</th>
                 <th className="text-center px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell">SAT</th>
+                <th className="text-center px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Health</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -277,6 +297,22 @@ export default async function ClientesPage({
                         <Shield className="h-4 w-4 text-slate-600 inline" />
                       </span>
                     )}
+                  </td>
+
+                  {/* Health Score */}
+                  <td className="px-4 py-3.5 text-center">
+                    {(() => {
+                      const score = calcHealthScore(c)
+                      const { emoji, label, bg } = healthBadge(score)
+                      return (
+                        <span
+                          title={`${label} (${score}/100)`}
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${bg}`}
+                        >
+                          {emoji} {score}
+                        </span>
+                      )
+                    })()}
                   </td>
 
                   {/* Acción */}

@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
 import { ThemeProvider } from '@/components/theme-provider'
 import { createServiceClient } from '@/lib/supabase/service'
+import { unstable_noStore as noStore } from 'next/cache'
 import './globals.css'
 
 const geistSans = Geist({
@@ -26,6 +27,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  noStore() // el tema puede cambiar en cualquier momento — no cachear este layout
   const locale = await getLocale()
   const messages = await getMessages()
 
