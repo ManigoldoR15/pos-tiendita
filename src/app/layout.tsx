@@ -5,6 +5,7 @@ import { getLocale, getMessages } from 'next-intl/server'
 import { ThemeProvider } from '@/components/theme-provider'
 import { createServiceClient } from '@/lib/supabase/service'
 import { unstable_noStore as noStore } from 'next/cache'
+import SeasonalDecor from '@/components/seasonal-decor'
 import './globals.css'
 
 const geistSans = Geist({
@@ -31,15 +32,16 @@ export default async function RootLayout({
   const locale = await getLocale()
   const messages = await getMessages()
 
-  // Load active seasonal theme CSS vars (public table, no auth needed)
+  // Load active seasonal theme (public table, no auth needed)
   const admin = createServiceClient()
   const { data: tema } = await admin
     .from('temas_estacionales')
-    .select('css_vars')
+    .select('slug, css_vars')
     .eq('activo', true)
     .neq('slug', 'default')
     .maybeSingle()
 
+  const temaSlug = tema?.slug ?? null
   const cssVars = tema?.css_vars as Record<string, string> | null
   const temaStyle = cssVars && Object.keys(cssVars).length > 0
     ? Object.entries(cssVars).map(([k, v]) => `${k}:${v}`).join(';')
@@ -63,6 +65,7 @@ export default async function RootLayout({
             __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})()`,
           }}
         />
+        <SeasonalDecor slug={temaSlug} />
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>
             {children}
