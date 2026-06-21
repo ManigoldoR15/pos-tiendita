@@ -5,7 +5,10 @@ import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
 
-export async function mensajeAEmpleadosAction(mensaje: string) {
+export async function mensajeAEmpleadosAction(
+  mensaje: string,
+  destinatario_id: string | null = null,   // null = broadcast a todos
+) {
   if (!mensaje?.trim()) return { error: 'Mensaje vacío' }
 
   const rol = await getRolActual()
@@ -21,11 +24,12 @@ export async function mensajeAEmpleadosAction(mensaje: string) {
   const { error } = await supabase.from('notificaciones').insert({
     negocio_id: negocio.id,
     tipo: 'mensaje_jefe',
-    titulo: 'Mensaje del jefe',
+    titulo: destinatario_id ? 'Mensaje directo del jefe' : 'Mensaje del jefe',
     mensaje: mensaje.trim(),
     url: '/',
     leido: false,
     creado_por: user.id,
+    destinatario_id: destinatario_id || null,
   })
 
   if (error) return { error: error.message }

@@ -151,14 +151,15 @@ export default async function DashboardPage({
         })
       : null
 
-    // Mensajes recientes del jefe para este empleado
+    // Mensajes del jefe: broadcasts (destinatario_id null) + mensajes directos a este empleado
     const { data: mensajesJefe } = await supabase
       .from('notificaciones')
-      .select('id, titulo, mensaje, created_at, leido')
+      .select('id, titulo, mensaje, created_at, leido, destinatario_id')
       .eq('negocio_id', negocio.id)
       .eq('tipo', 'mensaje_jefe')
+      .or(`destinatario_id.is.null,destinatario_id.eq.${user?.id ?? 'none'}`)
       .order('created_at', { ascending: false })
-      .limit(3)
+      .limit(5)
 
     return (
       <div className="space-y-5">
@@ -256,9 +257,16 @@ export default async function DashboardPage({
                   key={m.id}
                   className={`px-5 py-3 ${!m.leido ? 'bg-primary/[0.03]' : ''}`}
                 >
-                  <p className={`text-sm ${!m.leido ? 'font-semibold' : 'font-medium'}`}>
-                    {m.mensaje}
-                  </p>
+                  <div className="flex items-start gap-2">
+                    <p className={`flex-1 text-sm ${!m.leido ? 'font-semibold' : 'font-medium'}`}>
+                      {m.mensaje}
+                    </p>
+                    {m.destinatario_id && (
+                      <span className="shrink-0 rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                        Solo para ti
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {new Date(m.created_at).toLocaleString('es-MX', {
                       timeZone: TZ,
@@ -472,6 +480,15 @@ export default async function DashboardPage({
   type MiembroInfo = { user_id: string; email: string; rol: string }
   const cajasAbiertas = (cajas ?? []) as CajaAbierta[]
   const miembrosMap = new Map((miembros as MiembroInfo[] ?? []).map((m) => [m.user_id, m.email]))
+
+  // Lista de empleados para el selector de mensajes directos
+  const listaEmpleados = (miembros as MiembroInfo[] ?? [])
+    .filter((m) => m.rol === 'empleado')
+    .map((m) => ({
+      user_id: m.user_id,
+      email: m.email,
+      nombre: m.email.split('@')[0].split(/[._-]/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+    }))
   const localesMap = new Map(
     (localesList ?? []).map((l: { id: string; nombre: string }) => [l.id, l.nombre]),
   )
@@ -851,7 +868,7 @@ export default async function DashboardPage({
       )}
 
       {/* Mensaje a empleados */}
-      <MensajeEmpleadosForm />
+      <MensajeEmpleadosForm empleados={listaEmpleados} />
 
       {/* Accesos de administración (solo dueño, no admin) */}
       {rol === 'dueno' || !rol ? (

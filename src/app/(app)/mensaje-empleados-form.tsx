@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Send, Check, Megaphone } from 'lucide-react'
+import { Send, Check, Megaphone, User, Users } from 'lucide-react'
 import { mensajeAEmpleadosAction } from './actions-mensaje-empleados'
+import { cn } from '@/lib/utils'
+
+type Empleado = { user_id: string; email: string; nombre: string }
 
 const MENSAJES_RAPIDOS = [
   'Cierra a las 6pm hoy',
@@ -11,32 +14,81 @@ const MENSAJES_RAPIDOS = [
   'Espera visita del proveedor',
 ]
 
-export default function MensajeEmpleadosForm() {
-  const [enviado, setEnviado] = useState(false)
+export default function MensajeEmpleadosForm({ empleados }: { empleados: Empleado[] }) {
+  const [destinatario, setDestinatario] = useState<string | null>(null) // null = todos
   const [custom, setCustom] = useState('')
+  const [enviado, setEnviado] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   function enviar(msg: string) {
     if (!msg.trim()) return
     startTransition(async () => {
-      await mensajeAEmpleadosAction(msg)
+      await mensajeAEmpleadosAction(msg, destinatario)
       setEnviado(true)
       setCustom('')
       setTimeout(() => setEnviado(false), 3000)
     })
   }
 
+  const destLabel = destinatario
+    ? (empleados.find((e) => e.user_id === destinatario)?.nombre ?? 'Empleado')
+    : 'Todos los empleados'
+
   return (
     <div className="card-soft overflow-hidden">
+      {/* Header */}
       <div className="flex items-center gap-2 border-b px-5 py-4">
         <Megaphone className="h-4 w-4 shrink-0 text-muted-foreground" />
         <span className="text-sm font-semibold">Mensaje a empleados</span>
         {enviado && (
           <span className="ml-auto flex items-center gap-1 text-xs font-medium text-emerald-600">
-            <Check className="h-3.5 w-3.5" /> Enviado
+            <Check className="h-3.5 w-3.5" /> Enviado a {destLabel}
           </span>
         )}
       </div>
+
+      {/* Selector de destinatario */}
+      <div className="border-b px-4 py-3">
+        <p className="mb-2 text-xs font-medium text-muted-foreground">Para:</p>
+        <div className="flex flex-wrap gap-2">
+          {/* Opción "Todos" */}
+          <button
+            onClick={() => setDestinatario(null)}
+            className={cn(
+              'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+              destinatario === null
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'hover:bg-accent',
+            )}
+          >
+            <Users className="h-3 w-3" />
+            Todos
+          </button>
+
+          {/* Un botón por empleado */}
+          {empleados.map((e) => (
+            <button
+              key={e.user_id}
+              onClick={() => setDestinatario(e.user_id)}
+              className={cn(
+                'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                destinatario === e.user_id
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'hover:bg-accent',
+              )}
+            >
+              <User className="h-3 w-3" />
+              {e.nombre}
+            </button>
+          ))}
+
+          {empleados.length === 0 && (
+            <span className="text-xs text-muted-foreground">Sin empleados registrados</span>
+          )}
+        </div>
+      </div>
+
+      {/* Mensajes rápidos */}
       <div className="grid grid-cols-2 gap-2 p-4">
         {MENSAJES_RAPIDOS.map((msg) => (
           <button
@@ -49,12 +101,14 @@ export default function MensajeEmpleadosForm() {
           </button>
         ))}
       </div>
+
+      {/* Campo libre */}
       <div className="border-t px-4 pb-4 pt-3">
         <div className="flex gap-2">
           <input
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
-            placeholder="Escribir aviso personalizado..."
+            placeholder={`Escribir mensaje para ${destLabel.toLowerCase()}…`}
             disabled={isPending}
             className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
             onKeyDown={(e) => {
