@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
   Home, Package, Tag, ShoppingCart, Receipt, Wallet, ClipboardList,
   LogOut, Settings, Store, Truck, BarChart2, ChevronDown, Menu, X,
-  CalendarCheck, HandCoins, Scale, Clock, Bell, FileText, ShoppingBag,
+  CalendarCheck, HandCoins, Scale, Clock, Bell, FileText, ShoppingBag, ShieldCheck,
 } from 'lucide-react'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -197,12 +197,14 @@ export default function NavBar({
   lotesAlerta = 0,
   notifNoLeidas = 0,
   rol,
+  esSuperAdmin = false,
 }: {
   negocioNombre: string
   stockBajo?: number
   lotesAlerta?: number
   notifNoLeidas?: number
   rol?: RolNegocio | null
+  esSuperAdmin?: boolean
 }) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -289,6 +291,16 @@ export default function NavBar({
 
         {/* Right actions — desktop */}
         <div className="hidden md:flex shrink-0 items-center gap-1">
+          {esSuperAdmin && (
+            <Link
+              href="/superadmin"
+              title="Panel Super Admin"
+              className="flex items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-500/10 px-2.5 py-1.5 text-xs font-bold text-violet-500 transition-colors hover:bg-violet-500/20"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Admin
+            </Link>
+          )}
           <ThemeToggle />
 
           {/* Empleado: botón avisar al jefe */}
@@ -395,7 +407,17 @@ export default function NavBar({
               </Link>
             )
           })}
-          <div className="pt-2 border-t">
+          <div className="pt-2 border-t space-y-1">
+            {esSuperAdmin && (
+              <Link
+                href="/superadmin"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2.5 text-sm font-bold text-violet-500 transition-colors hover:bg-violet-500/20"
+              >
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                Panel Super Admin
+              </Link>
+            )}
             <form action={logoutAction}>
               <button type="submit" className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
                 <LogOut className="h-4 w-4 shrink-0" />

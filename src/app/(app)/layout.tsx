@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { STOCK_MINIMO } from '@/lib/constantes'
 import NavBar from '@/components/nav-bar'
 import { getRolActual } from '@/lib/rol'
+import { isSuperAdmin } from '@/lib/superadmin'
 
 export default async function AppLayout({
   children,
@@ -18,7 +19,7 @@ export default async function AppLayout({
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
   const en3dias = new Date(Date.now() + 3 * 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
 
-  const [{ count: stockBajo }, rol, { count: lotesAlerta }, { count: notifNoLeidas }, { data: temaActivo }] = await Promise.all([
+  const [{ count: stockBajo }, rol, { count: lotesAlerta }, { count: notifNoLeidas }, { data: temaActivo }, superAdmin] = await Promise.all([
     supabase
       .from('productos')
       .select('*', { count: 'exact', head: true })
@@ -44,6 +45,7 @@ export default async function AppLayout({
       .eq('activo', true)
       .neq('slug', 'default')
       .maybeSingle(),
+    isSuperAdmin(),
   ])
 
   const banner = temaActivo as { emoji: string; banner_texto: string | null } | null
@@ -61,6 +63,7 @@ export default async function AppLayout({
         lotesAlerta={lotesAlerta ?? 0}
         notifNoLeidas={notifNoLeidas ?? 0}
         rol={rol}
+        esSuperAdmin={superAdmin}
       />
       <main className="mx-auto max-w-6xl px-4 py-6 print:max-w-none print:px-8 print:py-4">{children}</main>
     </div>
