@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { hoyMX, addDaysMX, mexicoDayRange, TZ } from '@/lib/fecha'
 import { SalesChart, type DiaVenta } from '@/components/dashboard/sales-chart'
 import { getRolActual } from '@/lib/rol'
+import AvisarJefeForm from './avisar-jefe-form'
 
 export default async function DashboardPage({
   searchParams,
@@ -81,11 +82,20 @@ export default async function DashboardPage({
       .limit(4),
   ])
 
+  // ── Nombre personal para saludo ──────────────────────────────────────────
+  const { data: { user: currentUser } } = await supabase.auth.getUser()
+  const emailRaw = currentUser?.email?.split('@')[0] ?? ''
+  const nombreDisplay = emailRaw
+    ? emailRaw.split(/[._-]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    : negocio.nombre
+  const horaNum = parseInt(horaActual.split(':')[0])
+  const saludoTexto = horaNum < 12 ? 'Buenos días' : horaNum < 19 ? 'Buenas tardes' : 'Buenas noches'
+
   // ═══════════════════════════════════════════════════════════════════════════
   // VISTA EMPLEADO — sin datos financieros del negocio
   // ═══════════════════════════════════════════════════════════════════════════
   if (!isDuenoOrAdmin) {
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = currentUser
 
     // Turno activo del empleado
     const { data: corteActual } = user
@@ -125,11 +135,11 @@ export default async function DashboardPage({
           <p className="mb-1 text-xs font-medium uppercase tracking-widest text-primary/70">
             {fechaLabel} · {horaActual}
           </p>
-          <h1 className="text-2xl font-black tracking-tight">{negocio.nombre}</h1>
+          <h1 className="text-2xl font-black tracking-tight">Hola, {nombreDisplay}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {corteActual
-              ? `Turno abierto desde las ${horaApertura}`
-              : 'Sin turno abierto — abre caja para empezar'}
+              ? `Caja abierta desde las ${horaApertura} · ${negocio.nombre}`
+              : `Sin turno abierto — ${negocio.nombre}`}
           </p>
         </div>
 
@@ -195,6 +205,9 @@ export default async function DashboardPage({
           <AccesoRapido href="/productos" Icon={Package} label="Inventario" sub="Existencias" />
           <AccesoRapido href="/compras" Icon={Receipt} label="Entrada" sub="Recibir mercancía" />
         </div>
+
+        {/* Avisar al jefe */}
+        <AvisarJefeForm />
 
         {/* Para reabastecer hoy */}
         {((numStockBajo ?? 0) > 0 || (numLotesAlerta ?? 0) > 0) && (
@@ -411,8 +424,8 @@ export default async function DashboardPage({
           <p className="mb-1 text-xs font-medium uppercase tracking-widest text-muted-foreground">
             {fechaLabel} · {horaActual}
           </p>
-          <h1 className="text-3xl font-black tracking-tight">{negocio.nombre}</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">Resumen de tu negocio</p>
+          <h1 className="text-2xl font-black tracking-tight">{saludoTexto}, {nombreDisplay}</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">Resumen de {negocio.nombre}</p>
         </div>
         <div className="flex items-center gap-2 self-start pt-1">
           <Link
@@ -474,19 +487,24 @@ export default async function DashboardPage({
         )}
       </div>
 
-      {/* 4 KPIs */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <KpiCard
-          label={`Ventas — ${periodoLabel.toLowerCase()}`}
-          value={formatMXN(totalVentas)}
-          sub={
-            numVentas > 0
-              ? `${numVentas} ${numVentas === 1 ? 'venta' : 'ventas'} · ticket ${formatMXN(ticketPromedio)}`
-              : 'Sin ventas en este periodo'
-          }
-          accent="primary"
-          empty={numVentas === 0}
-        />
+      {/* Hero ventas */}
+      <div className={cn('card-soft p-6 sm:p-7', numVentas > 0 && 'bg-primary/[0.04] dark:bg-primary/[0.08]')}>
+        <p className="eyebrow mb-3">{`Ventas — ${periodoLabel.toLowerCase()}`}</p>
+        <p className={cn(
+          'text-5xl font-black tracking-tight leading-none tabular-nums sm:text-6xl',
+          numVentas === 0 ? 'opacity-25' : 'text-primary',
+        )}>
+          {formatMXN(totalVentas)}
+        </p>
+        <p className="mt-2.5 text-sm text-muted-foreground">
+          {numVentas > 0
+            ? `${numVentas} ${numVentas === 1 ? 'venta' : 'ventas'} · ticket promedio ${formatMXN(ticketPromedio)}`
+            : 'Sin ventas en este periodo'}
+        </p>
+      </div>
+
+      {/* 3 KPIs secundarios */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <KpiCard
           label="Ganancia bruta"
           value={formatMXN(gananciaBruta)}

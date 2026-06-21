@@ -48,25 +48,25 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* ─── LIGHT MODE — Verde Mexicano Profundo ─── */
+/* ─── LIGHT MODE — Verde Mexicano Profundo (paleta suave) ─── */
 :root {
-  --background: oklch(0.98 0.004 148);
+  --background: oklch(0.95 0.012 148);   /* sage cream — menos brillo que blanco puro */
   --foreground: oklch(0.15 0.015 148);
-  --card: oklch(1 0 0);
+  --card: oklch(0.98 0.005 148);          /* casi blanco con tinte verde suave */
   --card-foreground: oklch(0.15 0.015 148);
-  --popover: oklch(1 0 0);
+  --popover: oklch(0.98 0.005 148);
   --popover-foreground: oklch(0.15 0.015 148);
   --primary: oklch(0.38 0.13 148);
   --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.93 0.03 148);
+  --secondary: oklch(0.91 0.025 148);
   --secondary-foreground: oklch(0.25 0.07 148);
-  --muted: oklch(0.95 0.015 148);
-  --muted-foreground: oklch(0.52 0.025 148);
-  --accent: oklch(0.91 0.05 148);
+  --muted: oklch(0.91 0.016 148);
+  --muted-foreground: oklch(0.50 0.025 148);
+  --accent: oklch(0.88 0.045 148);
   --accent-foreground: oklch(0.25 0.07 148);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.88 0.02 148);
-  --input: oklch(0.88 0.02 148);
+  --border: oklch(0.85 0.020 148);
+  --input: oklch(0.85 0.020 148);
   --ring: oklch(0.38 0.13 148);
   --radius: 0.75rem;
 
@@ -77,13 +77,13 @@
   --chart-4: oklch(0.60 0.20 210);
   --chart-5: oklch(0.65 0.22 30);
 
-  --sidebar: oklch(0.95 0.015 148);
+  --sidebar: oklch(0.91 0.015 148);
   --sidebar-foreground: oklch(0.15 0.015 148);
   --sidebar-primary: oklch(0.38 0.13 148);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.91 0.05 148);
+  --sidebar-accent: oklch(0.88 0.045 148);
   --sidebar-accent-foreground: oklch(0.25 0.07 148);
-  --sidebar-border: oklch(0.88 0.02 148);
+  --sidebar-border: oklch(0.85 0.020 148);
   --sidebar-ring: oklch(0.38 0.13 148);
 }
 
