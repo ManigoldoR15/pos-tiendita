@@ -401,7 +401,12 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
       setUltimaVentaId(result.venta_id)
       setMuestreoFormVisible(muestreoPeriodoId !== null)
       setVentaExitosa(true)
-      setTimeout(() => setVentaExitosa(false), 8000)
+      // Solo auto-cierra si NO hay formulario de muestreo.
+      // Cuando hay muestreo, el onClose del formulario cierra ventaExitosa
+      // para evitar que el timer desmonte el form mientras el usuario lo llena.
+      if (!muestreoPeriodoId) {
+        setTimeout(() => setVentaExitosa(false), 8000)
+      }
     }
   }
 
@@ -427,7 +432,10 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
           <MuestreoForm
             periodoId={muestreoPeriodoId}
             ventaId={ultimaVentaId}
-            onClose={() => setMuestreoFormVisible(false)}
+            onClose={() => {
+              setMuestreoFormVisible(false)
+              setVentaExitosa(false)
+            }}
           />
         )}
       </>
