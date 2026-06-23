@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { getRolActual } from '@/lib/rol'
 import { hoyMX } from '@/lib/fecha'
 import { seedCategoriasIfEmpty } from '../../caducidad/actions'
 import ProductoForm from '../producto-form'
@@ -9,6 +10,9 @@ import { crearProductoAction } from '../actions'
 export default async function NuevoProductoPage() {
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
+
+  const rol = await getRolActual()
+  if (rol === 'empleado') redirect('/')
 
   await seedCategoriasIfEmpty(negocio!.id)
 

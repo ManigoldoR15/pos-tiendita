@@ -33,6 +33,7 @@ type ProductoFormProps = {
     codigo_barras?: string | null
     activo?: boolean
     unidad_medida?: string
+    tara?: number | null
   }
 }
 
@@ -141,6 +142,32 @@ export default function ProductoForm({
             </p>
           )}
         </div>
+
+        {/* Tara del envase — solo para productos a granel */}
+        {unidadMedida !== 'pieza' && (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">
+              Tara del envase ({unidadMedida}) <span className="text-muted-foreground font-normal">— opcional</span>
+            </label>
+            <div className="relative">
+              <input
+                name="tara"
+                type="number"
+                min="0"
+                step={unidadMedida === 'g' || unidadMedida === 'ml' ? '1' : '0.001'}
+                defaultValue={inicial.tara != null ? String(inicial.tara) : ''}
+                placeholder="0.000"
+                className="w-full rounded-lg border border-input bg-background px-3 py-3 pr-14 text-base outline-none focus:ring-2 focus:ring-ring"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                {unidadMedida}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Peso del envase vacío. Con tara, en el cuadre puedes pesar el bote lleno y el sistema calcula el neto.
+            </p>
+          </div>
+        )}
 
         {/* Código de barras */}
         <div className="flex flex-col gap-1.5">

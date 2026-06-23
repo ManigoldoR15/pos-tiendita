@@ -14,6 +14,8 @@ export type ClienteSugerido = {
   telefono: string | null
   en_lista_negra: boolean
   motivo_lista_negra: string | null
+  estatus: 'verde' | 'amarillo' | 'rojo' | null
+  estatus_nota: string | null
 }
 
 export async function registrarVentaAction(params: {
@@ -76,7 +78,7 @@ export async function buscarClientesAction(q: string): Promise<ClienteSugerido[]
   const supabase = await createClient()
   const { data } = await supabase
     .from('clientes')
-    .select('id, nombre, telefono, en_lista_negra, motivo_lista_negra')
+    .select('id, nombre, telefono, en_lista_negra, motivo_lista_negra, estatus, estatus_nota')
     .eq('negocio_id', negocio.id)
     .eq('activo', true)
     .or(`nombre.ilike.%${term}%,telefono.ilike.%${term}%`)
@@ -84,6 +86,24 @@ export async function buscarClientesAction(q: string): Promise<ClienteSugerido[]
     .limit(6)
 
   return data ?? []
+}
+
+export async function getPreciosEspecialesPOSAction(
+  clienteId: string,
+): Promise<Record<string, { tipo: 'porcentaje' | 'monto_fijo'; valor: number }>> {
+  const negocio = await getNegocioActual()
+  if (!negocio) return {}
+
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('precios_especiales_cliente')
+    .select('producto_id, tipo, valor')
+    .eq('negocio_id', negocio.id)
+    .eq('cliente_id', clienteId)
+
+  return Object.fromEntries(
+    (data ?? []).map((r) => [r.producto_id, { tipo: r.tipo as 'porcentaje' | 'monto_fijo', valor: r.valor }]),
+  )
 }
 
 export async function crearClienteAction(
@@ -101,9 +121,9 @@ export async function crearClienteAction(
       nombre: nombre.trim(),
       telefono: telefono?.trim() || null,
     })
-    .select('id, nombre, telefono, en_lista_negra, motivo_lista_negra')
+    .select('id, nombre, telefono, en_lista_negra, motivo_lista_negra, estatus, estatus_nota')
     .single()
 
   if (error) return { error: error.message }
-  return data
+  return data as ClienteSugerido
 }

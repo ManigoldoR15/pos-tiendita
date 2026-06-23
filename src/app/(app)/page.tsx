@@ -30,7 +30,7 @@ export default async function DashboardPage({
 
   const supabase = await createClient()
   const rol = await getRolActual()
-  const isDuenoOrAdmin = !rol || rol === 'dueno' || rol === 'administrador'
+  const isDuenoOrAdmin = !rol || rol === 'dueno'
 
   const hoy = hoyMX()
   const en3dias = addDaysMX(hoy, 3)

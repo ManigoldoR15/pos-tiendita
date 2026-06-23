@@ -2,16 +2,18 @@
 
 import { useActionState, useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Plus, Trash2, ShoppingBag } from 'lucide-react'
+import { Search, Plus, Trash2, ShoppingBag, Scale } from 'lucide-react'
 import { registrarCompraAction } from '@/app/actions/compras'
 import { formatMXN, textoCentavos, centavosATexto } from '@/lib/dinero'
 import { cn } from '@/lib/utils'
+import { calcPesoNeto, stepTara } from '@/lib/tara'
 
 type Producto = {
   id: string
   nombre: string
   precio_costo: number | null
   unidad_medida: string
+  tara: number | null
 }
 
 type Proveedor = {
@@ -23,6 +25,8 @@ type LineaCompra = {
   producto: Producto
   cantidad: number
   costo_unitario: number
+  usarTara: boolean
+  pesoBruto: string
 }
 
 export default function CompraForm({
@@ -82,6 +86,8 @@ export default function CompraForm({
           producto: p,
           cantidad: 1,
           costo_unitario: p.precio_costo ?? 0,
+          usarTara: false,
+          pesoBruto: '',
         },
       ])
       setBusqueda('')
@@ -107,6 +113,29 @@ export default function CompraForm({
 
   const quitarLinea = (idx: number) => {
     setLineas((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  const toggleTaraLinea = (idx: number) => {
+    setLineas((prev) =>
+      prev.map((l, i) => {
+        if (i !== idx) return l
+        const siguiente = !l.usarTara
+        return { ...l, usarTara: siguiente, pesoBruto: '', cantidad: siguiente ? 0 : l.cantidad }
+      }),
+    )
+  }
+
+  const setPesoBrutoLinea = (idx: number, valor: string) => {
+    setLineas((prev) =>
+      prev.map((l, i) => {
+        if (i !== idx) return l
+        const bruto = parseFloat(valor)
+        const neto = !isNaN(bruto) && l.producto.tara != null
+          ? calcPesoNeto(bruto, l.producto.tara)
+          : 0
+        return { ...l, pesoBruto: valor, cantidad: neto }
+      }),
+    )
   }
 
   const itemsPayload = JSON.stringify(
@@ -230,7 +259,24 @@ export default function CompraForm({
                   {/* Nombre */}
                   <div className="min-w-0 sm:col-span-1">
                     <p className="truncate text-sm font-medium">{l.producto.nombre}</p>
-                    <p className="text-xs text-muted-foreground">{l.producto.unidad_medida}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground">{l.producto.unidad_medida}</p>
+                      {l.producto.unidad_medida !== 'pieza' && l.producto.tara != null && l.producto.tara > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleTaraLinea(idx)}
+                          className={cn(
+                            'flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border transition-colors',
+                            l.usarTara
+                              ? 'bg-primary/10 border-primary/30 text-primary'
+                              : 'border-border text-muted-foreground hover:border-primary/30 hover:text-primary',
+                          )}
+                        >
+                          <Scale className="h-2.5 w-2.5" />
+                          Tara {l.usarTara ? 'activa' : `(${l.producto.tara} ${l.producto.unidad_medida})`}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Eliminar (mobile: top-right) */}
@@ -245,14 +291,34 @@ export default function CompraForm({
                   {/* Cantidad */}
                   <div className="flex items-center gap-1.5 sm:col-start-2">
                     <label className="text-xs text-muted-foreground sm:hidden">Cant:</label>
-                    <input
-                      type="number"
-                      min="0.001"
-                      step={l.producto.unidad_medida === 'pieza' ? '1' : '0.001'}
-                      value={l.cantidad}
-                      onChange={(e) => actualizarLinea(idx, 'cantidad', e.target.value)}
-                      className="w-full rounded-lg border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
+                    {l.usarTara && l.producto.tara != null && l.producto.tara > 0 ? (
+                      <div className="w-full space-y-1">
+                        <input
+                          type="number"
+                          min="0"
+                          step={stepTara(l.producto.unidad_medida)}
+                          placeholder="Bruto"
+                          value={l.pesoBruto}
+                          onChange={(e) => setPesoBrutoLinea(idx, e.target.value)}
+                          className="w-full rounded-lg border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          title={`Peso bruto del bote (tara: ${l.producto.tara} ${l.producto.unidad_medida})`}
+                        />
+                        {l.pesoBruto && (
+                          <p className="text-[10px] text-primary font-medium">
+                            Neto: {l.cantidad.toLocaleString('es-MX', { maximumFractionDigits: 3 })} {l.producto.unidad_medida}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <input
+                        type="number"
+                        min="0.001"
+                        step={l.producto.unidad_medida === 'pieza' ? '1' : '0.001'}
+                        value={l.cantidad}
+                        onChange={(e) => actualizarLinea(idx, 'cantidad', e.target.value)}
+                        className="w-full rounded-lg border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    )}
                   </div>
 
                   {/* Costo unitario */}

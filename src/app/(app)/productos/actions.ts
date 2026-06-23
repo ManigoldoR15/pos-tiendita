@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { getRolActual } from '@/lib/rol'
 import { textoCentavos } from '@/lib/dinero'
 
 export type ProductoState = { error: string } | null
@@ -30,6 +31,7 @@ function validarFormProducto(formData: FormData): {
   codigo_barras: string | null
   activo: boolean
   unidad_medida: string
+  tara: number | null
 } | { error: string } {
   const nombre = (formData.get('nombre') as string)?.trim()
   if (!nombre) return { error: 'Escribe el nombre del producto' }
@@ -51,7 +53,18 @@ function validarFormProducto(formData: FormData): {
     return { error: 'Unidad de medida inválida' }
   }
 
-  return { nombre, precio_venta, precio_costo, categoria_id, nueva_categoria_nombre, codigo_barras, activo, unidad_medida }
+  // Tara: solo aplica a granel, debe ser >= 0
+  let tara: number | null = null
+  if (unidad_medida !== 'pieza') {
+    const taraTexto = (formData.get('tara') as string)?.trim()
+    if (taraTexto) {
+      const taraNum = parseFloat(taraTexto)
+      if (isNaN(taraNum) || taraNum < 0) return { error: 'Tara inválida: debe ser 0 o mayor' }
+      tara = taraNum
+    }
+  }
+
+  return { nombre, precio_venta, precio_costo, categoria_id, nueva_categoria_nombre, codigo_barras, activo, unidad_medida, tara }
 }
 
 async function resolverCategoria(
@@ -180,8 +193,9 @@ export async function agregarLoteAction(
   _prev: LoteState,
   formData: FormData,
 ): Promise<LoteState> {
-  const negocio = await getNegocioActual()
+  const [negocio, rol] = await Promise.all([getNegocioActual(), getRolActual()])
   if (!negocio) return { error: 'No hay negocio activo' }
+  if (rol !== 'dueno') return { error: 'Sin permiso' }
 
   const producto_id = formData.get('producto_id') as string
   if (!producto_id) return { error: 'Producto inválido' }

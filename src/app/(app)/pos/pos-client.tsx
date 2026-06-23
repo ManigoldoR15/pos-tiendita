@@ -8,19 +8,31 @@ import { formatMXN, textoCentavos } from '@/lib/dinero'
 import { cn } from '@/lib/utils'
 import { getColorCategoria } from '@/lib/colores-categoria'
 import TicketImprimible, { imprimirTicket, type DatosTicket } from '@/components/ticket-imprimible'
-import { registrarVentaAction, buscarClientesAction, crearClienteAction } from './actions'
+import { registrarVentaAction, buscarClientesAction, crearClienteAction, getPreciosEspecialesPOSAction } from './actions'
 import type { ClienteSugerido } from './actions'
 import PosMostrador from './pos-mostrador'
 import { esGranel, formatCantidad, stepCantidad, minCantidad } from '@/lib/unidades'
+import { EstatusCliente } from '@/components/estatus-cliente'
+import MuestreoForm from './muestreo-form'
 
 export type Producto = {
   id: string
   nombre: string
   precio_venta: number
+  precio_costo: number | null
   existencias: number
   categoria_id: string | null
   codigo_barras: string | null
   unidad_medida: string
+}
+
+type PrecioEspecial = { tipo: 'porcentaje' | 'monto_fijo'; valor: number }
+
+function calcPrecioEspecial(precioVenta: number, esp: PrecioEspecial): number {
+  if (esp.tipo === 'porcentaje') {
+    return Math.max(0, Math.round(precioVenta * (10000 - esp.valor) / 10000))
+  }
+  return Math.max(0, precioVenta - esp.valor)
 }
 
 type Categoria = { id: string; nombre: string; color: string | null }
@@ -42,9 +54,10 @@ type Props = {
   metodosPago: MetodoPago[]
   negocioNombre: string
   listas: ListaPrecio[]
+  muestreoPeriodoId: string | null
 }
 
-export default function PosClient({ productos, categorias, metodosPago, negocioNombre, listas }: Props) {
+export default function PosClient({ productos, categorias, metodosPago, negocioNombre, listas, muestreoPeriodoId }: Props) {
   const [modo, setModo] = useState<'tactil' | 'mostrador'>('tactil')
   const [carrito, setCarrito] = useState<ItemCarrito[]>([])
   const [busqueda, setBusqueda] = useState('')
@@ -58,6 +71,8 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
   const [errorVenta, setErrorVenta] = useState<string | null>(null)
   const [ventaExitosa, setVentaExitosa] = useState(false)
   const [ultimaVenta, setUltimaVenta] = useState<DatosTicket | null>(null)
+  const [ultimaVentaId, setUltimaVentaId] = useState<string | null>(null)
+  const [muestreoFormVisible, setMuestreoFormVisible] = useState(false)
 
   // Lista de precios activa
   const [listaActivaId, setListaActivaId] = useState<string | null>(null)
@@ -84,7 +99,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
   const [granelCantidad, setGranelCantidad] = useState('')
   const [alertaStock, setAlertaStock] = useState<string | null>(null)
 
-  // Fase 16: clientes frecuentes
+  // Clientes y precios especiales
   const [clienteSeleccionado, setClienteSeleccionado] = useState<ClienteSugerido | null>(null)
   const [busquedaCliente, setBusquedaCliente] = useState('')
   const [sugerenciasCliente, setSugerenciasCliente] = useState<ClienteSugerido[]>([])
@@ -93,6 +108,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
   const [nuevoClienteTelefono, setNuevoClienteTelefono] = useState('')
   const [guardandoCliente, setGuardandoCliente] = useState(false)
   const [errorCliente, setErrorCliente] = useState<string | null>(null)
+  const [preciosEspeciales, setPreciosEspeciales] = useState<Record<string, PrecioEspecial>>({})
 
   useEffect(() => {
     if (busquedaCliente.trim().length < 2) {
@@ -246,11 +262,67 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
     })
   }
 
+  // Total efectivo considerando precios especiales del cliente seleccionado.
+  // El DB siempre aplica el precio especial desde precio_venta (no desde lista_precio).
+  const itemsConEspecial = useMemo(() => {
+    if (!clienteSeleccionado || Object.keys(preciosEspeciales).length === 0) return []
+    return carrito
+      .map((item) => {
+        const esp = preciosEspeciales[item.productoId]
+        if (!esp) return null
+        const prod = productos.find((p) => p.id === item.productoId)
+        const precioBase = prod?.precio_venta ?? item.precio
+        const precioEsp = calcPrecioEspecial(precioBase, esp)
+        const ahorro = precioBase - precioEsp
+        const precioCosto = prod?.precio_costo ?? null
+        const margen = precioCosto !== null ? precioEsp - precioCosto : null
+        return { ...item, precioBase, precioEsp, ahorro, margen }
+      })
+      .filter(Boolean) as {
+        productoId: string
+        nombre: string
+        cantidad: number
+        unidad: string
+        precioBase: number
+        precioEsp: number
+        ahorro: number
+        margen: number | null
+      }[]
+  }, [carrito, preciosEspeciales, clienteSeleccionado, productos])
+
+  const effectiveTotal = useMemo(() => {
+    if (itemsConEspecial.length === 0) return total
+    const base = carrito.reduce((sum, item) => {
+      const esp = preciosEspeciales[item.productoId]
+      const prod = productos.find((p) => p.id === item.productoId)
+      const precioBase = prod?.precio_venta ?? item.precio
+      const precio = esp ? calcPrecioEspecial(precioBase, esp) : precioBase
+      return sum + Math.round(precio * item.cantidad)
+    }, 0)
+    return Math.max(0, base - descuentoCentavos)
+  }, [itemsConEspecial, carrito, preciosEspeciales, productos, descuentoCentavos, total])
+
+  const effectiveFiado = useMemo(() => {
+    if (itemsConEspecial.length === 0) return totalFiado
+    return carrito.reduce((sum, item) => {
+      if (!item.fiado) return sum
+      const esp = preciosEspeciales[item.productoId]
+      const prod = productos.find((p) => p.id === item.productoId)
+      const precioBase = prod?.precio_venta ?? item.precio
+      const precio = esp ? calcPrecioEspecial(precioBase, esp) : precioBase
+      return sum + Math.round(precio * item.cantidad)
+    }, 0)
+  }, [itemsConEspecial, carrito, preciosEspeciales, productos, totalFiado])
+
+  const effectiveMontoPagar = Math.max(0, effectiveTotal - effectiveFiado)
+  const effectiveCambio = pagoRecibido.trim() ? pagoEnCentavos - effectiveMontoPagar : null
+
   function abrirCobro() {
     setErrorVenta(null)
     setPagoRecibido('')
     setDescuentoValor('')
     setClienteSeleccionado(null)
+    setPreciosEspeciales({})
     setBusquedaCliente('')
     setSugerenciasCliente([])
     setCreandoCliente(false)
@@ -287,11 +359,12 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
   async function confirmarVenta() {
     setErrorVenta(null)
 
-    if (hayFiado && !clienteSeleccionado) {
+    const hayFiadoEfectivo = carrito.some((i) => i.fiado)
+    if (hayFiadoEfectivo && !clienteSeleccionado) {
       setErrorVenta('Selecciona o crea un cliente para fiar.')
       return
     }
-    if (hayFiado && clienteSeleccionado?.en_lista_negra) {
+    if (hayFiadoEfectivo && clienteSeleccionado?.en_lista_negra) {
       setErrorVenta(
         `Este cliente está en lista negra: ${clienteSeleccionado.motivo_lista_negra ?? 'sin motivo especificado'}`,
       )
@@ -306,23 +379,27 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
       descuento: descuentoCentavos,
       cliente_id: clienteSeleccionado?.id ?? null,
     })
+
     setProcesando(false)
     if ('error' in result) {
       setErrorVenta(result.error)
     } else {
       setUltimaVenta({
         items: carrito.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, fiado: i.fiado, unidad: i.unidad })),
-        total,
+        total: effectiveTotal,
         metodoPagoNombre,
-        cambio: esEfectivo && cambio !== null && cambio > 0 ? cambio : null,
+        cambio: esEfectivo && effectiveCambio !== null && effectiveCambio > 0 ? effectiveCambio : null,
         fecha: new Date().toISOString(),
-        totalFiado,
+        totalFiado: effectiveFiado,
         clienteNombre: clienteSeleccionado?.nombre ?? null,
       })
       setCarrito([])
       setModalAbierto(false)
       setPagoRecibido('')
       setClienteSeleccionado(null)
+      setPreciosEspeciales({})
+      setUltimaVentaId(result.venta_id)
+      setMuestreoFormVisible(muestreoPeriodoId !== null)
       setVentaExitosa(true)
       setTimeout(() => setVentaExitosa(false), 8000)
     }
@@ -346,6 +423,13 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
           <p className="text-sm text-muted-foreground">Listo para la siguiente venta.</p>
         </div>
         {ultimaVenta && <TicketImprimible negocioNombre={negocioNombre} datos={ultimaVenta} />}
+        {muestreoPeriodoId && muestreoFormVisible && ultimaVentaId && (
+          <MuestreoForm
+            periodoId={muestreoPeriodoId}
+            ventaId={ultimaVentaId}
+            onClose={() => setMuestreoFormVisible(false)}
+          />
+        )}
       </>
     )
   }
@@ -728,19 +812,25 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                   </div>
                 </>
               )}
+              {itemsConEspecial.length > 0 && effectiveTotal !== total && (
+                <div className="flex justify-between text-sm text-muted-foreground line-through">
+                  <span>Precio normal</span>
+                  <span>{formatMXN(total)}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Total</span>
-                <span className="text-3xl font-black tracking-tight text-primary">{formatMXN(total)}</span>
+                <span className="text-3xl font-black tracking-tight text-primary">{formatMXN(effectiveTotal)}</span>
               </div>
-              {hayFiado && (
+              {effectiveFiado > 0 && (
                 <>
                   <div className="flex justify-between text-sm text-amber-600">
                     <span>Queda a deber</span>
-                    <span>−{formatMXN(totalFiado)}</span>
+                    <span>−{formatMXN(effectiveFiado)}</span>
                   </div>
                   <div className="flex items-center justify-between border-t pt-1.5">
                     <span className="text-sm font-medium text-muted-foreground">A pagar ahora</span>
-                    <span className="text-xl font-bold">{formatMXN(montoPagar)}</span>
+                    <span className="text-xl font-bold">{formatMXN(effectiveMontoPagar)}</span>
                   </div>
                 </>
               )}
@@ -803,14 +893,21 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
               {clienteSeleccionado ? (
                 <div className="flex items-center justify-between rounded-lg border bg-accent px-3 py-2">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{clienteSeleccionado.nombre}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="truncate text-sm font-medium">{clienteSeleccionado.nombre}</p>
+                      <EstatusCliente
+                        estatus={clienteSeleccionado.estatus}
+                        nota={clienteSeleccionado.estatus_nota}
+                        size="sm"
+                      />
+                    </div>
                     {clienteSeleccionado.telefono && (
                       <p className="text-xs text-muted-foreground">{clienteSeleccionado.telefono}</p>
                     )}
                   </div>
                   <button
                     type="button"
-                    onClick={() => setClienteSeleccionado(null)}
+                    onClick={() => { setClienteSeleccionado(null); setPreciosEspeciales({}) }}
                     className="ml-2 shrink-0 text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-4 w-4" />
@@ -821,6 +918,36 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                 <p className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
                   Este cliente está en lista negra: {clienteSeleccionado.motivo_lista_negra ?? 'sin motivo especificado'}. No se le puede fiar (sí se le puede vender de contado).
                 </p>
+              )}
+
+              {/* Precios especiales de este cliente */}
+              {itemsConEspecial.length > 0 && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800/40 dark:bg-blue-950/20 p-3 space-y-2">
+                  <p className="text-xs font-bold text-blue-700 dark:text-blue-400">
+                    Precios especiales para {clienteSeleccionado?.nombre}
+                  </p>
+                  {itemsConEspecial.map((item) => (
+                    <div key={item.productoId} className="space-y-0.5">
+                      <p className="text-xs font-medium truncate">{item.nombre}</p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+                        <span className="text-muted-foreground line-through">{formatMXN(item.precioBase)}</span>
+                        <span className="font-bold text-blue-700 dark:text-blue-300">{formatMXN(item.precioEsp)}</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">−{formatMXN(item.ahorro)} ahorro</span>
+                        {item.margen !== null && (
+                          <span className={item.margen >= 0 ? 'text-muted-foreground' : 'text-destructive font-medium'}>
+                            {item.margen >= 0 ? `Ganas ${formatMXN(item.margen)}/u` : `Pierdes ${formatMXN(Math.abs(item.margen))}/u`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {effectiveTotal !== total && (
+                    <div className="border-t border-blue-200 dark:border-blue-800/40 pt-1.5 flex justify-between text-xs font-semibold text-blue-700 dark:text-blue-400">
+                      <span>Ahorro total</span>
+                      <span>−{formatMXN(total - effectiveTotal)}</span>
+                    </div>
+                  )}
+                </div>
               )}
               {!clienteSeleccionado && (creandoCliente ? (
                 <div className="space-y-2">
@@ -878,14 +1005,19 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                         <button
                           key={c.id}
                           type="button"
-                          onClick={() => {
+                          onClick={async () => {
                             setClienteSeleccionado(c)
                             setBusquedaCliente('')
                             setSugerenciasCliente([])
+                            const esp = await getPreciosEspecialesPOSAction(c.id)
+                            setPreciosEspeciales(esp)
                           }}
                           className="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-accent"
                         >
-                          <span className="text-sm font-medium">{c.nombre}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-medium">{c.nombre}</span>
+                            <EstatusCliente estatus={c.estatus} size="sm" />
+                          </div>
                           {c.telefono && (
                             <span className="text-xs text-muted-foreground">{c.telefono}</span>
                           )}
@@ -961,7 +1093,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
             </div>
 
             {/* Recibido + cambio (solo efectivo, y solo si queda algo por cobrar) */}
-            {esEfectivo && montoPagar > 0 && (
+            {esEfectivo && effectiveMontoPagar > 0 && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Dinero recibido (opcional)</label>
                 <div className="relative">
@@ -978,19 +1110,19 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                     className="w-full rounded-lg border border-input bg-background py-3 pl-7 pr-3 text-base outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
-                {cambio !== null && cambio >= 0 && (
+                {effectiveCambio !== null && effectiveCambio >= 0 && (
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-800/40 dark:bg-emerald-950/20 px-4 py-3">
                     <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Cambio</p>
                     <p className="text-xl font-black tracking-tight text-emerald-700 dark:text-emerald-300">
-                      {formatMXN(cambio)}
+                      {formatMXN(effectiveCambio)}
                     </p>
                   </div>
                 )}
-                {cambio !== null && cambio < 0 && (
+                {effectiveCambio !== null && effectiveCambio < 0 && (
                   <div className="rounded-xl border border-red-200 bg-red-50 dark:border-red-800/40 dark:bg-red-950/20 px-4 py-3">
                     <p className="text-xs font-medium text-red-600 dark:text-red-400">Falta</p>
                     <p className="text-xl font-black tracking-tight text-red-700 dark:text-red-300">
-                      {formatMXN(Math.abs(cambio))}
+                      {formatMXN(Math.abs(effectiveCambio))}
                     </p>
                   </div>
                 )}
@@ -1014,7 +1146,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
               </Button>
               <Button
                 onClick={confirmarVenta}
-                disabled={procesando || (cambio !== null && cambio < 0)}
+                disabled={procesando || (effectiveCambio !== null && effectiveCambio < 0)}
                 className="flex-1 h-12 text-base font-bold"
               >
                 {procesando ? 'Guardando...' : 'Confirmar'}

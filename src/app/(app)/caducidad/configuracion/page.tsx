@@ -13,7 +13,7 @@ export default async function CaducidadConfigPage() {
   if (!negocio) redirect('/crear-negocio')
 
   const rol = await getRolActual()
-  if (rol !== 'dueno' && rol !== 'administrador') redirect('/')
+  if (rol !== 'dueno') redirect('/')
 
   await seedCategoriasIfEmpty(negocio.id)
 

@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Scale } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { formatCantidad } from '@/lib/unidades'
+import { formatCantidad, stepCantidad } from '@/lib/unidades'
 import { fmtFechaCorta } from '@/lib/fecha'
+import { calcPesoNeto, stepTara } from '@/lib/tara'
 import { registrarAjusteAction, type MotivoAjuste } from './actions'
 
 type Lote = {
@@ -20,6 +22,7 @@ type Props = {
   productoNombre: string
   unidadMedida: string
   lotes: Lote[]
+  tara: number | null
 }
 
 const MOTIVOS: { value: MotivoAjuste; label: string }[] = [
@@ -30,7 +33,7 @@ const MOTIVOS: { value: MotivoAjuste; label: string }[] = [
   { value: 'otro', label: 'Otro motivo' },
 ]
 
-export default function AjusteForm({ productoId, productoNombre, unidadMedida, lotes }: Props) {
+export default function AjusteForm({ productoId, productoNombre, unidadMedida, lotes, tara }: Props) {
   const router = useRouter()
   const [loteId, setLoteId] = useState(lotes[0]?.id ?? '')
   const [cantidadFisica, setCantidadFisica] = useState('')
@@ -40,14 +43,27 @@ export default function AjusteForm({ productoId, productoNombre, unidadMedida, l
   const [error, setError] = useState<string | null>(null)
   const [exito, setExito] = useState(false)
 
+  // Tara: solo si el producto tiene tara registrada > 0
+  const tieneTara = tara !== null && tara > 0
+  const [usarTara, setUsarTara] = useState(false)
+  const [pesoBruto, setPesoBruto] = useState('')
+
   const loteActual = lotes.find((l) => l.id === loteId)
   const cantidadActual = loteActual ? Number(loteActual.cantidad_actual) : 0
-  const cantidadNum = parseFloat(cantidadFisica)
-  const delta = cantidadFisica ? cantidadNum - cantidadActual : null
+
+  // Cuando está en modo tara, el conteo efectivo es el neto calculado
+  const cantidadEfectiva = usarTara && tieneTara
+    ? (pesoBruto ? String(calcPesoNeto(parseFloat(pesoBruto), tara!)) : '')
+    : cantidadFisica
+  const cantidadNum = parseFloat(cantidadEfectiva)
+  const delta = cantidadEfectiva ? cantidadNum - cantidadActual : null
 
   async function handleSubmit() {
     if (!loteId) { setError('Selecciona un lote'); return }
-    if (!cantidadFisica || isNaN(cantidadNum) || cantidadNum < 0) {
+    if (usarTara && tieneTara && !pesoBruto) {
+      setError('Ingresa el peso bruto del bote'); return
+    }
+    if (!cantidadEfectiva || isNaN(cantidadNum) || cantidadNum < 0) {
       setError('Ingresa una cantidad física válida (puede ser 0)'); return
     }
     setError(null)
@@ -105,26 +121,90 @@ export default function AjusteForm({ productoId, productoNombre, unidadMedida, l
         </div>
       )}
 
-      {/* Cantidad física contada */}
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium">
-          ¿Cuánto contaste físicamente? ({unidadMedida})
-        </label>
-        <div className="relative">
+      {/* Toggle tara — solo si el producto tiene tara registrada */}
+      {tieneTara && (
+        <label className="flex cursor-pointer items-center gap-2.5">
           <input
-            type="number"
-            min="0"
-            step={unidadMedida === 'kg' || unidadMedida === 'litro' ? '0.001' : '1'}
-            placeholder="0"
-            value={cantidadFisica}
-            onChange={(e) => setCantidadFisica(e.target.value)}
-            className="w-full rounded-lg border border-input bg-background px-3 py-3 pr-16 text-xl font-bold outline-none focus:ring-2 focus:ring-ring"
+            type="checkbox"
+            checked={usarTara}
+            onChange={(e) => {
+              setUsarTara(e.target.checked)
+              // Limpiar al cambiar de modo
+              setCantidadFisica('')
+              setPesoBruto('')
+            }}
+            className="h-4 w-4 rounded border-input accent-primary"
           />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
-            {unidadMedida}
+          <Scale className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">
+            Pesar bote completo (tara: {tara} {unidadMedida})
           </span>
+        </label>
+      )}
+
+      {/* Entrada por peso bruto — solo cuando tara está activa */}
+      {tieneTara && usarTara ? (
+        <div className="space-y-3 rounded-xl border-2 border-primary/20 bg-primary/[0.03] p-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">
+              Peso bruto del bote lleno ({unidadMedida})
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                min="0"
+                step={stepTara(unidadMedida)}
+                placeholder="0.000"
+                value={pesoBruto}
+                onChange={(e) => setPesoBruto(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-3 pr-16 text-xl font-bold outline-none focus:ring-2 focus:ring-ring"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                {unidadMedida}
+              </span>
+            </div>
+          </div>
+          {pesoBruto && (
+            <div className="rounded-lg bg-background border px-4 py-3 space-y-1 text-sm">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Peso bruto</span>
+                <span>{parseFloat(pesoBruto).toLocaleString('es-MX', { maximumFractionDigits: 3 })} {unidadMedida}</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Tara (envase vacío)</span>
+                <span>− {tara} {unidadMedida}</span>
+              </div>
+              <div className="flex justify-between font-bold border-t pt-1 text-primary">
+                <span>Producto neto</span>
+                <span>
+                  {calcPesoNeto(parseFloat(pesoBruto), tara!).toLocaleString('es-MX', { maximumFractionDigits: 3 })} {unidadMedida}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      ) : (
+        /* Cantidad física contada — flujo idéntico al original */
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">
+            ¿Cuánto contaste físicamente? ({unidadMedida})
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              min="0"
+              step={stepCantidad(unidadMedida)}
+              placeholder="0"
+              value={cantidadFisica}
+              onChange={(e) => setCantidadFisica(e.target.value)}
+              className="w-full rounded-lg border border-input bg-background px-3 py-3 pr-16 text-xl font-bold outline-none focus:ring-2 focus:ring-ring"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+              {unidadMedida}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Delta preview */}
       {delta !== null && (
@@ -189,7 +269,7 @@ export default function AjusteForm({ productoId, productoNombre, unidadMedida, l
 
       <Button
         className="w-full"
-        disabled={pending || !cantidadFisica || delta === 0}
+        disabled={pending || !cantidadEfectiva || delta === 0}
         onClick={handleSubmit}
       >
         {pending ? 'Guardando…' : 'Registrar ajuste'}

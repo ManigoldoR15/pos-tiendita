@@ -15,7 +15,6 @@ function emailCajero(email: string | null) {
 function BadgeRol({ rol }: { rol: string }) {
   const colors: Record<string, string> = {
     dueno: 'bg-primary/10 text-primary',
-    administrador: 'bg-blue-100 text-blue-700',
     empleado: 'bg-muted text-muted-foreground',
   }
   return (

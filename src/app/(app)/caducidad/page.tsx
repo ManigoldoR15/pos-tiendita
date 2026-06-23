@@ -103,7 +103,7 @@ export default async function CaducidadPage({
     ESTADO_ORDEN.map((e) => [e, lotesConEstado.filter((l) => l.estado === e).length]),
   ) as Record<EstadoLote, number>
 
-  const puedeGestionarStock = rol === 'dueno' || rol === 'administrador'
+  const puedeGestionarStock = rol === 'dueno'
 
   return (
     <div className="space-y-5">

@@ -19,7 +19,6 @@ export default function SelectorRolEmpleado({
         className="rounded-lg border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
       >
         <option value="empleado">Empleado</option>
-        <option value="administrador">Administrador</option>
       </select>
     </form>
   )

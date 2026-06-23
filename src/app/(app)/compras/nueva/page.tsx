@@ -30,7 +30,7 @@ export default async function NuevaCompraPage() {
   ] = await Promise.all([
     supabase
       .from('productos')
-      .select('id, nombre, precio_costo, unidad_medida')
+      .select('id, nombre, precio_costo, unidad_medida, tara')
       .eq('negocio_id', negocio.id)
       .eq('activo', true)
       .order('nombre'),

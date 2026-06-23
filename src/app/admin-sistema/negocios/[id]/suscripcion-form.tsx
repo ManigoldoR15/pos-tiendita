@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
-import { CheckCircle } from 'lucide-react'
+import { CheckCircle, AlertTriangle } from 'lucide-react'
 import { actualizarSuscripcionAction } from './actions'
 
 type Props = {
@@ -20,106 +20,95 @@ type Props = {
   }
 }
 
+const inputCls = 'w-full h-10 rounded-lg border border-slate-700 bg-slate-800 px-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-violet-500'
+const selectCls = 'w-full h-10 rounded-lg border border-slate-700 bg-slate-800 px-3 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-violet-500'
+const labelCls = 'block text-xs font-medium text-slate-400 mb-1.5'
+
 export default function SuscripcionForm({ negocio: n }: Props) {
   const [state, action, pending] = useActionState(actualizarSuscripcionAction, null)
 
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} className="space-y-6">
       <input type="hidden" name="negocio_id" value={n.id} />
 
-      {/* Info del negocio */}
-      <fieldset className="card-soft p-5 space-y-4">
-        <legend className="px-1 text-sm font-semibold">Información del negocio</legend>
+      {/* Datos del negocio */}
+      <div className="space-y-4">
+        <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
+          Información del negocio
+        </p>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Nombre del negocio *</label>
+          <div>
+            <label className={labelCls}>Nombre del negocio *</label>
             <input
               name="nombre_negocio"
               required
               defaultValue={n.nombre}
-              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className={inputCls}
             />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Ubicación</label>
+          <div>
+            <label className={labelCls}>Ubicación</label>
             <input
               name="ubicacion"
               defaultValue={n.ubicacion ?? ''}
               placeholder="Ciudad, Estado"
-              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className={inputCls}
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Nombre del dueño</label>
-            <input
-              name="nombre_dueno"
-              defaultValue={n.nombre_dueno ?? ''}
-              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+          <div>
+            <label className={labelCls}>Nombre del dueño</label>
+            <input name="nombre_dueno" defaultValue={n.nombre_dueno ?? ''} className={inputCls} />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Email del dueño</label>
-            <input
-              name="email_dueno"
-              type="email"
-              defaultValue={n.email_dueno ?? ''}
-              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+          <div>
+            <label className={labelCls}>Email del dueño</label>
+            <input name="email_dueno" type="email" defaultValue={n.email_dueno ?? ''} className={inputCls} />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Teléfono</label>
-            <input
-              name="telefono_dueno"
-              defaultValue={n.telefono_dueno ?? ''}
-              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+          <div>
+            <label className={labelCls}>Teléfono</label>
+            <input name="telefono_dueno" defaultValue={n.telefono_dueno ?? ''} className={inputCls} />
           </div>
         </div>
-      </fieldset>
+      </div>
 
       {/* Suscripción */}
-      <fieldset className="card-soft p-5 space-y-4">
-        <legend className="px-1 text-sm font-semibold">Suscripción</legend>
+      <div className="space-y-4">
+        <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Suscripción</p>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Plan</label>
-            <select
-              name="plan"
-              defaultValue={n.plan}
-              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            >
+          <div>
+            <label className={labelCls}>Plan</label>
+            <select name="plan" defaultValue={n.plan} className={selectCls}>
               <option value="prueba">Prueba gratuita</option>
               <option value="mensual">Mensual</option>
               <option value="anual">Anual</option>
             </select>
           </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Inicio</label>
+          <div>
+            <label className={labelCls}>Inicio</label>
             <input
               type="date"
               name="suscripcion_inicio"
               defaultValue={n.suscripcion_inicio ?? ''}
-              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className={inputCls}
             />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Vencimiento</label>
+          <div>
+            <label className={labelCls}>Vencimiento</label>
             <input
               type="date"
               name="suscripcion_fin"
               defaultValue={n.suscripcion_fin ?? ''}
-              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className={inputCls}
             />
           </div>
         </div>
 
         {/* Suspensión */}
-        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+        <div className="flex items-start gap-3 rounded-xl border border-red-800/40 bg-red-950/20 p-4">
           <input
             type="hidden"
             name="suspendido"
@@ -127,40 +116,41 @@ export default function SuscripcionForm({ negocio: n }: Props) {
           />
           <SuspendidoToggle defaultValue={n.suspendido} />
         </div>
-      </fieldset>
+      </div>
 
       {/* Notas internas */}
-      <fieldset className="card-soft p-5 space-y-2">
-        <legend className="px-1 text-sm font-semibold">Notas internas</legend>
+      <div className="space-y-2">
+        <label className={labelCls}>Notas internas (solo visibles para el superadmin)</label>
         <textarea
           name="notas_admin"
           defaultValue={n.notas_admin ?? ''}
           rows={3}
-          placeholder="Solo visibles para el superadmin..."
-          className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          placeholder="Historial de contacto, observaciones, etc."
+          className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-violet-500 resize-none"
         />
-      </fieldset>
+      </div>
 
+      {/* Feedback */}
       {state && 'error' in state && (
-        <p className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {state.error}
-        </p>
+        <div className="flex items-center gap-2 rounded-lg bg-red-950/30 border border-red-700/40 px-4 py-3">
+          <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
+          <p className="text-sm text-red-300">{state.error}</p>
+        </div>
       )}
       {state && 'ok' in state && (
-        <p className="flex items-center gap-2 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
-          <CheckCircle className="h-4 w-4" /> Cambios guardados.
-        </p>
+        <div className="flex items-center gap-2 rounded-lg bg-emerald-950/30 border border-emerald-700/40 px-4 py-3">
+          <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
+          <p className="text-sm text-emerald-300">Cambios guardados correctamente.</p>
+        </div>
       )}
 
-      <div className="flex gap-3">
-        <button
-          type="submit"
-          disabled={pending}
-          className="h-10 rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors"
-        >
-          {pending ? 'Guardando...' : 'Guardar cambios'}
-        </button>
-      </div>
+      <button
+        type="submit"
+        disabled={pending}
+        className="h-10 rounded-lg bg-violet-600 px-6 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-60 transition-colors"
+      >
+        {pending ? 'Guardando…' : 'Guardar cambios'}
+      </button>
     </form>
   )
 }
@@ -173,16 +163,15 @@ function SuspendidoToggle({ defaultValue }: { defaultValue: boolean }) {
         name="suspendido"
         value="true"
         defaultChecked={defaultValue}
-        className="mt-0.5 h-4 w-4 accent-red-600"
+        className="mt-0.5 h-4 w-4 accent-red-500"
         onChange={(e) => {
-          // Sync hidden input
           const hidden = e.currentTarget.closest('form')?.querySelector<HTMLInputElement>('input[type=hidden][name=suspendido]')
           if (hidden) hidden.value = e.currentTarget.checked ? 'true' : 'false'
         }}
       />
       <div>
-        <p className="text-sm font-semibold text-red-700">Cuenta suspendida</p>
-        <p className="text-xs text-red-600 mt-0.5">
+        <p className="text-sm font-semibold text-red-400">Cuenta suspendida</p>
+        <p className="text-xs text-red-500/80 mt-0.5">
           Los usuarios de este negocio no podrán acceder hasta que se reactive.
         </p>
       </div>

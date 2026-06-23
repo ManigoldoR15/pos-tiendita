@@ -24,7 +24,7 @@ export async function crearNuevoEmpleadoAction(
 
   if (!email) return { error: 'Ingresa un correo electrónico.' }
   if (!password || password.length < 6) return { error: 'La contraseña debe tener al menos 6 caracteres.' }
-  if (!['empleado', 'administrador'].includes(rolNuevo)) return { error: 'Rol inválido.' }
+  if (rolNuevo !== 'empleado') return { error: 'Rol inválido.' }
 
   const supabase = await createClient()
   const { data: { user: dueno } } = await supabase.auth.getUser()
@@ -138,7 +138,7 @@ export async function cambiarRolEmpleadoAction(formData: FormData): Promise<void
   const userId = formData.get('user_id') as string
   const nuevoRol = formData.get('rol') as string
 
-  if (!['empleado', 'administrador'].includes(nuevoRol)) return
+  if (nuevoRol !== 'empleado') return
 
   const supabase = await createClient()
   await supabase

@@ -46,7 +46,7 @@ export async function darDeBajaAction(formData: FormData): Promise<void> {
   if (!negocio) return
 
   const rol = await getRolActual()
-  if (rol !== 'dueno' && rol !== 'administrador') return
+  if (rol !== 'dueno') return
 
   const loteId = formData.get('lote_id') as string
   const supabase = await createClient()
@@ -73,7 +73,7 @@ export async function crearCategoriaAction(
   if (!negocio) return { error: 'Sin negocio' }
 
   const rol = await getRolActual()
-  if (rol !== 'dueno' && rol !== 'administrador') return { error: 'Sin permiso' }
+  if (rol !== 'dueno') return { error: 'Sin permiso' }
 
   const nombre = (formData.get('nombre') as string)?.trim()
   if (!nombre) return { error: 'El nombre es obligatorio' }

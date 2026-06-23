@@ -2,16 +2,17 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import PosClient from './pos-client'
+import { getMuestreoActivoAction } from '@/app/(app)/muestreo/actions'
 
 export default async function PosPage() {
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
 
   const supabase = await createClient()
-  const [{ data: productos }, { data: categorias }, { data: metodosPago }, { data: listasRaw }] = await Promise.all([
+  const [{ data: productos }, { data: categorias }, { data: metodosPago }, { data: listasRaw }, muestreoActivo] = await Promise.all([
     supabase
       .from('productos')
-      .select('id, nombre, precio_venta, existencias, categoria_id, codigo_barras, unidad_medida')
+      .select('id, nombre, precio_venta, precio_costo, existencias, categoria_id, codigo_barras, unidad_medida')
       .eq('negocio_id', negocio.id)
       .eq('activo', true)
       .order('nombre'),
@@ -32,6 +33,7 @@ export default async function PosPage() {
       .eq('negocio_id', negocio.id)
       .eq('activo', true)
       .order('nombre'),
+    getMuestreoActivoAction(),
   ])
 
   type ListaItem = { producto_id: string; precio: number }
@@ -51,6 +53,7 @@ export default async function PosPage() {
       metodosPago={metodosPago ?? []}
       negocioNombre={negocio.nombre}
       listas={listas}
+      muestreoPeriodoId={muestreoActivo?.id ?? null}
     />
   )
 }

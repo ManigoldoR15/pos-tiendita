@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { getRolActual } from '@/lib/rol'
 import { formatCantidad } from '@/lib/unidades'
 import { fmtFechaCorta } from '@/lib/fecha'
 import AjusteForm from './ajuste-form'
@@ -10,13 +11,16 @@ export default async function CuadrePage() {
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
 
+  const rol = await getRolActual()
+  if (rol === 'empleado') redirect('/')
+
   const supabase = await createClient()
 
   // Todos los productos activos
   const { data: productos } = await supabase
     .from('productos')
     .select(`
-      id, nombre, existencias, unidad_medida,
+      id, nombre, existencias, unidad_medida, tara,
       lotes_producto(id, cantidad_actual, fecha_recepcion, fecha_caducidad, notas, activo)
     `)
     .eq('negocio_id', negocio.id)
@@ -36,6 +40,7 @@ export default async function CuadrePage() {
     .map((p) => ({
       ...p,
       existencias: Number(p.existencias),
+      tara: p.tara != null ? Number(p.tara) : null,
       lotes: (p.lotes_producto ?? [])
         .filter((l) => l.activo && Number(l.cantidad_actual) >= 0)
         .map((l) => ({ ...l, cantidad_actual: Number(l.cantidad_actual) }))
@@ -120,6 +125,7 @@ export default async function CuadrePage() {
                     productoNombre={prod.nombre}
                     unidadMedida={prod.unidad_medida}
                     lotes={prod.lotes}
+                    tara={prod.tara}
                   />
                 </div>
               </section>

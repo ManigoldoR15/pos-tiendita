@@ -97,8 +97,7 @@ export default function FormEmpleado() {
               onChange={(e) => setRolNuevo(e.target.value)}
               className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="empleado">Empleado (solo POS)</option>
-              <option value="administrador">Administrador (sin Config)</option>
+              <option value="empleado">Empleado</option>
             </select>
           </div>
 

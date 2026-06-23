@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
   Home, Package, Tag, ShoppingCart, Receipt, Wallet, ClipboardList,
   LogOut, Settings, Store, Truck, BarChart2, ChevronDown, Menu, X,
-  CalendarCheck, HandCoins, Scale, Clock, Bell, FileText, ShoppingBag, ShieldCheck,
+  CalendarCheck, HandCoins, Scale, Clock, Bell, FileText, ShoppingBag, ShieldCheck, Users, PieChart,
 } from 'lucide-react'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -27,6 +27,7 @@ const DIRECT_DUENO: NavLink[] = [
 ]
 const OPERACIONES_DUENO: NavLink[] = [
   { href: '/ventas', label: 'Ventas', Icon: ClipboardList },
+  { href: '/clientes', label: 'Clientes', Icon: Users },
   { href: '/fiados', label: 'Fiados', Icon: HandCoins },
   { href: '/cuadre', label: 'Cuadre', Icon: Scale },
   { href: '/gastos', label: 'Gastos', Icon: Receipt },
@@ -43,29 +44,7 @@ const ANALISIS_DUENO: NavLink[] = [
   { href: '/reportes', label: 'Reportes', Icon: FileText },
   { href: '/turnos', label: 'Turnos', Icon: Clock },
   { href: '/caducidad', label: 'Caducidad', Icon: CalendarCheck },
-]
-
-// Admin: misma estructura, sin Finanzas/Turnos propios del dueño
-const DIRECT_ADMIN: NavLink[] = [
-  { href: '/', label: 'Inicio', Icon: Home },
-  { href: '/pos', label: 'POS', Icon: ShoppingCart },
-  { href: '/corte', label: 'Caja', Icon: Wallet },
-]
-const OPERACIONES_ADMIN: NavLink[] = [
-  { href: '/ventas', label: 'Ventas', Icon: ClipboardList },
-  { href: '/fiados', label: 'Fiados', Icon: HandCoins },
-  { href: '/cuadre', label: 'Cuadre', Icon: Scale },
-  { href: '/gastos', label: 'Gastos', Icon: Receipt },
-  { href: '/compras', label: 'Compras', Icon: ShoppingBag },
-]
-const CATALOGO_ADMIN: NavLink[] = [
-  { href: '/productos', label: 'Productos', Icon: Package },
-  { href: '/proveedores', label: 'Proveedores', Icon: Truck },
-  { href: '/listas-precio', label: 'Listas precio', Icon: Tag },
-]
-const ANALISIS_ADMIN: NavLink[] = [
-  { href: '/reportes', label: 'Reportes', Icon: FileText },
-  { href: '/caducidad', label: 'Caducidad', Icon: CalendarCheck },
+  { href: '/muestreo', label: 'Muestreo', Icon: PieChart },
 ]
 
 // Empleado: 7 directos — caben sin desbordarse
@@ -74,9 +53,9 @@ const DIRECT_EMPLEADO: NavLink[] = [
   { href: '/pos', label: 'POS', Icon: ShoppingCart },
   { href: '/corte', label: 'Caja', Icon: Wallet },
   { href: '/ventas', label: 'Ventas', Icon: ClipboardList },
+  { href: '/clientes', label: 'Clientes', Icon: Users },
   { href: '/fiados', label: 'Fiados', Icon: HandCoins },
   { href: '/productos', label: 'Productos', Icon: Package },
-  { href: '/caducidad', label: 'Caducidad', Icon: CalendarCheck },
 ]
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -210,12 +189,11 @@ export default function NavBar({
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const isDueno = !rol || rol === 'dueno'
-  const isAdmin = rol === 'administrador'
 
-  const directLinks = isDueno ? DIRECT_DUENO : isAdmin ? DIRECT_ADMIN : DIRECT_EMPLEADO
-  const operacionesLinks = isDueno ? OPERACIONES_DUENO : isAdmin ? OPERACIONES_ADMIN : null
-  const catalogoLinks = isDueno ? CATALOGO_DUENO : isAdmin ? CATALOGO_ADMIN : null
-  const analisisLinks = isDueno ? ANALISIS_DUENO : isAdmin ? ANALISIS_ADMIN : null
+  const directLinks = isDueno ? DIRECT_DUENO : DIRECT_EMPLEADO
+  const operacionesLinks = isDueno ? OPERACIONES_DUENO : null
+  const catalogoLinks = isDueno ? CATALOGO_DUENO : null
+  const analisisLinks = isDueno ? ANALISIS_DUENO : null
   const showConfig = isDueno
 
   const badges: Record<string, number> = {
@@ -228,7 +206,7 @@ export default function NavBar({
     ...(operacionesLinks ?? []),
     ...(catalogoLinks ?? []),
     ...(analisisLinks ?? []),
-    ...((isDueno || isAdmin) ? [{ href: '/notificaciones', label: 'Notificaciones', Icon: Bell }] : []),
+    ...(isDueno ? [{ href: '/notificaciones', label: 'Notificaciones', Icon: Bell }] : []),
     ...(showConfig ? [{ href: '/configuracion', label: 'Configuración', Icon: Settings }] : []),
   ]
 
@@ -304,10 +282,10 @@ export default function NavBar({
           <ThemeToggle />
 
           {/* Empleado: botón avisar al jefe */}
-          {!isDueno && !isAdmin && <AvisoEmpleado />}
+          {!isDueno && <AvisoEmpleado />}
 
           {/* Dueño/Admin: campana */}
-          {(isDueno || isAdmin) && (
+          {isDueno && (
             <Link
               href="/notificaciones"
               title="Notificaciones"
@@ -353,8 +331,8 @@ export default function NavBar({
         {/* Mobile: right side */}
         <div className="flex md:hidden ml-auto items-center gap-0.5">
           <ThemeToggle />
-          {!isDueno && !isAdmin && <AvisoEmpleado />}
-          {(isDueno || isAdmin) && (
+          {!isDueno && <AvisoEmpleado />}
+          {isDueno && (
             <Link
               href="/notificaciones"
               title="Notificaciones"

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 
-export type RolNegocio = 'dueno' | 'administrador' | 'empleado'
+export type RolNegocio = 'dueno' | 'empleado'
 
 export async function getRolActual(): Promise<RolNegocio | null> {
   const negocio = await getNegocioActual()

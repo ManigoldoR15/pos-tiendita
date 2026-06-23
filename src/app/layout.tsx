@@ -43,8 +43,15 @@ export default async function RootLayout({
 
   const temaSlug = tema?.slug ?? null
   const cssVars = tema?.css_vars as Record<string, string> | null
+  // Sanitize CSS property names and values before injecting into <style>.
+  // Only allow characters valid in CSS custom property declarations.
+  // This prevents XSS even if the superadmin account is compromised.
+  const safeCSSToken = (s: string) => s.replace(/[^a-zA-Z0-9#%.,\- _()/:]/g, '')
   const temaStyle = cssVars && Object.keys(cssVars).length > 0
-    ? Object.entries(cssVars).map(([k, v]) => `${k}:${v}`).join(';')
+    ? Object.entries(cssVars)
+        .filter(([k]) => k.startsWith('--'))
+        .map(([k, v]) => `${safeCSSToken(k)}:${safeCSSToken(v)}`)
+        .join(';')
     : null
 
   return (

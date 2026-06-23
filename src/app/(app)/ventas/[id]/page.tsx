@@ -21,7 +21,7 @@ export default async function DetalleVentaPage({
     createClient(),
     getRolActual(),
   ])
-  const puedeAnular = rolActual === 'dueno' || rolActual === 'administrador'
+  const puedeAnular = rolActual === 'dueno'
   const { data: venta } = await supabase
     .from('ventas')
     .select(`
@@ -82,13 +82,22 @@ export default async function DetalleVentaPage({
             )}
           </div>
         </div>
-        <Link
-          href={`/ventas/${id}/ticket`}
-          className="flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent transition-colors"
-        >
-          <Printer className="h-4 w-4" />
-          Ticket
-        </Link>
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href={`/ventas/${id}/nota-remision`}
+            className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent transition-colors"
+          >
+            <Printer className="h-4 w-4" />
+            Remisión
+          </Link>
+          <Link
+            href={`/ventas/${id}/ticket`}
+            className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent transition-colors"
+          >
+            <Printer className="h-4 w-4" />
+            Ticket
+          </Link>
+        </div>
       </div>
 
       {/* Items */}
