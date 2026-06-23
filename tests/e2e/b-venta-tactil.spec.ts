@@ -10,6 +10,7 @@ test.use({ storageState: STORAGE })
 test.describe('Venta táctil: agregar producto, cobrar, verificar stock', () => {
   let negocioId: string
   let productoId: string
+  let productoNombre: string
   let stockAntes: number
 
   test.beforeAll(async () => {
@@ -18,7 +19,7 @@ test.describe('Venta táctil: agregar producto, cobrar, verificar stock', () => 
     const admin = adminSupabase()
     const { data } = await admin
       .from('productos')
-      .select('id, existencias')
+      .select('id, existencias, nombre')
       .eq('negocio_id', negocioId)
       .eq('activo', true)
       .gt('existencias', 2)
@@ -27,6 +28,7 @@ test.describe('Venta táctil: agregar producto, cobrar, verificar stock', () => 
       .single()
     if (!data) throw new Error('No hay producto con stock > 2 para la prueba')
     productoId = data.id
+    productoNombre = data.nombre
     stockAntes = data.existencias
   })
 
@@ -47,8 +49,8 @@ test.describe('Venta táctil: agregar producto, cobrar, verificar stock', () => 
       await page.waitForTimeout(300)
     }
 
-    // Click first product button (has $ price)
-    const productBtn = page.locator('button').filter({ hasText: /\$/ }).first()
+    // Click the exact product tracked in beforeAll
+    const productBtn = page.locator('button').filter({ hasText: productoNombre }).first()
     await expect(productBtn).toBeVisible({ timeout: 8000 })
     await productBtn.click()
     await page.waitForTimeout(200)

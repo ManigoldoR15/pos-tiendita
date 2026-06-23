@@ -129,6 +129,23 @@ export default async function globalSetup() {
     }
   }
 
+  // ── 4b. Ensure barcode product has enough stock for scanner tests ─────────
+  const { data: bcStock } = await admin
+    .from('productos')
+    .select('id, existencias')
+    .eq('negocio_id', negocioId)
+    .eq('codigo_barras', TEST_BARCODE)
+    .maybeSingle()
+
+  if (bcStock && Number(bcStock.existencias) < 5) {
+    await admin.from('lotes_producto').insert({
+      negocio_id: negocioId,
+      producto_id: bcStock.id,
+      cantidad: 10,
+      cantidad_actual: 10,
+    })
+  }
+
   // ── 5. Save browser auth state ───────────────────────────────────────────
   const browser = await chromium.launch()
 
