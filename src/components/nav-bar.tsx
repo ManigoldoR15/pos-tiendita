@@ -136,7 +136,7 @@ function NavDropdown({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 min-w-[168px] rounded-xl border bg-card shadow-lg py-1">
+        <div className="absolute left-0 top-full mt-1 z-50 min-w-[168px] rounded-xl border border-border/60 bg-card/95 backdrop-blur-xl shadow-[0_4px_24px_-4px_rgb(0_0_0/0.12),inset_0_0_0_0.5px_rgb(0_0_0/0.04)] py-1">
           {links.map(({ href, label, Icon }) => {
             const active = pathname.startsWith(href)
             const badge = badges[href] ?? 0
@@ -211,15 +211,15 @@ export default function NavBar({
   ]
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-card print:hidden">
+    <header className="sticky top-0 z-40 border-b border-border/50 bg-background/90 backdrop-blur-xl print:hidden">
       <div className="mx-auto max-w-6xl px-4 h-16 flex items-center gap-3">
 
         {/* Logo */}
         <Link href="/" className="flex shrink-0 items-center gap-2.5 mr-1">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Store className="h-4 w-4" />
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_2px_8px_-1px_rgb(0_0_0/0.20)]">
+            <Store className="h-4.5 w-4.5" />
           </span>
-          <span className="hidden font-bold text-sm sm:block max-w-[140px] truncate tracking-tight">
+          <span className="hidden font-semibold text-sm sm:block max-w-[140px] truncate tracking-tight">
             {negocioNombre}
           </span>
         </Link>
@@ -359,7 +359,7 @@ export default function NavBar({
 
       {/* Mobile drawer */}
       {mobileOpen && (
-        <div className="md:hidden border-t bg-card px-4 py-3 space-y-1">
+        <div className="md:hidden border-t border-border/50 bg-background/95 backdrop-blur-xl px-4 py-3 space-y-1">
           {allMobileLinks.map(({ href, label, Icon }) => {
             const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
             const badge = badges[href] ?? 0

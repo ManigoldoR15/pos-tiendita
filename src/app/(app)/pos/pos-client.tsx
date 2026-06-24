@@ -641,8 +641,8 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
       {/* ── Carrito ── */}
       <div className="card-soft flex w-full flex-col md:w-80 lg:w-96 md:shrink-0 md:overflow-hidden">
         <div className="flex shrink-0 items-center gap-2 border-b px-5 py-4">
-          <ShoppingCart className="h-5 w-5 text-muted-foreground" />
-          <span className="font-bold">Carrito</span>
+          <ShoppingCart className="h-5 w-5 text-primary" />
+          <span className="font-semibold">Carrito</span>
           {carrito.length > 0 && (
             <>
               <span className="text-xs text-muted-foreground">
@@ -677,7 +677,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                         <>
                           <button
                             onClick={() => cambiarCantidad(item.productoId, -1)}
-                            className="flex h-8 w-8 items-center justify-center rounded-full border hover:bg-accent"
+                            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background hover:bg-muted active:scale-95 transition-all"
                           >
                             <Minus className="h-3.5 w-3.5" />
                           </button>
@@ -692,7 +692,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                           />
                           <button
                             onClick={() => cambiarCantidad(item.productoId, 1)}
-                            className="flex h-8 w-8 items-center justify-center rounded-full border hover:bg-accent"
+                            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background hover:bg-muted active:scale-95 transition-all"
                           >
                             <Plus className="h-3.5 w-3.5" />
                           </button>
@@ -736,7 +736,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
               </div>
               <Button
                 onClick={abrirCobro}
-                className="w-full h-14 text-lg font-bold"
+                className="w-full h-14 text-lg font-bold shadow-[0_4px_16px_-2px_rgb(0_0_0/0.18)] hover:shadow-[0_6px_20px_-2px_rgb(0_0_0/0.22)] transition-shadow"
               >
                 Cobrar {formatMXN(total)}
               </Button>

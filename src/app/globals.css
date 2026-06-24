@@ -39,89 +39,109 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.7);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: calc(var(--radius) * 1.5);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-3xl: calc(var(--radius) * 2.6);
+  --radius-4xl: calc(var(--radius) * 3.2);
 }
 
-/* ─── LIGHT MODE — Verde Mexicano Profundo (paleta suave) ─── */
-:root {
-  --background: oklch(0.95 0.012 148);   /* sage cream — menos brillo que blanco puro */
-  --foreground: oklch(0.15 0.015 148);
-  --card: oklch(0.98 0.005 148);          /* casi blanco con tinte verde suave */
-  --card-foreground: oklch(0.15 0.015 148);
-  --popover: oklch(0.98 0.005 148);
-  --popover-foreground: oklch(0.15 0.015 148);
-  --primary: oklch(0.38 0.13 148);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.91 0.025 148);
-  --secondary-foreground: oklch(0.25 0.07 148);
-  --muted: oklch(0.91 0.016 148);
-  --muted-foreground: oklch(0.50 0.025 148);
-  --accent: oklch(0.88 0.045 148);
-  --accent-foreground: oklch(0.25 0.07 148);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.85 0.020 148);
-  --input: oklch(0.85 0.020 148);
-  --ring: oklch(0.38 0.13 148);
-  --radius: 0.75rem;
+/* ─── ACENTO PREMIUM: Teal profundo ─── */
+/* Elegante, moderno, confiable — diferente al verde genérico de todos los POS */
 
-  /* Chart palette: verde → teal → ámbar → azul → naranja */
-  --chart-1: oklch(0.50 0.17 148);
-  --chart-2: oklch(0.62 0.14 165);
-  --chart-3: oklch(0.72 0.16 80);
-  --chart-4: oklch(0.60 0.20 210);
+/* ─── LIGHT MODE — Paleta Apple/iPhone, fondos cálidos ─── */
+:root {
+  /* Fondos neutros cálidos (no verde, no blanco puro) */
+  --background: oklch(0.978 0.004 95);     /* ≈ #FAFAF8 — blanco cálido Apple */
+  --foreground: oklch(0.130 0.008 265);    /* ≈ #1C1C1E — texto Apple profundo */
+  --card: oklch(1 0 0);                    /* blanco puro para tarjetas */
+  --card-foreground: oklch(0.130 0.008 265);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.130 0.008 265);
+
+  /* Acento principal: Teal Premium — sofisticado, sin ser azul corporativo genérico */
+  --primary: oklch(0.38 0.16 195);
+  --primary-foreground: oklch(0.99 0 0);
+
+  /* Neutros secundarios */
+  --secondary: oklch(0.955 0.007 95);      /* ≈ #F2F1EE — crema muy suave */
+  --secondary-foreground: oklch(0.25 0.008 265);
+  --muted: oklch(0.955 0.007 95);
+  --muted-foreground: oklch(0.468 0.008 265);  /* ≈ #6E6E73 — texto secundario Apple */
+  --accent: oklch(0.955 0.007 95);
+  --accent-foreground: oklch(0.20 0.008 265);
+
+  /* Destructivo (rojo) */
+  --destructive: oklch(0.577 0.245 27.325);
+
+  /* Bordes y campos — cálidos, suaves */
+  --border: oklch(0.910 0.007 95);         /* ≈ #E5E4E0 — borde cálido tenue */
+  --input: oklch(0.910 0.007 95);
+  --ring: oklch(0.38 0.16 195);
+
+  /* Radio base: 14px — más generoso y Apple-like que los 12px anteriores */
+  --radius: 0.875rem;
+
+  /* Gráficas: teal → verde → ámbar → índigo → naranja */
+  --chart-1: oklch(0.50 0.16 195);
+  --chart-2: oklch(0.58 0.17 148);
+  --chart-3: oklch(0.72 0.17 80);
+  --chart-4: oklch(0.60 0.20 255);
   --chart-5: oklch(0.65 0.22 30);
 
-  --sidebar: oklch(0.91 0.015 148);
-  --sidebar-foreground: oklch(0.15 0.015 148);
-  --sidebar-primary: oklch(0.38 0.13 148);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.88 0.045 148);
-  --sidebar-accent-foreground: oklch(0.25 0.07 148);
-  --sidebar-border: oklch(0.85 0.020 148);
-  --sidebar-ring: oklch(0.38 0.13 148);
+  /* Sidebar */
+  --sidebar: oklch(0.968 0.005 95);
+  --sidebar-foreground: oklch(0.130 0.008 265);
+  --sidebar-primary: oklch(0.38 0.16 195);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.945 0.008 95);
+  --sidebar-accent-foreground: oklch(0.25 0.008 265);
+  --sidebar-border: oklch(0.910 0.007 95);
+  --sidebar-ring: oklch(0.38 0.16 195);
 }
 
-/* ─── DARK MODE ─── */
+/* ─── DARK MODE — Carbón profundo Apple (#1A1A1C) ─── */
 .dark {
-  --background: oklch(0.12 0.01 148);
-  --foreground: oklch(0.96 0.005 148);
-  --card: oklch(0.17 0.015 148);
-  --card-foreground: oklch(0.96 0.005 148);
-  --popover: oklch(0.17 0.015 148);
-  --popover-foreground: oklch(0.96 0.005 148);
-  --primary: oklch(0.64 0.18 145);
-  --primary-foreground: oklch(0.10 0.01 145);
-  --secondary: oklch(0.23 0.025 148);
-  --secondary-foreground: oklch(0.90 0.01 148);
-  --muted: oklch(0.21 0.02 148);
-  --muted-foreground: oklch(0.62 0.025 148);
-  --accent: oklch(0.26 0.035 148);
-  --accent-foreground: oklch(0.90 0.01 148);
+  --background: oklch(0.118 0.006 265);    /* ≈ #1A1A1C — carbón Apple */
+  --foreground: oklch(0.966 0.004 265);    /* ≈ #F5F5F7 — texto claro Apple */
+  --card: oklch(0.155 0.007 265);          /* ≈ #232326 — tarjeta oscura */
+  --card-foreground: oklch(0.966 0.004 265);
+  --popover: oklch(0.155 0.007 265);
+  --popover-foreground: oklch(0.966 0.004 265);
+
+  /* Teal muted en dark — premium, no neón */
+  --primary: oklch(0.58 0.11 195);
+  --primary-foreground: oklch(0.97 0.005 195);
+
+  --secondary: oklch(0.190 0.007 265);     /* ≈ #2C2C2E */
+  --secondary-foreground: oklch(0.900 0.005 265);
+  --muted: oklch(0.190 0.007 265);
+  --muted-foreground: oklch(0.635 0.008 265);  /* ≈ #98989D — Apple secondary dark */
+  --accent: oklch(0.200 0.007 265);
+  --accent-foreground: oklch(0.900 0.005 265);
+
   --destructive: oklch(0.68 0.19 22.216);
+
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.64 0.18 145);
+  --ring: oklch(0.58 0.11 195);
 
-  --chart-1: oklch(0.58 0.18 145);
-  --chart-2: oklch(0.65 0.14 165);
-  --chart-3: oklch(0.78 0.16 80);
-  --chart-4: oklch(0.64 0.20 210);
+  --chart-1: oklch(0.56 0.11 195);
+  --chart-2: oklch(0.65 0.17 148);
+  --chart-3: oklch(0.78 0.17 80);
+  --chart-4: oklch(0.64 0.20 255);
   --chart-5: oklch(0.68 0.22 30);
 
-  --sidebar: oklch(0.15 0.012 148);
-  --sidebar-foreground: oklch(0.96 0.005 148);
-  --sidebar-primary: oklch(0.64 0.18 145);
-  --sidebar-primary-foreground: oklch(0.10 0.01 145);
-  --sidebar-accent: oklch(0.26 0.035 148);
-  --sidebar-accent-foreground: oklch(0.90 0.01 148);
+  --sidebar: oklch(0.140 0.007 265);
+  --sidebar-foreground: oklch(0.966 0.004 265);
+  --sidebar-primary: oklch(0.58 0.11 195);
+  --sidebar-primary-foreground: oklch(0.97 0.005 195);
+  --sidebar-accent: oklch(0.200 0.007 265);
+  --sidebar-accent-foreground: oklch(0.900 0.005 265);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.64 0.18 145);
+  --sidebar-ring: oklch(0.58 0.11 195);
 }
 
 @layer base {
@@ -130,6 +150,9 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   html {
     @apply font-sans;
@@ -137,17 +160,26 @@
 }
 
 @layer components {
-  /* Tarjeta premium: sombra suave en claro, borde sutil en oscuro — sin línea dura gris */
+  /* Tarjeta premium Apple-style:
+     - Luz: sombra difusa muy suave + borde inset translúcido (etching effect)
+     - Oscuro: borde translúcido, sin sombra */
   .card-soft {
-    @apply rounded-2xl bg-card shadow-[0_1px_2px_rgb(0_0_0/0.04),0_10px_24px_-8px_rgb(0_0_0/0.08)] dark:border dark:border-border dark:shadow-none transition-[box-shadow] duration-200;
+    @apply rounded-2xl bg-card
+      shadow-[0_1px_2px_rgb(0_0_0/0.04),0_4px_16px_-4px_rgb(0_0_0/0.08),inset_0_0_0_0.5px_rgb(0_0_0/0.06)]
+      dark:border dark:border-border dark:shadow-none
+      transition-[box-shadow] duration-200;
   }
+
+  /* Eyebrow — etiqueta de sección pequeña */
   .eyebrow {
     @apply text-xs font-semibold uppercase tracking-widest text-muted-foreground;
   }
+
   /* Regla única de color para cifras monetarias */
   .num-income  { @apply tabular-nums text-emerald-600 dark:text-emerald-400; }
   .num-expense { @apply tabular-nums text-red-600 dark:text-red-400; }
   .num-neutral { @apply tabular-nums; }
+
   .prose-readable { max-width: 65ch; }
 }
 
