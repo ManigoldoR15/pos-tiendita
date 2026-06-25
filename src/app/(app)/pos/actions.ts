@@ -31,6 +31,19 @@ export async function registrarVentaAction(params: {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Determinar plaza del empleado (NULL si no tiene asignación — negocios sin
+  // multi-plaza o dueños que venden desde cualquier ubicación)
+  let localId: string | null = null
+  if (user) {
+    const { data: miembro } = await supabase
+      .from('usuarios_negocio')
+      .select('local_id')
+      .eq('negocio_id', negocio.id)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    localId = miembro?.local_id ?? null
+  }
+
   const { data, error } = await supabase.rpc('registrar_venta', {
     p_negocio_id: negocio.id,
     p_items: params.items,
@@ -39,6 +52,7 @@ export async function registrarVentaAction(params: {
     p_pago_recibido: params.pago_recibido,
     p_descuento: params.descuento ?? 0,
     p_vendedor_id: user?.id ?? null,
+    p_local_id: localId,
   })
 
   if (error) return { error: error.message }

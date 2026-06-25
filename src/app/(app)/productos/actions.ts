@@ -211,6 +211,8 @@ export async function agregarLoteAction(
     return { error: 'Agrega al menos un lote con cantidad mayor a 0' }
   }
 
+  const localId = (formData.get('local_id') as string) || null
+
   const supabase = await createClient()
   const { error } = await supabase.from('lotes_producto').insert(
     lotes.map((l) => ({
@@ -225,6 +227,7 @@ export async function agregarLoteAction(
       fecha_caducidad: l.fecha_caducidad,
       notas: l.notas,
       notas_merma: l.notas_merma ?? null,
+      local_id: localId,
     })),
   )
 

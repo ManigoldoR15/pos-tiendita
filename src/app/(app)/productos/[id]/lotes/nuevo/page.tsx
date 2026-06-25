@@ -15,7 +15,7 @@ export default async function NuevoLoteProductoPage({
   if (!negocio) redirect('/crear-negocio')
   const supabase = await createClient()
 
-  const [{ data: producto }, { data: categoriasPerecedero }] = await Promise.all([
+  const [{ data: producto }, { data: categoriasPerecedero }, { data: locales }] = await Promise.all([
     supabase
       .from('productos')
       .select('id, nombre, tipo_caducidad, existencias, unidad_medida')
@@ -28,6 +28,12 @@ export default async function NuevoLoteProductoPage({
       .eq('negocio_id', negocio!.id)
       .order('orden')
       .order('nombre'),
+    supabase
+      .from('locales')
+      .select('id, nombre, color')
+      .eq('negocio_id', negocio!.id)
+      .eq('activo', true)
+      .order('created_at'),
   ])
 
   if (!producto) notFound()
@@ -37,6 +43,7 @@ export default async function NuevoLoteProductoPage({
       action={agregarLoteAction}
       producto={producto}
       categoriasPerecedero={categoriasPerecedero ?? []}
+      plazas={(locales ?? []) as { id: string; nombre: string; color: string }[]}
       hoy={hoyMX()}
     />
   )

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { MapPin, Settings2, TrendingUp, ShoppingCart, Receipt } from 'lucide-react'
+import { MapPin, Settings2, TrendingUp, ShoppingCart, Receipt, Package } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
@@ -90,13 +90,24 @@ export default async function PlazasPage({ searchParams }: { searchParams: Searc
             Rendimiento por ubicación — {periodoLabel.toLowerCase()}
           </p>
         </div>
-        <Link
-          href="/configuracion/plazas"
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <Settings2 className="h-3.5 w-3.5" />
-          Gestionar
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          {tieneMultiplasPlazas && (
+            <Link
+              href="/plazas/stock"
+              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Package className="h-3.5 w-3.5" />
+              Inventario
+            </Link>
+          )}
+          <Link
+            href="/configuracion/plazas"
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+            Gestionar
+          </Link>
+        </div>
       </div>
 
       {/* Filtro de período */}

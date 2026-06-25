@@ -14,14 +14,17 @@ type CategoriaPerecedero = {
   dias_ambiente: number | null
 }
 
+type Plaza = { id: string; nombre: string; color: string }
+
 type Props = {
   action: (prev: LoteState, formData: FormData) => Promise<LoteState>
   producto: { id: string; nombre: string; tipo_caducidad: string | null; existencias: number; unidad_medida?: string }
   categoriasPerecedero: CategoriaPerecedero[]
+  plazas?: Plaza[]
   hoy: string
 }
 
-export default function ReabastoForm({ action, producto, categoriasPerecedero, hoy }: Props) {
+export default function ReabastoForm({ action, producto, categoriasPerecedero, plazas = [], hoy }: Props) {
   const [state, formAction, pending] = useActionState(action, null)
   const tipo = producto.tipo_caducidad === 'fresco' ? 'fresco' : 'envasado'
 
@@ -34,6 +37,25 @@ export default function ReabastoForm({ action, producto, categoriasPerecedero, h
 
       <form action={formAction} className="flex flex-col gap-5">
         <input type="hidden" name="producto_id" value={producto.id} />
+
+        {plazas.length > 1 && (
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Plaza destino</label>
+            <select
+              name="local_id"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">Pool global (sin plaza)</option>
+              {plazas.map((p) => (
+                <option key={p.id} value={p.id}>{p.nombre}</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Pool global = disponible para ventas sin filtro de plaza.
+            </p>
+          </div>
+        )}
+
         <CapturaLotes tipo={tipo} categorias={categoriasPerecedero} hoy={hoy} unidadMedida={producto.unidad_medida ?? 'pieza'} />
 
         {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
