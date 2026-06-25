@@ -82,6 +82,7 @@ export async function actualizarPerfilNegocioAction(
   const ciudad = (formData.get('ciudad') as string)?.trim() || null
   const estado_mx = (formData.get('estado_mx') as string) || null
   const inscrito_sat = formData.get('inscrito_sat') === 'on'
+  const rfc = (formData.get('rfc') as string)?.trim().toUpperCase() || null
 
   const negocio = await getNegocioActual()
   if (!negocio) return { error: 'No hay negocio activo' }
@@ -89,7 +90,7 @@ export async function actualizarPerfilNegocioAction(
   const supabase = await createClient()
   const { error } = await supabase
     .from('negocios')
-    .update({ tipo_negocio, ciudad, estado_mx, inscrito_sat })
+    .update({ tipo_negocio, ciudad, estado_mx, inscrito_sat, rfc: inscrito_sat ? rfc : null })
     .eq('id', negocio.id)
 
   if (error) return { error: 'No se pudo guardar. Intenta de nuevo.' }

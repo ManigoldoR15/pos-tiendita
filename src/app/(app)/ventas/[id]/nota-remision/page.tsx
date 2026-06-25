@@ -85,6 +85,9 @@ export default async function NotaRemisionPage({
             Nota de Remisión
           </h1>
           <p className="mt-1 text-lg font-bold text-gray-800">{negocio.nombre}</p>
+          {negocio.rfc && (
+            <p className="mt-0.5 text-sm text-gray-600">RFC: {negocio.rfc}</p>
+          )}
         </div>
 
         {/* Meta — folio y fecha */}

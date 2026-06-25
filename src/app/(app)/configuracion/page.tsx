@@ -75,6 +75,7 @@ export default async function ConfiguracionPage() {
             ciudadActual={(negocio as { ciudad?: string | null }).ciudad ?? null}
             estadoActual={(negocio as { estado_mx?: string | null }).estado_mx ?? null}
             inscritoSat={(negocio as { inscrito_sat?: boolean }).inscrito_sat ?? false}
+            rfcActual={negocio.rfc}
           />
         </section>
       )}

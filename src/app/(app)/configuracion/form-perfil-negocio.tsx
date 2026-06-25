@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { TIPOS_NEGOCIO, ESTADOS_MX } from '@/lib/tipos-negocio'
 import { actualizarPerfilNegocioAction } from './actions'
 import type { ConfigState } from './actions'
@@ -10,13 +10,15 @@ type Props = {
   ciudadActual: string | null
   estadoActual: string | null
   inscritoSat: boolean
+  rfcActual: string | null
 }
 
-export default function FormPerfilNegocio({ tipoActual, ciudadActual, estadoActual, inscritoSat }: Props) {
+export default function FormPerfilNegocio({ tipoActual, ciudadActual, estadoActual, inscritoSat, rfcActual }: Props) {
   const [state, action, pending] = useActionState<ConfigState, FormData>(
     actualizarPerfilNegocioAction,
     null,
   )
+  const [showRfc, setShowRfc] = useState(inscritoSat)
 
   return (
     <form action={action} className="space-y-4">
@@ -68,6 +70,7 @@ export default function FormPerfilNegocio({ tipoActual, ciudadActual, estadoActu
           type="checkbox"
           name="inscrito_sat"
           defaultChecked={inscritoSat}
+          onChange={(e) => setShowRfc(e.target.checked)}
           className="h-4 w-4 rounded accent-primary"
         />
         <div>
@@ -75,6 +78,20 @@ export default function FormPerfilNegocio({ tipoActual, ciudadActual, estadoActu
           <p className="text-xs text-muted-foreground">Tengo RFC y emito facturas o ticket electrónico</p>
         </div>
       </label>
+
+      {showRfc && (
+        <div className="space-y-1.5">
+          <label className="text-sm text-muted-foreground">RFC</label>
+          <input
+            name="rfc"
+            defaultValue={rfcActual ?? ''}
+            placeholder="ej. XAXX010101000"
+            maxLength={13}
+            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <p className="text-xs text-muted-foreground">Se imprimirá en la nota de remisión</p>
+        </div>
+      )}
 
       <div className="flex items-center gap-3">
         <button

@@ -206,11 +206,14 @@ export default function CapturaLotes({
           {!esGranel && (
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium">Cantidad</label>
+                <label className="text-sm font-medium">
+                  Cantidad <span className="text-destructive">*</span>
+                </label>
                 <input
                   type="number"
                   min="1"
                   step="1"
+                  placeholder="Ej: 24"
                   value={linea.cantidad}
                   onChange={(e) => actualizar(idx, { cantidad: e.target.value })}
                   className="rounded-lg border border-input bg-background px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-ring"

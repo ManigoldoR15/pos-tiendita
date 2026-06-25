@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Users, ChevronRight } from 'lucide-react'
+import { Users, ChevronRight, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { formatMXN } from '@/lib/dinero'
@@ -34,19 +34,28 @@ export default async function ClientesPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div className="flex items-center gap-3">
-        <Users className="h-6 w-6 text-primary" />
-        <div>
-          <h1 className="text-2xl font-black tracking-tight">Clientes</h1>
-          <p className="text-sm text-muted-foreground">{(clientes ?? []).length} registrados</p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Users className="h-6 w-6 text-primary" />
+          <div>
+            <h1 className="text-2xl font-black tracking-tight">Clientes</h1>
+            <p className="text-sm text-muted-foreground">{(clientes ?? []).length} registrados</p>
+          </div>
         </div>
+        <Link
+          href="/clientes/nuevo"
+          className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/88 transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          Nuevo
+        </Link>
       </div>
 
       {(clientes ?? []).length === 0 ? (
         <div className="card-soft flex flex-col items-center gap-3 py-16 text-center">
           <Users className="h-10 w-10 text-muted-foreground/30" />
           <p className="text-muted-foreground">Sin clientes registrados.</p>
-          <p className="text-sm text-muted-foreground">Los clientes se crean desde el POS al cobrar.</p>
+          <p className="text-sm text-muted-foreground">Usa el botón "Nuevo" o créalos desde el POS al cobrar.</p>
         </div>
       ) : (
         <div className="card-soft divide-y">

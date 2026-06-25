@@ -242,7 +242,9 @@ export default function ProductoForm({
         </label>
 
         {state?.error && (
-          <p className="text-sm text-destructive">{state.error}</p>
+          <div className="rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-3 text-sm font-medium text-destructive">
+            {state.error}
+          </div>
         )}
 
         <div className="flex gap-3 pt-2">

@@ -5,6 +5,7 @@ export type Negocio = {
   id: string
   nombre: string
   suspendido: boolean
+  rfc: string | null
 }
 
 export const getNegocioActual = cache(async function (): Promise<Negocio | null> {
@@ -18,7 +19,7 @@ export const getNegocioActual = cache(async function (): Promise<Negocio | null>
 
   const { data } = await supabase
     .from('usuarios_negocio')
-    .select('negocios(id, nombre, suspendido)')
+    .select('negocios(id, nombre, suspendido, rfc)')
     .eq('user_id', user.id)
     .limit(1)
     .single()
