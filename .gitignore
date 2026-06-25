@@ -41,3 +41,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .mcp.json
+
+# claude code — worktrees y config local
+.claude/
+.agents/
+test-screenshots/
+verify-*.mjs
+diseno-referencia/
