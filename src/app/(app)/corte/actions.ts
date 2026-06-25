@@ -26,21 +26,38 @@ export async function abrirCorteAction(
   } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  // Obtener el local activo del negocio (preparación multi-local)
-  const { data: local } = await supabase
-    .from('locales')
-    .select('id')
+  // Determinar el local del corte:
+  // 1. Si el usuario tiene local asignado en usuarios_negocio → usarlo
+  // 2. Si el formulario pasa local_id (dueño eligió) → usarlo
+  // 3. Si solo hay un local activo → usarlo (comportamiento anterior)
+  const { data: miembroLocal } = await supabase
+    .from('usuarios_negocio')
+    .select('local_id')
     .eq('negocio_id', negocio.id)
-    .eq('activo', true)
-    .order('created_at')
-    .limit(1)
+    .eq('user_id', user.id)
     .maybeSingle()
+
+  const formLocalId = (formData.get('local_id') as string | null) || null
+
+  let localId: string | null = miembroLocal?.local_id ?? formLocalId ?? null
+
+  if (!localId) {
+    const { data: local } = await supabase
+      .from('locales')
+      .select('id')
+      .eq('negocio_id', negocio.id)
+      .eq('activo', true)
+      .order('created_at')
+      .limit(1)
+      .maybeSingle()
+    localId = local?.id ?? null
+  }
 
   const { error } = await supabase.from('cortes_caja').insert({
     negocio_id: negocio.id,
     abierto_por: user.id,
     monto_inicial: monto,
-    local_id: local?.id ?? null,
+    local_id: localId,
   })
 
   if (error) {

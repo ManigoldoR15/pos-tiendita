@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
@@ -11,8 +12,9 @@ import FormPerfilNegocio from './form-perfil-negocio'
 import { toggleMetodoPagoAction, eliminarMetodoPagoAction } from './actions'
 import { eliminarEmpleadoAction } from './actions-empleados'
 import SelectorRolEmpleado from './selector-rol-empleado'
+import SelectorPlazaEmpleado from './selector-plaza-empleado'
 import { Button } from '@/components/ui/button'
-import { Trash2 } from 'lucide-react'
+import { Trash2, MapPin, ChevronRight } from 'lucide-react'
 
 export default async function ConfiguracionPage() {
   const negocio = await getNegocioActual()
@@ -28,14 +30,17 @@ export default async function ConfiguracionPage() {
     .eq('negocio_id', negocio.id)
     .order('nombre')
 
-  type Miembro = { user_id: string; email: string; rol: string; created_at: string }
+  type Miembro = { user_id: string; email: string; rol: string; created_at: string; local_id: string | null; local_nombre: string | null }
+  type Local = { id: string; nombre: string; color: string; activo: boolean }
   let miembros: Miembro[] = []
   let metaActual: number | null = null
+  let plazas: Local[] = []
+  let maxPlazas = 1
 
   if (rolActual === 'dueno') {
     const hoy = hoyMX()
     const mes = hoy.substring(0, 8) + '01'
-    const [{ data: miembrosData }, { data: metaData }] = await Promise.all([
+    const [{ data: miembrosData }, { data: metaData }, { data: localesData }, { data: negocioExt }] = await Promise.all([
       supabase.rpc('get_miembros_negocio', { p_negocio_id: negocio.id }),
       supabase
         .from('metas')
@@ -43,10 +48,25 @@ export default async function ConfiguracionPage() {
         .eq('negocio_id', negocio.id)
         .eq('mes', mes)
         .single(),
+      supabase
+        .from('locales')
+        .select('id, nombre, color, activo')
+        .eq('negocio_id', negocio.id)
+        .eq('activo', true)
+        .order('created_at'),
+      supabase
+        .from('negocios')
+        .select('max_plazas')
+        .eq('id', negocio.id)
+        .single(),
     ])
     miembros = (miembrosData as Miembro[]) ?? []
     metaActual = metaData?.meta_ventas ?? null
+    plazas = (localesData as Local[]) ?? []
+    maxPlazas = (negocioExt as { max_plazas: number } | null)?.max_plazas ?? 1
   }
+
+  const tieneMultiplasPlazas = plazas.length > 1 || maxPlazas > 1
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
@@ -77,6 +97,32 @@ export default async function ConfiguracionPage() {
             inscritoSat={(negocio as { inscrito_sat?: boolean }).inscrito_sat ?? false}
             rfcActual={negocio.rfc}
           />
+        </section>
+      )}
+
+      {/* — Plazas (solo dueño, solo si tiene más de 1 o puede tener más) ————— */}
+      {rolActual === 'dueno' && tieneMultiplasPlazas && (
+        <section className="card-soft p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-bold">Plazas</h2>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {plazas.length} activa{plazas.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <Link href="/configuracion/plazas" className="flex items-center gap-0.5 text-xs text-primary hover:underline">
+              Administrar <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {plazas.map((p) => (
+              <span key={p.id} className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium">
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: p.color }} />
+                {p.nombre}
+              </span>
+            ))}
+          </div>
         </section>
       )}
 
@@ -162,6 +208,13 @@ export default async function ConfiguracionPage() {
                   </span>
                 ) : (
                   <>
+                    {tieneMultiplasPlazas && (
+                      <SelectorPlazaEmpleado
+                        userId={m.user_id}
+                        localIdActual={m.local_id}
+                        plazas={plazas}
+                      />
+                    )}
                     <SelectorRolEmpleado userId={m.user_id} rolActual={m.rol} />
 
                     <form action={eliminarEmpleadoAction}>
