@@ -140,7 +140,8 @@ export default async function EstudiosPage() {
           <h2 className="text-base font-black text-white">Segmentación por tipo de negocio</h2>
         </div>
         <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[360px] text-sm">
             <thead>
               <tr className="border-b border-slate-800">
                 <th className="text-left px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tipo</th>
@@ -182,6 +183,7 @@ export default async function EstudiosPage() {
               })}
             </tbody>
           </table>
+          </div>
           {segmentacion.length === 0 && (
             <p className="text-sm text-slate-500 text-center py-10">Sin datos de segmentación</p>
           )}
@@ -191,7 +193,7 @@ export default async function EstudiosPage() {
       {/* SAT resumen */}
       <section className="rounded-2xl bg-slate-900 border border-slate-800 p-5">
         <h2 className="text-sm font-bold text-slate-200 mb-4">Formalidad del mercado atendido</h2>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-2 md:gap-4">
           <div>
             <p className="text-[10px] text-slate-500 uppercase tracking-wider">Inscritos SAT</p>
             <p className="text-2xl font-black text-emerald-400 mt-1">

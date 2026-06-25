@@ -112,7 +112,7 @@ export default async function ClientesPage({
       </div>
 
       {/* KPIs rápidos */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div className="rounded-xl bg-slate-900 border border-slate-800 p-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Total</p>
           <p className="text-2xl font-black text-white mt-1">{total}</p>

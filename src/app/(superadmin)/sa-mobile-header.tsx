@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -22,6 +22,10 @@ const NAV = [
 export default function SaMobileHeader() {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
+
+  useEffect(() => {
+    setOpen(false)
+  }, [pathname])
 
   const current = NAV.find((n) =>
     n.href === '/superadmin' ? pathname === n.href : pathname.startsWith(n.href),

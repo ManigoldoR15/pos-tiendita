@@ -54,7 +54,7 @@ export default async function AccesosPage({
       </div>
 
       {/* KPIs de usuarios activos */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
         <div className="rounded-xl bg-slate-900 border border-slate-800 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Users className="h-3.5 w-3.5 text-emerald-400" />
@@ -127,7 +127,8 @@ export default async function AccesosPage({
         <div className="px-5 py-3 border-b border-slate-800">
           <p className="text-xs text-slate-500">{filas.length} registro{filas.length !== 1 ? 's' : ''} en los últimos {dias} días</p>
         </div>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[320px] text-sm">
           <thead>
             <tr className="border-b border-slate-800">
               <th className="text-left px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Usuario</th>
@@ -174,6 +175,7 @@ export default async function AccesosPage({
             ))}
           </tbody>
         </table>
+        </div>
         {filas.length === 0 && (
           <div className="py-16 text-center">
             <Activity className="mx-auto h-10 w-10 text-slate-700 mb-3" />
