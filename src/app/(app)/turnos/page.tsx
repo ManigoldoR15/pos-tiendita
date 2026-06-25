@@ -63,40 +63,50 @@ export default async function TurnosPage({
     { data: turnos },
     { data: miembros },
     { data: cajasAbiertas },
-    { data: turnosActivos },
+    { data: turnosActivosHoy },
+    { data: todosLosRegistrosHoy },
   ] = await Promise.all([
-    // Historial de turnos cerrados
+    // Turnos de caja cerrados (con filtros)
     supabase.rpc('get_turnos_negocio', {
       p_negocio_id: negocio.id,
       p_cajero_id: cajeroId,
       p_desde: desde,
       p_hasta: hasta,
     }),
-    // Lista de cajeros para el filtro
+    // Lista de miembros para nombres
     supabase.rpc('get_miembros_negocio', { p_negocio_id: negocio.id }),
-    // Cajas abiertas en este momento
+    // Cajas abiertas ahora mismo
     supabase
       .from('cortes_caja')
       .select('id, abierto_por, fecha_apertura')
       .eq('negocio_id', negocio.id)
       .eq('estado', 'abierto')
       .order('fecha_apertura', { ascending: true }),
-    // Turnos registrados hoy sin salida
+    // Registros de turno activos hoy (sin salida)
     supabase
       .from('registros_turno')
-      .select('id, user_id, nombre, entrada_at')
+      .select('id, user_id, nombre, entrada_at, salida_at')
       .eq('negocio_id', negocio.id)
       .is('salida_at', null)
       .gte('entrada_at', inicioHoy)
       .lte('entrada_at', finHoy)
       .order('entrada_at', { ascending: true }),
+    // TODOS los registros de turno de hoy (activos + cerrados)
+    supabase
+      .from('registros_turno')
+      .select('id, user_id, nombre, entrada_at, salida_at')
+      .eq('negocio_id', negocio.id)
+      .gte('entrada_at', inicioHoy)
+      .lte('entrada_at', finHoy)
+      .order('entrada_at', { ascending: true }),
   ])
 
-  // Unificar cajas abiertas + turnos registrados (sin duplicados)
-  type PersonaActiva = { user_id: string; label: string; desde: string }
   const miembrosMap = new Map(
     ((miembros ?? []) as MiembroRow[]).map((m) => [m.user_id, m.email])
   )
+
+  // ── En línea ahora (cajas abiertas + registros activos, sin duplicados) ──
+  type PersonaActiva = { user_id: string; label: string; desde: string }
   const activoMap = new Map<string, PersonaActiva>()
   for (const caja of cajasAbiertas ?? []) {
     const email = miembrosMap.get(caja.abierto_por) ?? caja.abierto_por.slice(0, 8)
@@ -106,7 +116,7 @@ export default async function TurnosPage({
       desde: caja.fecha_apertura,
     })
   }
-  for (const t of turnosActivos ?? []) {
+  for (const t of turnosActivosHoy ?? []) {
     if (!activoMap.has(t.user_id)) {
       const email = miembrosMap.get(t.user_id) ?? t.nombre
       activoMap.set(t.user_id, {
@@ -117,6 +127,10 @@ export default async function TurnosPage({
     }
   }
   const personasActivas = [...activoMap.values()]
+
+  // ── Historial de hoy (todos los registros_turno de hoy) ──────────────────
+  type RegistroHoy = { id: string; user_id: string; nombre: string; entrada_at: string; salida_at: string | null }
+  const registrosHoy = (todosLosRegistrosHoy ?? []) as RegistroHoy[]
 
   const lista = (turnos ?? []) as TurnoRow[]
   const cajeros = (miembros ?? []).filter((m: MiembroRow) => m.rol !== 'dueno') as MiembroRow[]
@@ -167,6 +181,69 @@ export default async function TurnosPage({
           </div>
         )}
       </div>
+
+      {/* Historial de hoy */}
+      <div className="card-soft overflow-hidden">
+        <div className="flex items-center gap-2 border-b px-5 py-4">
+          <span className="text-sm font-semibold">Historial de hoy</span>
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+            {registrosHoy.length}
+          </span>
+        </div>
+        {registrosHoy.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-muted-foreground">
+            Ningún empleado ha registrado entrada hoy todavía.
+          </p>
+        ) : (
+          <div className="divide-y">
+            {registrosHoy.map((r) => {
+              const label = emailCajero(miembrosMap.get(r.user_id) ?? r.nombre)
+              const initials = label.substring(0, 2).toUpperCase()
+              const entrada = new Date(r.entrada_at).toLocaleTimeString('es-MX', {
+                timeZone: TZ, hour: '2-digit', minute: '2-digit',
+              })
+              const salida = r.salida_at
+                ? new Date(r.salida_at).toLocaleTimeString('es-MX', {
+                    timeZone: TZ, hour: '2-digit', minute: '2-digit',
+                  })
+                : null
+              const ms = (r.salida_at ? new Date(r.salida_at) : new Date()).getTime()
+                - new Date(r.entrada_at).getTime()
+              const durH = Math.floor(ms / 3_600_000)
+              const durM = Math.floor((ms % 3_600_000) / 60_000)
+              const durLabel = durH > 0 ? `${durH}h ${durM}m` : `${durM}m`
+              return (
+                <div key={r.id} className="flex items-center gap-3 px-5 py-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                    {initials}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Entrada: {entrada}
+                      {salida ? ` · Salida: ${salida}` : ''}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    {salida ? (
+                      <span className="text-xs text-muted-foreground">{durLabel}</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        {durLabel}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Turnos de caja cerrados — filtros + tabla */}
+      <div>
+        <h2 className="mb-3 text-base font-bold">Cortes de caja cerrados</h2>
 
       {/* Filters + view toggle */}
       <form method="get" className="flex flex-wrap gap-3 items-end">
@@ -324,6 +401,7 @@ export default async function TurnosPage({
           </table>
         </div>
       )}
+      </div> {/* fin Cortes de caja cerrados */}
     </div>
   )
 }
