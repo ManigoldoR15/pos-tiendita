@@ -51,7 +51,7 @@ export default async function SuperAdminPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-black text-white tracking-tight">Dashboard de plataforma</h1>
+        <h1 className="text-2xl font-black text-white tracking-tight md:text-3xl">Dashboard de plataforma</h1>
         <p className="mt-1 text-sm text-slate-400">
           Vista global de todos los negocios registrados en POS Tiendita
         </p>
@@ -103,11 +103,11 @@ export default async function SuperAdminPage() {
       </div>
 
       {/* Monto histórico */}
-      <div className="rounded-2xl bg-slate-900 border border-slate-800 p-6">
+      <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 md:p-6">
         <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
           Volumen total procesado (histórico)
         </p>
-        <p className="text-5xl font-black text-white tabular-nums tracking-tight">
+        <p className="text-3xl font-black text-white tabular-nums tracking-tight md:text-5xl">
           {formatMXN(stats?.monto_historico ?? 0)}
         </p>
         <p className="mt-1 text-sm text-slate-400">
@@ -190,7 +190,7 @@ export default async function SuperAdminPage() {
             <Link
               key={n.id}
               href={`/superadmin/negocios/${n.id}`}
-              className="flex items-center gap-4 px-6 py-4 hover:bg-slate-800/50 transition-colors"
+              className="flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 transition-colors md:gap-4 md:px-6 md:py-4"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">

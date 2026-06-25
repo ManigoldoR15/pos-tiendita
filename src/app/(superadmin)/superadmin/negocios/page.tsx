@@ -41,7 +41,7 @@ export default async function NegociosPage() {
       </div>
 
       {/* Stats rápidas */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3 md:gap-4">
         <div className="rounded-xl bg-slate-900 border border-slate-800 p-4">
           <p className="text-xs text-slate-500 mb-1">Total negocios</p>
           <p className="text-2xl font-black text-white">{negocios.length}</p>
@@ -58,7 +58,8 @@ export default async function NegociosPage() {
 
       {/* Tabla */}
       <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[400px] text-sm">
           <thead>
             <tr className="border-b border-slate-800">
               <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Negocio</th>
@@ -124,6 +125,7 @@ export default async function NegociosPage() {
             ))}
           </tbody>
         </table>
+        </div>
         {negocios.length === 0 && (
           <div className="py-16 text-center">
             <Store className="mx-auto h-10 w-10 text-slate-700 mb-3" />
