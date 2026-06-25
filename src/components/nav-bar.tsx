@@ -5,8 +5,9 @@ import { usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import {
   Home, Package, Tag, ShoppingCart, Receipt, Wallet, ClipboardList,
-  LogOut, Settings, Store, Truck, BarChart2, ChevronDown, Menu, X,
+  LogOut, Settings, Store, Truck, BarChart2, ChevronDown, X,
   CalendarCheck, HandCoins, Scale, Clock, Bell, FileText, ShoppingBag, ShieldCheck, Users, PieChart,
+  Grid2X2,
 } from 'lucide-react'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -19,7 +20,6 @@ import AvisoEmpleado from '@/components/aviso-empleado'
 
 type NavLink = { href: string; label: string; Icon: React.FC<{ className?: string }> }
 
-// Dueño: 3 directos + 3 dropdowns
 const DIRECT_DUENO: NavLink[] = [
   { href: '/', label: 'Inicio', Icon: Home },
   { href: '/pos', label: 'POS', Icon: ShoppingCart },
@@ -47,7 +47,6 @@ const ANALISIS_DUENO: NavLink[] = [
   { href: '/muestreo', label: 'Muestreo', Icon: PieChart },
 ]
 
-// Empleado: 7 directos — caben sin desbordarse
 const DIRECT_EMPLEADO: NavLink[] = [
   { href: '/', label: 'Inicio', Icon: Home },
   { href: '/pos', label: 'POS', Icon: ShoppingCart },
@@ -56,6 +55,22 @@ const DIRECT_EMPLEADO: NavLink[] = [
   { href: '/clientes', label: 'Clientes', Icon: Users },
   { href: '/fiados', label: 'Fiados', Icon: HandCoins },
   { href: '/productos', label: 'Productos', Icon: Package },
+]
+
+// Bottom nav tabs (5 each)
+const BOTTOM_DUENO: NavLink[] = [
+  { href: '/', label: 'Inicio', Icon: Home },
+  { href: '/pos', label: 'POS', Icon: ShoppingCart },
+  { href: '/ventas', label: 'Ventas', Icon: ClipboardList },
+  { href: '/productos', label: 'Catálogo', Icon: Package },
+  { href: '/configuracion', label: 'Config', Icon: Settings },
+]
+const BOTTOM_EMPLEADO: NavLink[] = [
+  { href: '/', label: 'Inicio', Icon: Home },
+  { href: '/pos', label: 'POS', Icon: ShoppingCart },
+  { href: '/ventas', label: 'Ventas', Icon: ClipboardList },
+  { href: '/clientes', label: 'Clientes', Icon: Users },
+  { href: '/corte', label: 'Caja', Icon: Wallet },
 ]
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -186,7 +201,7 @@ export default function NavBar({
   esSuperAdmin?: boolean
 }) {
   const pathname = usePathname()
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [masOpen, setMasOpen] = useState(false)
 
   const isDueno = !rol || rol === 'dueno'
 
@@ -201,7 +216,10 @@ export default function NavBar({
     '/caducidad': lotesAlerta,
   }
 
-  const allMobileLinks = [
+  const bottomTabs = isDueno ? BOTTOM_DUENO : BOTTOM_EMPLEADO
+  const bottomHrefs = new Set(bottomTabs.map((t) => t.href))
+
+  const allLinks: NavLink[] = [
     ...directLinks,
     ...(operacionesLinks ?? []),
     ...(catalogoLinks ?? []),
@@ -209,202 +227,274 @@ export default function NavBar({
     ...(isDueno ? [{ href: '/notificaciones', label: 'Notificaciones', Icon: Bell }] : []),
     ...(showConfig ? [{ href: '/configuracion', label: 'Configuración', Icon: Settings }] : []),
   ]
+  const masLinks = allLinks.filter((l) => !bottomHrefs.has(l.href))
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/50 bg-background/90 backdrop-blur-xl print:hidden">
-      <div className="mx-auto max-w-6xl px-4 h-16 flex items-center gap-3">
+    <>
+      {/* ── Top header ─────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-40 border-b border-border/50 bg-background/90 backdrop-blur-xl print:hidden">
+        <div className="mx-auto max-w-6xl px-4 h-14 flex items-center gap-3">
 
-        {/* Logo */}
-        <Link href="/" className="flex shrink-0 items-center gap-2.5 mr-1">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_2px_8px_-1px_rgb(0_0_0/0.20)]">
-            <Store className="h-4.5 w-4.5" />
-          </span>
-          <span className="hidden font-semibold text-sm sm:block max-w-[140px] truncate tracking-tight">
-            {negocioNombre}
-          </span>
-        </Link>
+          {/* Logo */}
+          <Link href="/" className="flex shrink-0 items-center gap-2.5 mr-1">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_2px_8px_-1px_rgb(0_0_0/0.20)]">
+              <Store className="h-4 w-4" />
+            </span>
+            <span className="hidden font-semibold text-sm sm:block max-w-[140px] truncate tracking-tight">
+              {negocioNombre}
+            </span>
+          </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex flex-1 items-center gap-0.5">
-          {directLinks.map(({ href, label, Icon }) => (
-            <NavLinkItem
-              key={href}
-              href={href}
-              label={label}
-              Icon={Icon}
-              active={href === '/' ? pathname === '/' : pathname.startsWith(href)}
-              badge={badges[href]}
-            />
-          ))}
+          {/* Desktop nav */}
+          <nav className="hidden md:flex flex-1 items-center gap-0.5">
+            {directLinks.map(({ href, label, Icon }) => (
+              <NavLinkItem
+                key={href}
+                href={href}
+                label={label}
+                Icon={Icon}
+                active={href === '/' ? pathname === '/' : pathname.startsWith(href)}
+                badge={badges[href]}
+              />
+            ))}
 
-          {operacionesLinks && (
-            <NavDropdown
-              label="Operaciones"
-              Icon={ClipboardList}
-              links={operacionesLinks}
-              pathname={pathname}
-            />
-          )}
+            {operacionesLinks && (
+              <NavDropdown
+                label="Operaciones"
+                Icon={ClipboardList}
+                links={operacionesLinks}
+                pathname={pathname}
+              />
+            )}
 
-          {catalogoLinks && (
-            <NavDropdown
-              label="Catálogo"
-              Icon={Package}
-              links={catalogoLinks}
-              pathname={pathname}
-              badges={{ '/productos': stockBajo }}
-            />
-          )}
+            {catalogoLinks && (
+              <NavDropdown
+                label="Catálogo"
+                Icon={Package}
+                links={catalogoLinks}
+                pathname={pathname}
+                badges={{ '/productos': stockBajo }}
+              />
+            )}
 
-          {analisisLinks && (
-            <NavDropdown
-              label="Análisis"
-              Icon={BarChart2}
-              links={analisisLinks}
-              pathname={pathname}
-              badges={{ '/caducidad': lotesAlerta }}
-            />
-          )}
-        </nav>
+            {analisisLinks && (
+              <NavDropdown
+                label="Análisis"
+                Icon={BarChart2}
+                links={analisisLinks}
+                pathname={pathname}
+                badges={{ '/caducidad': lotesAlerta }}
+              />
+            )}
+          </nav>
 
-        {/* Right actions — desktop */}
-        <div className="hidden md:flex shrink-0 items-center gap-1">
-          {esSuperAdmin && (
-            <Link
-              href="/superadmin"
-              title="Panel Super Admin"
-              className="flex items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-500/10 px-2.5 py-1.5 text-xs font-bold text-violet-500 transition-colors hover:bg-violet-500/20"
-            >
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Admin
-            </Link>
-          )}
-          <ThemeToggle />
+          {/* Right actions — desktop */}
+          <div className="hidden md:flex shrink-0 items-center gap-1">
+            {esSuperAdmin && (
+              <Link
+                href="/superadmin"
+                title="Panel Super Admin"
+                className="flex items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-500/10 px-2.5 py-1.5 text-xs font-bold text-violet-500 transition-colors hover:bg-violet-500/20"
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Admin
+              </Link>
+            )}
+            <ThemeToggle />
+            {!isDueno && <AvisoEmpleado />}
+            {isDueno && (
+              <Link
+                href="/notificaciones"
+                title="Notificaciones"
+                className={cn(
+                  'relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors',
+                  pathname.startsWith('/notificaciones')
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                )}
+              >
+                <Bell className="h-4 w-4" />
+                {notifNoLeidas > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
+                    {notifNoLeidas > 9 ? '9+' : notifNoLeidas}
+                  </span>
+                )}
+              </Link>
+            )}
+            {showConfig && (
+              <Link
+                href="/configuracion"
+                className={cn(
+                  'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors',
+                  pathname.startsWith('/configuracion')
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                )}
+              >
+                <Settings className="h-4 w-4" />
+                <span>Config</span>
+              </Link>
+            )}
+            <form action={logoutAction}>
+              <Button type="submit" variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
+                <LogOut className="h-4 w-4" />
+                <span>Salir</span>
+              </Button>
+            </form>
+          </div>
 
-          {/* Empleado: botón avisar al jefe */}
-          {!isDueno && <AvisoEmpleado />}
-
-          {/* Dueño/Admin: campana */}
-          {isDueno && (
-            <Link
-              href="/notificaciones"
-              title="Notificaciones"
-              className={cn(
-                'relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors',
-                pathname.startsWith('/notificaciones')
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-              )}
-            >
-              <Bell className="h-4 w-4" />
-              {notifNoLeidas > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
-                  {notifNoLeidas > 9 ? '9+' : notifNoLeidas}
-                </span>
-              )}
-            </Link>
-          )}
-
-          {showConfig && (
-            <Link
-              href="/configuracion"
-              className={cn(
-                'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors',
-                pathname.startsWith('/configuracion')
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-              )}
-            >
-              <Settings className="h-4 w-4" />
-              <span>Config</span>
-            </Link>
-          )}
-
-          <form action={logoutAction}>
-            <Button type="submit" variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
-              <LogOut className="h-4 w-4" />
-              <span>Salir</span>
-            </Button>
-          </form>
+          {/* Mobile: right side (simplified) */}
+          <div className="flex md:hidden ml-auto items-center gap-0.5">
+            {esSuperAdmin && (
+              <Link
+                href="/superadmin"
+                title="Super Admin"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-violet-500"
+              >
+                <ShieldCheck className="h-4.5 w-4.5" />
+              </Link>
+            )}
+            {!isDueno && <AvisoEmpleado />}
+            {isDueno && (
+              <Link
+                href="/notificaciones"
+                className="relative flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground"
+              >
+                <Bell className="h-5 w-5" />
+                {notifNoLeidas > 0 && (
+                  <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
+                    {notifNoLeidas > 9 ? '9+' : notifNoLeidas}
+                  </span>
+                )}
+              </Link>
+            )}
+            <ThemeToggle />
+          </div>
         </div>
+      </header>
 
-        {/* Mobile: right side */}
-        <div className="flex md:hidden ml-auto items-center gap-0.5">
-          <ThemeToggle />
-          {!isDueno && <AvisoEmpleado />}
-          {isDueno && (
-            <Link
-              href="/notificaciones"
-              title="Notificaciones"
-              className="relative flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
-              <Bell className="h-5 w-5" />
-              {notifNoLeidas > 0 && (
-                <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
-                  {notifNoLeidas > 9 ? '9+' : notifNoLeidas}
-                </span>
-              )}
-            </Link>
-          )}
-          <button
-            type="button"
-            onClick={() => setMobileOpen((v) => !v)}
-            aria-label="Menú"
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile drawer */}
-      {mobileOpen && (
-        <div className="md:hidden border-t border-border/50 bg-background/95 backdrop-blur-xl px-4 py-3 space-y-1">
-          {allMobileLinks.map(({ href, label, Icon }) => {
+      {/* ── Mobile bottom nav ───────────────────────────────────────────────── */}
+      <nav
+        className="fixed bottom-0 inset-x-0 z-40 md:hidden border-t border-border/50 bg-background/95 backdrop-blur-xl print:hidden"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
+        <div className="flex h-14 items-stretch justify-around">
+          {bottomTabs.map(({ href, label, Icon }) => {
             const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
             const badge = badges[href] ?? 0
             return (
               <Link
                 key={href}
                 href={href}
-                onClick={() => setMobileOpen(false)}
                 className={cn(
-                  'relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                  active
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                  'relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors',
+                  active ? 'text-primary' : 'text-muted-foreground',
                 )}
               >
-                <Icon className="h-4 w-4 shrink-0" />
-                {label}
+                <Icon className={cn('h-5 w-5', active && 'scale-110')} />
+                <span>{label}</span>
                 {badge > 0 && (
-                  <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
+                  <span className="absolute right-[calc(50%-14px)] top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[9px] font-bold text-white">
                     {badge > 9 ? '9+' : badge}
                   </span>
                 )}
               </Link>
             )
           })}
-          <div className="pt-2 border-t space-y-1">
-            {esSuperAdmin && (
-              <Link
-                href="/superadmin"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2.5 text-sm font-bold text-violet-500 transition-colors hover:bg-violet-500/20"
-              >
-                <ShieldCheck className="h-4 w-4 shrink-0" />
-                Panel Super Admin
-              </Link>
+
+          {/* Más button */}
+          <button
+            type="button"
+            onClick={() => setMasOpen((v) => !v)}
+            className={cn(
+              'relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors',
+              masOpen ? 'text-primary' : 'text-muted-foreground',
             )}
-            <form action={logoutAction}>
-              <button type="submit" className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
-                <LogOut className="h-4 w-4 shrink-0" />
-                Salir
-              </button>
-            </form>
-          </div>
+          >
+            {masOpen ? <X className="h-5 w-5" /> : <Grid2X2 className="h-5 w-5" />}
+            <span>{masOpen ? 'Cerrar' : 'Más'}</span>
+          </button>
         </div>
+      </nav>
+
+      {/* ── Mobile "Más" sheet ──────────────────────────────────────────────── */}
+      {masOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-30 bg-black/40 md:hidden"
+            onClick={() => setMasOpen(false)}
+          />
+          {/* Sheet */}
+          <div
+            className="fixed inset-x-0 z-40 md:hidden bg-background rounded-t-2xl border-t border-border/60 shadow-2xl overflow-y-auto"
+            style={{
+              bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))',
+              maxHeight: '65vh',
+            }}
+          >
+            <div className="sticky top-0 flex items-center justify-between border-b border-border/40 bg-background px-5 py-3">
+              <span className="text-sm font-semibold">Menú</span>
+              <button
+                onClick={() => setMasOpen(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 p-4">
+              {masLinks.map(({ href, label, Icon }) => {
+                const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
+                const badge = badges[href] ?? 0
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMasOpen(false)}
+                    className={cn(
+                      'relative flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 text-center text-xs font-medium transition-colors',
+                      active
+                        ? 'bg-primary/10 text-primary'
+                        : 'bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground',
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="leading-tight">{label}</span>
+                    {badge > 0 && (
+                      <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[9px] font-bold text-white">
+                        {badge > 9 ? '9+' : badge}
+                      </span>
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+
+            <div className="border-t border-border/40 px-4 pb-4 pt-3 space-y-1">
+              {esSuperAdmin && (
+                <Link
+                  href="/superadmin"
+                  onClick={() => setMasOpen(false)}
+                  className="flex items-center gap-3 rounded-xl border border-violet-500/40 bg-violet-500/10 px-4 py-2.5 text-sm font-bold text-violet-500"
+                >
+                  <ShieldCheck className="h-4 w-4 shrink-0" />
+                  Panel Super Admin
+                </Link>
+              )}
+              <form action={logoutAction}>
+                <button
+                  type="submit"
+                  className="flex w-full items-center gap-3 rounded-xl bg-muted/50 px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent transition-colors"
+                >
+                  <LogOut className="h-4 w-4 shrink-0" />
+                  Cerrar sesión
+                </button>
+              </form>
+            </div>
+          </div>
+        </>
       )}
-    </header>
+    </>
   )
 }

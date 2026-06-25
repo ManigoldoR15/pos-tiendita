@@ -102,7 +102,8 @@ export default async function DetalleVentaPage({
 
       {/* Items */}
       <div className="card-soft overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[320px] text-sm">
           <thead className="border-b bg-muted/50">
             <tr>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
@@ -138,6 +139,7 @@ export default async function DetalleVentaPage({
             ))}
           </tbody>
         </table>
+        </div>
 
         {/* Totales */}
         <div className="border-t px-4 py-3 space-y-1.5 bg-muted/20">

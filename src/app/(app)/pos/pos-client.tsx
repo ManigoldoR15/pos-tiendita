@@ -455,7 +455,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
   }
 
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:h-[calc(100svh-8rem)]">
+    <div className="flex flex-col gap-4 md:flex-row md:h-[calc(100svh-7rem)]">
       {/* ── Grilla de productos ── */}
       <div className="flex min-w-0 flex-1 flex-col md:overflow-hidden">
         {/* Toggle de modo */}

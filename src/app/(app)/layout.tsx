@@ -65,7 +65,7 @@ export default async function AppLayout({
         rol={rol}
         esSuperAdmin={superAdmin}
       />
-      <main className="mx-auto max-w-6xl px-4 py-6 print:max-w-none print:px-8 print:py-4">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-6 pb-24 md:pb-8 print:max-w-none print:px-8 print:py-4">{children}</main>
     </div>
   )
 }

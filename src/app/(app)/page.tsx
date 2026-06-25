@@ -233,7 +233,7 @@ export default async function DashboardPage({
         )}
 
         {/* Accesos rápidos */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <AccesoRapido href="/corte" Icon={Wallet} label="Mi caja" sub="Corte y apertura" />
           <AccesoRapido href="/productos" Icon={Package} label="Inventario" sub="Existencias" />
           <AccesoRapido href="/compras" Icon={Receipt} label="Entrada" sub="Recibir mercancía" />
@@ -985,14 +985,14 @@ function AccesoRapido({
   return (
     <Link
       href={href}
-      className="card-soft flex flex-col items-start gap-2 p-4 hover:bg-accent transition-colors"
+      className="card-soft flex flex-col items-start gap-1.5 p-3 sm:gap-2 sm:p-4 hover:bg-accent transition-colors"
     >
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 sm:h-9 sm:w-9">
         <Icon className="h-4 w-4 text-primary" />
       </div>
       <div>
-        <p className="text-sm font-semibold leading-tight">{label}</p>
-        <p className="text-xs text-muted-foreground">{sub}</p>
+        <p className="text-xs font-semibold leading-tight sm:text-sm">{label}</p>
+        <p className="hidden text-xs text-muted-foreground sm:block">{sub}</p>
       </div>
     </Link>
   )
