@@ -236,7 +236,7 @@ export default async function DashboardPage({
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <AccesoRapido href="/corte" Icon={Wallet} label="Mi caja" sub="Corte y apertura" />
           <AccesoRapido href="/productos" Icon={Package} label="Inventario" sub="Existencias" />
-          <AccesoRapido href="/compras" Icon={Receipt} label="Entrada" sub="Recibir mercancía" />
+          <AccesoRapido href="/turno" Icon={Clock} label="Entrada" sub="Marcar inicio" />
         </div>
 
         {/* Mensajes del jefe */}
@@ -366,6 +366,7 @@ export default async function DashboardPage({
     { data: cajas },
     { data: miembros },
     { data: localesList },
+    { data: turnosHoy },
   ] = await Promise.all([
     supabase
       .from('ventas')
@@ -429,6 +430,15 @@ export default async function DashboardPage({
     supabase.rpc('get_miembros_negocio', { p_negocio_id: negocio.id }),
 
     supabase.from('locales').select('id, nombre').eq('negocio_id', negocio.id),
+
+    supabase
+      .from('registros_turno')
+      .select('id, user_id, nombre, entrada_at')
+      .eq('negocio_id', negocio.id)
+      .is('salida_at', null)
+      .gte('entrada_at', mexicoDayRange(hoy).start)
+      .lte('entrada_at', mexicoDayRange(hoy).end)
+      .order('entrada_at', { ascending: true }),
   ])
 
   // ── Periodo previo (comparación) ─────────────────────────────────────────
@@ -475,11 +485,35 @@ export default async function DashboardPage({
   const totalFiados = (fiadosPorCliente ?? []).reduce((s, f) => s + f.deuda_total, 0)
   const numClientesFiados = (fiadosPorCliente ?? []).length
 
-  // ── Quién trabaja ────────────────────────────────────────────────────────
+  // ── Quién trabaja (cajas abiertas + turnos registrados hoy) ─────────────
   type CajaAbierta = { id: string; abierto_por: string; fecha_apertura: string; local_id: string | null }
+  type TurnoHoyRow = { id: string; user_id: string; nombre: string; entrada_at: string }
   type MiembroInfo = { user_id: string; email: string; rol: string }
   const cajasAbiertas = (cajas ?? []) as CajaAbierta[]
+  const turnosActivos = (turnosHoy ?? []) as TurnoHoyRow[]
   const miembrosMap = new Map((miembros as MiembroInfo[] ?? []).map((m) => [m.user_id, m.email]))
+
+  // Unificar: un empleado puede tener caja abierta Y turno registrado; sin duplicados
+  type PersonaEnTurno = { user_id: string; email: string; hora_entrada: string; local_id?: string | null }
+  const enTurnoMap = new Map<string, PersonaEnTurno>()
+  for (const caja of cajasAbiertas) {
+    enTurnoMap.set(caja.abierto_por, {
+      user_id: caja.abierto_por,
+      email: miembrosMap.get(caja.abierto_por) ?? caja.abierto_por.slice(0, 8) + '…',
+      hora_entrada: caja.fecha_apertura,
+      local_id: caja.local_id,
+    })
+  }
+  for (const t of turnosActivos) {
+    if (!enTurnoMap.has(t.user_id)) {
+      enTurnoMap.set(t.user_id, {
+        user_id: t.user_id,
+        email: miembrosMap.get(t.user_id) ?? t.nombre,
+        hora_entrada: t.entrada_at,
+      })
+    }
+  }
+  const personasEnTurno = [...enTurnoMap.values()]
 
   // Lista de empleados para el selector de mensajes directos
   const listaEmpleados = (miembros as MiembroInfo[] ?? [])
@@ -546,6 +580,13 @@ export default async function DashboardPage({
           >
             <Receipt className="h-4 w-4" />
             Gasto
+          </Link>
+          <Link
+            href="/compras/nueva"
+            className="flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm font-medium hover:bg-accent transition-colors"
+          >
+            <Package className="h-4 w-4" />
+            Entrada
           </Link>
         </div>
       </div>
@@ -642,36 +683,36 @@ export default async function DashboardPage({
         />
       </div>
 
-      {/* Quién trabaja (solo si hay cajas abiertas) */}
-      {cajasAbiertas.length > 0 && (
+      {/* Quién trabaja (cajas abiertas + turnos registrados hoy) */}
+      {personasEnTurno.length > 0 && (
         <div className="card-soft p-5">
           <div className="mb-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="text-sm font-semibold">En turno ahora</span>
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                {personasEnTurno.length}
+              </span>
             </div>
             <Link href="/turnos" className="text-xs font-medium text-primary hover:underline">
-              Turnos →
+              Historial →
             </Link>
           </div>
           <div className="space-y-2">
-            {cajasAbiertas.map((caja) => {
-              const email = miembrosMap.get(caja.abierto_por) ?? caja.abierto_por.slice(0, 8) + '…'
-              const initials = email.substring(0, 2).toUpperCase()
-              const local = caja.local_id
-                ? (localesMap.get(caja.local_id) ?? negocio.nombre)
-                : negocio.nombre
-              const apertura = new Date(caja.fecha_apertura).toLocaleTimeString('es-MX', {
+            {personasEnTurno.map((p) => {
+              const initials = p.email.substring(0, 2).toUpperCase()
+              const local = p.local_id ? (localesMap.get(p.local_id) ?? negocio.nombre) : null
+              const apertura = new Date(p.hora_entrada).toLocaleTimeString('es-MX', {
                 timeZone: TZ, hour: '2-digit', minute: '2-digit',
               })
               return (
-                <div key={caja.id} className="flex items-center gap-3 rounded-xl bg-muted/40 px-3 py-2.5">
+                <div key={p.user_id} className="flex items-center gap-3 rounded-xl bg-muted/40 px-3 py-2.5">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                     {initials}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{email}</p>
-                    <p className="text-xs text-muted-foreground">{local}</p>
+                    <p className="text-sm font-medium truncate">{p.email}</p>
+                    {local && <p className="text-xs text-muted-foreground">{local}</p>}
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />

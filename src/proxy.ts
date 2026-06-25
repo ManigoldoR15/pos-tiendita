@@ -38,28 +38,46 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // ── Bitácora de accesos ──────────────────────────────────────────────────
+  // ── Bitácora de accesos + registro de IP ────────────────────────────────
   // Solo para usuarios autenticados en rutas de página (no assets, no API)
   if (user && !esRutaAuth && !pathname.startsWith('/api/')) {
     const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
-    const cookieKey = '_bla'
-    const yaLogueado = request.cookies.get(cookieKey)?.value === hoy
 
-    if (!yaLogueado) {
-      // Upsert sin bloquear el render — log_acceso incrementa num_vistas con ON CONFLICT
+    // Extraer IP real (Railway pone x-forwarded-for, primer elemento = cliente)
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      null
+
+    // User-agent truncado a 200 chars — suficiente para detectar dispositivos distintos
+    const ua = (request.headers.get('user-agent') ?? '').slice(0, 200) || null
+
+    // Re-llamar si cambió el día O cambió la IP (para capturar todas las IPs del día)
+    // Cookie formato: "fecha|ip" — usamos | como separador (no aparece en IPs ni fechas)
+    const cookieKey = '_bla'
+    const cookieVal = request.cookies.get(cookieKey)?.value ?? ''
+    const pipeIdx = cookieVal.indexOf('|')
+    const cookieDate = pipeIdx >= 0 ? cookieVal.slice(0, pipeIdx) : cookieVal
+    const cookieIp   = pipeIdx >= 0 ? cookieVal.slice(pipeIdx + 1) : ''
+
+    const mismoDiaYIP = cookieDate === hoy && cookieIp === (ip ?? '')
+
+    if (!mismoDiaYIP) {
+      // Fire-and-forget — fallo silencioso, nunca bloquea el render
       const svc = createServiceClient()
       void svc.rpc('log_acceso', {
-        p_user_id: user.id,
-        p_email: user.email ?? null,
-        p_fecha: hoy,
+        p_user_id:    user.id,
+        p_email:      user.email ?? null,
+        p_fecha:      hoy,
+        p_ip:         ip,
+        p_user_agent: ua,
       })
 
-      // Marcar cookie para el resto del día
-      supabaseResponse.cookies.set(cookieKey, hoy, {
+      supabaseResponse.cookies.set(cookieKey, `${hoy}|${ip ?? ''}`, {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        maxAge: 86400, // 24h
+        maxAge: 86400,
       })
     }
   }

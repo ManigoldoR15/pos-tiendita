@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { ArrowLeft, TrendingDown, ShoppingBag } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
-import { getRolActual } from '@/lib/rol'
 import { hoyMX, addDaysMX, mexicoDayRange } from '@/lib/fecha'
 import { STOCK_MINIMO } from '@/lib/constantes'
 import { formatMXN } from '@/lib/dinero'
@@ -14,9 +13,6 @@ const DIAS_COBERTURA = 7
 export default async function NuevaCompraPage() {
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
-
-  const rol = await getRolActual()
-  if (rol === 'empleado') redirect('/')
 
   const supabase = await createClient()
   const hoy = hoyMX()

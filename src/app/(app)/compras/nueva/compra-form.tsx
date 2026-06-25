@@ -312,7 +312,7 @@ export default function CompraForm({
                     ) : (
                       <input
                         type="number"
-                        min="0.001"
+                        min={l.producto.unidad_medida === 'pieza' ? '1' : '0.001'}
                         step={l.producto.unidad_medida === 'pieza' ? '1' : '0.001'}
                         value={l.cantidad}
                         onChange={(e) => actualizarLinea(idx, 'cantidad', e.target.value)}

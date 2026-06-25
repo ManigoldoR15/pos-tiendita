@@ -56,6 +56,7 @@ const DIRECT_EMPLEADO: NavLink[] = [
   { href: '/clientes', label: 'Clientes', Icon: Users },
   { href: '/fiados', label: 'Fiados', Icon: HandCoins },
   { href: '/productos', label: 'Productos', Icon: Package },
+  { href: '/turno', label: 'Entrada', Icon: Clock },
 ]
 
 // Bottom nav tabs (5 each)

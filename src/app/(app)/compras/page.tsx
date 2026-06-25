@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { Plus, ShoppingBag, Package } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
-import { getRolActual } from '@/lib/rol'
 import { formatMXN } from '@/lib/dinero'
 import { hoyMX } from '@/lib/fecha'
 import { cn } from '@/lib/utils'
@@ -28,9 +27,6 @@ export default async function ComprasPage({
 }) {
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
-
-  const rol = await getRolActual()
-  if (rol === 'empleado') redirect('/')
 
   const params = await searchParams
   const periodo = (PERIODOS.includes(params.periodo as Periodo) ? params.periodo : 'mes') as Periodo

@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { ArrowLeft, Package } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
-import { getRolActual } from '@/lib/rol'
 import { formatMXN } from '@/lib/dinero'
 import { PrintButton } from '@/components/print-button'
 
@@ -14,9 +13,6 @@ export default async function CompraDetallePage({
 }) {
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
-
-  const rol = await getRolActual()
-  if (rol === 'empleado') redirect('/')
 
   const { id } = await params
   const supabase = await createClient()
