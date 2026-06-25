@@ -5,6 +5,9 @@ import { fmtFechaHoraCorta } from '@/lib/fecha'
 import Link from 'next/link'
 import { ArrowLeft, Package, Users, TrendingUp, Receipt, ShoppingBag, Ban, CheckCircle } from 'lucide-react'
 import SuspenderNegocioBtn from './suspender-btn'
+import LicenciaForm from './licencia-form'
+
+type PlazaInfo = { id: string; nombre: string; direccion: string | null; color: string; activo: boolean }
 
 type NegocioDetalle = {
   negocio: {
@@ -12,7 +15,10 @@ type NegocioDetalle = {
     telefono_dueno: string | null; ubicacion: string | null; plan: string | null
     suspendido: boolean; notas_admin: string | null; created_at: string
     suscripcion_inicio: string | null; suscripcion_fin: string | null
+    max_plazas: number
   }
+  num_plazas: number
+  plazas: PlazaInfo[]
   usuarios: { email: string; rol: string; creado_en: string }[] | null
   ventas_30d: number
   num_ventas_30d: number
@@ -37,6 +43,7 @@ export default async function NegocioDetallePage({
   const d = data as NegocioDetalle
   const n = d.negocio
   const utilidad = d.ventas_30d - d.gastos_30d
+  const plazas = d.plazas ?? []
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -86,6 +93,14 @@ export default async function NegocioDetallePage({
           </div>
         )}
       </div>
+
+      {/* Licencia de plazas */}
+      <LicenciaForm
+        negocioId={n.id}
+        maxPlazas={n.max_plazas}
+        numPlazas={d.num_plazas}
+        plazas={plazas}
+      />
 
       {/* KPIs 30d */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

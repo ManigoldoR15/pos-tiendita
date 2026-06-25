@@ -29,3 +29,15 @@ export async function guardarNotasAdminAction(negocioId: string, notas: string) 
   revalidatePath(`/superadmin/negocios/${negocioId}`)
   return { ok: true }
 }
+
+export async function actualizarLicenciaPlazasAction(negocioId: string, maxPlazas: number) {
+  const { supabase } = await requireSuperAdmin()
+  const { error } = await supabase.rpc('actualizar_licencia_plazas', {
+    p_negocio_id: negocioId,
+    p_max_plazas: maxPlazas,
+  })
+  if (error) return { error: error.message }
+  revalidatePath('/superadmin/negocios')
+  revalidatePath(`/superadmin/negocios/${negocioId}`)
+  return { ok: true }
+}

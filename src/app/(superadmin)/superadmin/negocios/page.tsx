@@ -19,6 +19,8 @@ type NegocioRow = {
   ultima_venta: string | null
   activo_hoy: boolean
   num_usuarios: number
+  max_plazas: number
+  num_plazas: number
 }
 
 export default async function NegociosPage() {
@@ -64,6 +66,7 @@ export default async function NegociosPage() {
             <tr className="border-b border-slate-800">
               <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Negocio</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider hidden lg:table-cell">Dueño</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider hidden xl:table-cell">Plazas</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Ventas mes</th>
               <th className="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider hidden md:table-cell">Estado</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider hidden lg:table-cell">Última venta</th>
@@ -90,6 +93,15 @@ export default async function NegociosPage() {
                 <td className="px-4 py-4 hidden lg:table-cell">
                   <p className="text-slate-300 truncate max-w-[180px]">{n.nombre_dueno ?? '—'}</p>
                   <p className="text-xs text-slate-500 truncate max-w-[180px]">{n.email_dueno ?? '—'}</p>
+                </td>
+                <td className="px-4 py-4 text-center hidden xl:table-cell">
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    n.num_plazas >= n.max_plazas
+                      ? 'bg-orange-900/40 text-orange-400'
+                      : 'bg-slate-800 text-slate-400'
+                  }`}>
+                    {n.num_plazas}/{n.max_plazas} plaza{n.max_plazas !== 1 ? 's' : ''}
+                  </span>
                 </td>
                 <td className="px-4 py-4 text-right">
                   <p className="font-bold text-slate-200 tabular-nums">{formatMXN(n.ventas_mes)}</p>
