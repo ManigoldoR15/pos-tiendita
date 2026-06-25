@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, MapPin, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, MapPin, ShieldCheck, BarChart2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
@@ -43,7 +43,16 @@ export default async function PlazasPage() {
         <Link href="/configuracion" className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <h1 className="text-2xl font-black tracking-tight">Mis plazas</h1>
+        <h1 className="text-2xl font-black tracking-tight flex-1">Mis plazas</h1>
+        {numActivas > 1 && (
+          <Link
+            href="/plazas"
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <BarChart2 className="h-3.5 w-3.5" />
+            Comparativo
+          </Link>
+        )}
       </div>
 
       {/* Licencia */}

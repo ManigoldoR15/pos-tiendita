@@ -7,7 +7,7 @@ import {
   Home, Package, Tag, ShoppingCart, Receipt, Wallet, ClipboardList,
   LogOut, Settings, Store, Truck, BarChart2, ChevronDown, X,
   CalendarCheck, HandCoins, Scale, Clock, Bell, FileText, ShoppingBag, ShieldCheck, Users, PieChart,
-  Grid2X2,
+  Grid2X2, MapPin,
 } from 'lucide-react'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -45,6 +45,7 @@ const ANALISIS_DUENO: NavLink[] = [
   { href: '/turnos', label: 'Turnos', Icon: Clock },
   { href: '/caducidad', label: 'Caducidad', Icon: CalendarCheck },
   { href: '/muestreo', label: 'Muestreo', Icon: PieChart },
+  { href: '/plazas', label: 'Plazas', Icon: MapPin },
 ]
 
 const DIRECT_EMPLEADO: NavLink[] = [
