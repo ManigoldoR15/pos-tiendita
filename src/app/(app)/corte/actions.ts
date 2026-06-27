@@ -61,7 +61,11 @@ export async function abrirCorteAction(
   })
 
   if (error) {
-    if (error.code === '23505') return { error: 'Ya hay un corte de caja abierto' }
+    if (error.message?.includes('LIMITE_CAJAS')) {
+      const msg = error.message.split('LIMITE_CAJAS:')[1]?.trim() ?? error.message
+      return { error: msg }
+    }
+    if (error.code === '23505') return { error: 'Ya hay una caja abierta en este punto de venta.' }
     return { error: 'No se pudo abrir la caja. Intenta de nuevo.' }
   }
 

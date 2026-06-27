@@ -6,6 +6,11 @@ import Link from 'next/link'
 import { ArrowLeft, Package, Users, TrendingUp, Receipt, ShoppingBag, Ban, CheckCircle } from 'lucide-react'
 import SuspenderNegocioBtn from './suspender-btn'
 import LicenciaForm from './licencia-form'
+import LicenciaEmpleadosForm from './licencia-empleados-form'
+import LicenciaCajasForm from './licencia-cajas-form'
+import ModulosForm from './modulos-form'
+import { MODULOS_DEFAULT } from '@/lib/modulos-config'
+import type { ModulosConfig } from '@/lib/modulos-config'
 
 type PlazaInfo = { id: string; nombre: string; direccion: string | null; color: string; activo: boolean }
 
@@ -15,9 +20,11 @@ type NegocioDetalle = {
     telefono_dueno: string | null; ubicacion: string | null; plan: string | null
     suspendido: boolean; notas_admin: string | null; created_at: string
     suscripcion_inicio: string | null; suscripcion_fin: string | null
-    max_plazas: number
+    max_plazas: number; max_empleados: number; max_cajas: number
   }
   num_plazas: number
+  num_empleados: number
+  num_cajas: number
   plazas: PlazaInfo[]
   usuarios: { email: string; rol: string; creado_en: string }[] | null
   ventas_30d: number
@@ -94,13 +101,31 @@ export default async function NegocioDetallePage({
         )}
       </div>
 
-      {/* Licencia de plazas */}
-      <LicenciaForm
+      {/* Módulos habilitados */}
+      <ModulosForm
         negocioId={n.id}
-        maxPlazas={n.max_plazas}
-        numPlazas={d.num_plazas}
-        plazas={plazas}
+        modulosActuales={{ ...MODULOS_DEFAULT, ...((n as any).modulos_habilitados as Partial<ModulosConfig> ?? {}) }}
       />
+
+      {/* Licencias */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+        <LicenciaForm
+          negocioId={n.id}
+          maxPlazas={n.max_plazas}
+          numPlazas={d.num_plazas}
+          plazas={plazas}
+        />
+        <LicenciaEmpleadosForm
+          negocioId={n.id}
+          maxEmpleados={n.max_empleados}
+          numEmpleados={d.num_empleados}
+        />
+        <LicenciaCajasForm
+          negocioId={n.id}
+          maxCajas={n.max_cajas}
+          numCajas={d.num_cajas}
+        />
+      </div>
 
       {/* KPIs 30d */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

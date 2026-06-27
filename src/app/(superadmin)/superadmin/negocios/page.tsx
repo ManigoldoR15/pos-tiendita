@@ -4,6 +4,7 @@ import { fmtFechaHoraCorta } from '@/lib/fecha'
 import Link from 'next/link'
 import { Store, CheckCircle, XCircle, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import CrearNegocioBtn from './crear-negocio-btn'
 
 type NegocioRow = {
   id: string
@@ -40,6 +41,7 @@ export default async function NegociosPage() {
             {negocios.length} registrados · {activos} activos hoy · {suspendidos} suspendidos
           </p>
         </div>
+        <CrearNegocioBtn />
       </div>
 
       {/* Stats rápidas */}
