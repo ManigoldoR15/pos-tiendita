@@ -4,11 +4,12 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
-  LayoutDashboard, Users, FlaskConical, BarChart3, Palette, Megaphone, Activity, ArrowLeft,
+  LayoutDashboard, Users, FlaskConical, BarChart3, Palette, Megaphone, Activity, ArrowLeft, Store,
 } from 'lucide-react'
 
 const NAV = [
   { href: '/superadmin',              label: 'Dashboard',  Icon: LayoutDashboard },
+  { href: '/superadmin/negocios',     label: 'Negocios',   Icon: Store },
   { href: '/superadmin/clientes',     label: 'Clientes',   Icon: Users },
   { href: '/superadmin/accesos',      label: 'Accesos',    Icon: Activity },
   { href: '/superadmin/estudios',     label: 'Estudios',   Icon: FlaskConical },
