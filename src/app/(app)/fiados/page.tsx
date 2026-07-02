@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { HandCoins, Ban, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { requireModulo } from '@/lib/modulos'
 import { formatMXN } from '@/lib/dinero'
 import { fmtFechaCorta } from '@/lib/fecha'
 import { cn } from '@/lib/utils'
@@ -20,6 +21,7 @@ export default async function FiadosPage({
 
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
+  await requireModulo('fiados')
 
   const supabase = await createClient()
 

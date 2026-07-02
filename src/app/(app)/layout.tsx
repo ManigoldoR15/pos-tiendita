@@ -5,6 +5,7 @@ import { STOCK_MINIMO } from '@/lib/constantes'
 import NavBar from '@/components/nav-bar'
 import { getRolActual } from '@/lib/rol'
 import { isSuperAdmin } from '@/lib/superadmin'
+import { getModulos } from '@/lib/modulos'
 
 export default async function AppLayout({
   children,
@@ -19,7 +20,7 @@ export default async function AppLayout({
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
   const en3dias = new Date(Date.now() + 3 * 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
 
-  const [{ count: stockBajo }, rol, { count: lotesAlerta }, { count: notifNoLeidas }, { data: temaActivo }, superAdmin] = await Promise.all([
+  const [{ count: stockBajo }, rol, { count: lotesAlerta }, { count: notifNoLeidas }, { data: temaActivo }, superAdmin, modulos] = await Promise.all([
     supabase
       .from('productos')
       .select('*', { count: 'exact', head: true })
@@ -46,6 +47,7 @@ export default async function AppLayout({
       .neq('slug', 'default')
       .maybeSingle(),
     isSuperAdmin(),
+    getModulos(),
   ])
 
   const banner = temaActivo as { emoji: string; banner_texto: string | null } | null
@@ -64,6 +66,7 @@ export default async function AppLayout({
         notifNoLeidas={notifNoLeidas ?? 0}
         rol={rol}
         esSuperAdmin={superAdmin}
+        modulos={modulos}
       />
       <main className="mx-auto max-w-6xl px-4 py-6 pb-24 md:pb-8 print:max-w-none print:px-8 print:py-4">{children}</main>
     </div>

@@ -108,7 +108,11 @@ export async function crearNegocioSuperadminAction(
       password,
       email_confirm: true,
     })
-    if (createErr || !newUser?.user) return { error: createErr?.message ?? 'No se pudo crear la cuenta.' }
+    if (createErr || !newUser?.user) {
+      const msg = (createErr?.message ?? '').toLowerCase()
+      const esDuplicado = msg.includes('already') || msg.includes('registered') || msg.includes('duplicate')
+      return { error: esDuplicado ? 'Ya existe una cuenta con ese correo electrónico.' : 'No se pudo crear la cuenta. Intenta de nuevo.' }
+    }
     ownerId = newUser.user.id
   }
 

@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { CheckCircle, Clock, Printer } from 'lucide-react'
+import { CheckCircle, Clock, History, Printer } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { getRolActual } from '@/lib/rol'
 import { formatMXN } from '@/lib/dinero'
 import { cn } from '@/lib/utils'
 import FormAbrirCorte from './form-abrir'
@@ -14,6 +15,8 @@ function fmtFecha(iso: string) { return fmtFechaHoraCorta(iso) }
 export default async function CortePage() {
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
+
+  const rol = await getRolActual()
 
   const supabase = await createClient()
 
@@ -81,7 +84,18 @@ export default async function CortePage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <h1 className="text-2xl font-black tracking-tight">Corte de caja</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-black tracking-tight">Corte de caja</h1>
+        {rol !== 'empleado' && (
+          <Link
+            href="/corte/historial"
+            className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors"
+          >
+            <History className="h-3.5 w-3.5" />
+            Historial
+          </Link>
+        )}
+      </div>
 
       {corteAbierto ? (
         /* ── CAJA ABIERTA ── */

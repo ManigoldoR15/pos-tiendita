@@ -36,7 +36,11 @@ export async function crearClienteAction(
     emailDueno,
     { data: { nombre_negocio: nombre } },
   )
-  if (inviteError) return { error: `Error al invitar: ${inviteError.message}` }
+  if (inviteError) {
+    const msg = inviteError.message.toLowerCase()
+    const esDuplicado = msg.includes('already') || msg.includes('registered') || msg.includes('duplicate')
+    return { error: esDuplicado ? 'Ya existe una cuenta con ese correo electrónico. El dueño debe iniciar sesión con esa cuenta.' : 'No se pudo enviar la invitación. Intenta de nuevo.' }
+  }
 
   const userId = inviteData.user.id
 
@@ -58,7 +62,7 @@ export async function crearClienteAction(
     .single()
 
   if (negocioError || !negocio) {
-    return { error: `Error al crear negocio: ${negocioError?.message}` }
+    return { error: 'No se pudo crear el negocio. Intenta de nuevo.' }
   }
 
   // Vincular dueño al negocio
@@ -66,7 +70,7 @@ export async function crearClienteAction(
     .from('usuarios_negocio')
     .insert({ negocio_id: negocio.id, user_id: userId, rol: 'dueno' })
 
-  if (rolError) return { error: `Error al asignar rol: ${rolError.message}` }
+  if (rolError) return { error: 'No se pudo vincular al dueño con el negocio. Intenta de nuevo.' }
 
   redirect(`/admin-sistema/negocios/${negocio.id}`)
 }

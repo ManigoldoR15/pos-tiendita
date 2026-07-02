@@ -44,7 +44,7 @@ const REPORTES: ReporteCard[] = [
   {
     titulo: 'Corte de caja',
     descripcion: 'Historial de turnos con detalle de ventas y diferencias en efectivo.',
-    href: `/turnos`,
+    href: `/corte/historial`,
     Icon: Wallet,
     color: 'text-orange-500',
   },

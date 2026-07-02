@@ -1,9 +1,9 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { hoyMX, mexicoDayRange } from '@/lib/fecha'
 
 export async function registrarEntrada() {
   const supabase = await createClient()
@@ -13,31 +13,45 @@ export async function registrarEntrada() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const emailPrefix = user.email?.split('@')[0] ?? 'empleado'
-  const nombre = emailPrefix
-    .split(/[._-]/)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
+  // Evitar duplicados: si ya hay un turno activo hoy, solo redirigir
+  const { start, end } = mexicoDayRange(hoyMX())
+  const { data: activo } = await supabase
+    .from('registros_turno')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('negocio_id', negocio.id)
+    .is('salida_at', null)
+    .gte('entrada_at', start)
+    .lte('entrada_at', end)
+    .maybeSingle()
 
-  await supabase.from('registros_turno').insert({
-    negocio_id: negocio.id,
-    user_id: user.id,
-    nombre,
-  })
+  if (!activo) {
+    const emailPrefix = user.email?.split('@')[0] ?? 'empleado'
+    const nombre = emailPrefix
+      .split(/[._-]/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ')
 
-  revalidatePath('/turno')
-  revalidatePath('/')
+    await supabase.from('registros_turno').insert({
+      negocio_id: negocio.id,
+      user_id: user.id,
+      nombre,
+    })
+  }
+
+  redirect('/turno')
 }
 
 export async function registrarSalida(id: string) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
   await supabase
     .from('registros_turno')
     .update({ salida_at: new Date().toISOString() })
     .eq('id', id)
-    .eq('user_id', (await supabase.auth.getUser()).data.user?.id ?? '')
+    .eq('user_id', user.id)
 
-  revalidatePath('/turno')
-  revalidatePath('/')
+  redirect('/turno')
 }

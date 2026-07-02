@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { getModulos } from '@/lib/modulos'
 
 export async function GET() {
   const negocio = await getNegocioActual()
   if (!negocio) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  const modulos = await getModulos()
+  if (!modulos.exportacion) return NextResponse.json({ error: 'Módulo no habilitado' }, { status: 403 })
 
   const supabase = await createClient()
   const { data: gastos } = await supabase
