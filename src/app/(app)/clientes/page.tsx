@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { Users, ChevronRight, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { requireModulo } from '@/lib/modulos'
 import { formatMXN } from '@/lib/dinero'
 import { EstatusCliente } from '@/components/estatus-cliente'
 import type { EstatusClienteValue } from '@/components/estatus-cliente'
@@ -10,6 +11,7 @@ import type { EstatusClienteValue } from '@/components/estatus-cliente'
 export default async function ClientesPage() {
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
+  await requireModulo('clientes_frecuentes')
 
   const supabase = await createClient()
 

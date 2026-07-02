@@ -97,6 +97,13 @@ export default async function DetalleVentaPage({
             <Printer className="h-4 w-4" />
             Ticket
           </Link>
+          <Link
+            href={`/ventas/${id}/ticket-58`}
+            className="flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+          >
+            <Printer className="h-4 w-4" />
+            58mm
+          </Link>
         </div>
       </div>
 

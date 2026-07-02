@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { getModulos } from '@/lib/modulos'
 import { getRolActual } from '@/lib/rol'
 import { mexicoDayRange } from '@/lib/fecha'
 import * as XLSX from 'xlsx'

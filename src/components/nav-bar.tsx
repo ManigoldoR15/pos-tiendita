@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
 import type { RolNegocio } from '@/lib/rol'
+import type { ModulosConfig } from '@/lib/modulos-config'
+import { MODULOS_DEFAULT } from '@/lib/modulos-config'
 import AvisoEmpleado from '@/components/aviso-empleado'
 
 // ── Link definitions ──────────────────────────────────────────────────────────
@@ -194,6 +196,7 @@ export default function NavBar({
   notifNoLeidas = 0,
   rol,
   esSuperAdmin = false,
+  modulos = MODULOS_DEFAULT,
 }: {
   negocioNombre: string
   stockBajo?: number
@@ -201,16 +204,34 @@ export default function NavBar({
   notifNoLeidas?: number
   rol?: RolNegocio | null
   esSuperAdmin?: boolean
+  modulos?: ModulosConfig
 }) {
   const pathname = usePathname()
   const [masOpen, setMasOpen] = useState(false)
 
   const isDueno = !rol || rol === 'dueno'
 
-  const directLinks = isDueno ? DIRECT_DUENO : DIRECT_EMPLEADO
-  const operacionesLinks = isDueno ? OPERACIONES_DUENO : null
-  const catalogoLinks = isDueno ? CATALOGO_DUENO : null
-  const analisisLinks = isDueno ? ANALISIS_DUENO : null
+  const directLinks = isDueno ? DIRECT_DUENO : DIRECT_EMPLEADO.filter((l) => {
+    if (l.href === '/clientes') return modulos.clientes_frecuentes
+    if (l.href === '/fiados')   return modulos.fiados
+    if (l.href === '/turno')    return modulos.turnos
+    return true
+  })
+  const operacionesLinks = isDueno ? OPERACIONES_DUENO.filter((l) => {
+    if (l.href === '/clientes') return modulos.clientes_frecuentes
+    if (l.href === '/fiados')   return modulos.fiados
+    if (l.href === '/cuadre')   return modulos.granel
+    return true
+  }) : null
+  const catalogoLinks = isDueno ? CATALOGO_DUENO.filter((l) => {
+    if (l.href === '/proveedores') return modulos.proveedores
+    return true
+  }) : null
+  const analisisLinks = isDueno ? ANALISIS_DUENO.filter((l) => {
+    if (l.href === '/turnos')  return modulos.turnos
+    if (l.href === '/plazas')  return modulos.multi_plaza
+    return true
+  }) : null
   const showConfig = isDueno
 
   const badges: Record<string, number> = {

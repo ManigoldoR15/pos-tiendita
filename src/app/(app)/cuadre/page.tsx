@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { requireModulo } from '@/lib/modulos'
 import { getRolActual } from '@/lib/rol'
 import { formatCantidad } from '@/lib/unidades'
 import { fmtFechaCorta } from '@/lib/fecha'
@@ -10,6 +11,7 @@ import AjusteFormPieza from './ajuste-form-pieza'
 export default async function CuadrePage() {
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
+  await requireModulo('granel')
 
   const rol = await getRolActual()
   if (rol === 'empleado') redirect('/')

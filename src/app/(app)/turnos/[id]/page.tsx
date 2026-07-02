@@ -29,6 +29,7 @@ type ItemRaw = {
   cantidad: number
   precio_unitario: number
   subtotal: number
+  costo_unitario: number | null
   productos: { nombre: string; unidad_medida: string } | null
 }
 
@@ -65,7 +66,7 @@ export default async function TurnoDetallePage({
       id, created_at, total, es_fiado,
       metodos_pago(nombre),
       clientes(nombre),
-      venta_items(id, cantidad, precio_unitario, subtotal, productos(nombre, unidad_medida))
+      venta_items(id, cantidad, precio_unitario, subtotal, costo_unitario, productos(nombre, unidad_medida))
     `)
     .eq('corte_id', id)
     .eq('negocio_id', negocio.id)
@@ -97,6 +98,7 @@ export default async function TurnoDetallePage({
         cantidad: Number(it.cantidad),
         precio_unitario: it.precio_unitario,
         subtotal: it.subtotal,
+        costo_unitario: it.costo_unitario,
         unidad_medida: it.productos?.unidad_medida,
       })),
     }
@@ -116,6 +118,22 @@ export default async function TurnoDetallePage({
     }
   }
   const productosResumen = Array.from(prodMap.values()).sort((a, b) => b.total_mxn - a.total_mxn)
+
+  // Ganancia del turno con costo congelado (solo items con costo_unitario conocido)
+  let gananciaTurno = 0
+  let ventasConCosto = 0
+  let itemsSinCosto = 0
+  for (const v of ventas) {
+    for (const it of v.items) {
+      if (it.costo_unitario != null) {
+        gananciaTurno += (it.precio_unitario - it.costo_unitario) * it.cantidad
+        ventasConCosto += it.subtotal
+      } else {
+        itemsSinCosto += 1
+      }
+    }
+  }
+  const margenPct = ventasConCosto > 0 ? Math.round((gananciaTurno / ventasConCosto) * 100) : null
 
   const fiados = ventas.filter(v => v.es_fiado)
   const diferencia = Number(t.diferencia ?? 0)
@@ -235,6 +253,29 @@ export default async function TurnoDetallePage({
               </span>
             </div>
           </div>
+
+          {ventasConCosto > 0 && (
+            <div className="rounded-xl border p-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Ganancia del turno</span>
+                <span className={`tabular-nums font-bold ${gananciaTurno >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {formatMXN(gananciaTurno)}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Margen</span>
+                <span className="tabular-nums font-medium">
+                  {margenPct !== null ? `${margenPct}%` : '—'}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground pt-1 border-t">
+                Ganancia calculada sobre {formatMXN(ventasConCosto)} de {formatMXN(Number(t.total_ventas))} vendidos
+                {itemsSinCosto > 0
+                  ? ` · ${itemsSinCosto} ${itemsSinCosto === 1 ? 'producto vendido sin' : 'productos vendidos sin'} costo registrado`
+                  : ''}
+              </p>
+            </div>
+          )}
         </div>
       </section>
 

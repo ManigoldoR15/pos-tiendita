@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { MapPin, Settings2, TrendingUp, ShoppingCart, Receipt, Package } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { requireModulo } from '@/lib/modulos'
 import { getRolActual } from '@/lib/rol'
 import { formatMXN } from '@/lib/dinero'
 import { getRango, type Periodo } from '@/lib/periodo'
@@ -29,6 +30,7 @@ const PERIODOS = [
 export default async function PlazasPage({ searchParams }: { searchParams: SearchParams }) {
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
+  await requireModulo('multi_plaza')
 
   const rol = await getRolActual()
   if (rol && rol !== 'dueno') redirect('/')

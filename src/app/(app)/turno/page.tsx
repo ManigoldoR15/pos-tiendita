@@ -3,7 +3,8 @@ import { LogIn, LogOut, Clock, CheckCircle2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
-import { hoyMX, TZ } from '@/lib/fecha'
+import { requireModulo } from '@/lib/modulos'
+import { hoyMX, mexicoDayRange, TZ } from '@/lib/fecha'
 import { registrarEntrada, registrarSalida } from './actions'
 
 function fmtHora(ts: string) {
@@ -25,14 +26,13 @@ function duracion(desde: string, hasta?: string | null) {
 export default async function TurnoPage() {
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
+  await requireModulo('turnos')
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const hoy = hoyMX()
-  const inicioHoy = `${hoy}T00:00:00`
-  const finHoy    = `${hoy}T23:59:59`
+  const { start: inicioHoy, end: finHoy } = mexicoDayRange(hoyMX())
 
   // Turno activo hoy (sin salida)
   const { data: turnoActivo } = await supabase
