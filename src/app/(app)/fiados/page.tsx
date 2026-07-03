@@ -3,23 +3,27 @@ import { redirect } from 'next/navigation'
 import { HandCoins, Ban, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { requireModulo } from '@/lib/modulos'
 import { formatMXN } from '@/lib/dinero'
 import { fmtFechaCorta } from '@/lib/fecha'
 import { cn } from '@/lib/utils'
+import Buscador from '@/components/buscador'
 
 type Orden = 'monto' | 'antiguedad'
 
 export default async function FiadosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ orden?: string; vista?: string }>
+  searchParams: Promise<{ orden?: string; vista?: string; q?: string }>
 }) {
-  const { orden: ordenParam, vista } = await searchParams
+  const { orden: ordenParam, vista, q } = await searchParams
   const orden: Orden = ordenParam === 'antiguedad' ? 'antiguedad' : 'monto'
   const verListaNegra = vista === 'lista-negra'
+  const busqueda = (q ?? '').trim()
 
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
+  await requireModulo('fiados')
 
   const supabase = await createClient()
 
@@ -66,6 +70,20 @@ export default async function FiadosPage({
     : lista.sort((a, b) => new Date(a.debe_desde).getTime() - new Date(b.debe_desde).getTime())
 
   const totalPorCobrar = lista.reduce((s, d) => s + d.deuda_total, 0)
+  const totalDeudores = lista.length
+
+  const qLower = busqueda.toLowerCase()
+  if (qLower) lista = lista.filter((d) => d.nombre.toLowerCase().includes(qLower))
+  const listaNegra = qLower
+    ? (clientesListaNegra ?? []).filter((c) => c.nombre.toLowerCase().includes(qLower))
+    : (clientesListaNegra ?? [])
+
+  function fiadosUrl(extra: Record<string, string>) {
+    const params = new URLSearchParams(extra)
+    if (busqueda) params.set('q', busqueda)
+    const qs = params.toString()
+    return `/fiados${qs ? `?${qs}` : ''}`
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -73,7 +91,7 @@ export default async function FiadosPage({
         <h1 className="text-2xl font-black tracking-tight">Fiados</h1>
         <div className="flex rounded-lg border p-0.5 bg-muted/40">
           <Link
-            href="/fiados"
+            href={fiadosUrl({})}
             className={cn(
               'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
               !verListaNegra ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground',
@@ -82,7 +100,7 @@ export default async function FiadosPage({
             Por cobrar
           </Link>
           <Link
-            href="/fiados?vista=lista-negra"
+            href={fiadosUrl({ vista: 'lista-negra' })}
             className={cn(
               'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
               verListaNegra ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground',
@@ -94,15 +112,28 @@ export default async function FiadosPage({
         </div>
       </div>
 
+      <Buscador
+        placeholder="Buscar cliente por nombre…"
+        defaultValue={busqueda}
+        baseParams={{
+          ...(verListaNegra ? { vista: 'lista-negra' } : {}),
+          ...(ordenParam === 'antiguedad' ? { orden: 'antiguedad' } : {}),
+        }}
+      />
+
       {verListaNegra ? (
         <div className="card-soft divide-y">
-          {(clientesListaNegra ?? []).length === 0 ? (
+          {listaNegra.length === 0 ? (
             <div className="p-10 text-center text-muted-foreground">
               <Ban className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
-              <p>No hay clientes en lista negra.</p>
+              <p>
+                {busqueda
+                  ? `No hay clientes en lista negra que coincidan con “${busqueda}”.`
+                  : 'No hay clientes en lista negra.'}
+              </p>
             </div>
           ) : (
-            (clientesListaNegra ?? []).map((c) => (
+            listaNegra.map((c) => (
               <Link
                 key={c.id}
                 href={`/fiados/${c.id}`}
@@ -134,7 +165,7 @@ export default async function FiadosPage({
               {formatMXN(totalPorCobrar)}
             </p>
             <p className="mt-2 text-sm text-muted-foreground">
-              {lista.length} {lista.length === 1 ? 'cliente debe' : 'clientes deben'}
+              {totalDeudores} {totalDeudores === 1 ? 'cliente debe' : 'clientes deben'}
             </p>
           </div>
 
@@ -143,7 +174,7 @@ export default async function FiadosPage({
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Ordenar por:</span>
               <Link
-                href="/fiados?orden=monto"
+                href={fiadosUrl({ orden: 'monto' })}
                 className={cn(
                   'rounded-full border px-4 py-1.5 font-medium transition-colors',
                   orden === 'monto' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
@@ -152,7 +183,7 @@ export default async function FiadosPage({
                 Monto
               </Link>
               <Link
-                href="/fiados?orden=antiguedad"
+                href={fiadosUrl({ orden: 'antiguedad' })}
                 className={cn(
                   'rounded-full border px-4 py-1.5 font-medium transition-colors',
                   orden === 'antiguedad' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
@@ -168,7 +199,11 @@ export default async function FiadosPage({
             {lista.length === 0 ? (
               <div className="p-10 text-center text-muted-foreground">
                 <HandCoins className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
-                <p>No hay cuentas pendientes. ¡Todo cobrado!</p>
+                <p>
+                  {busqueda
+                    ? `Nadie que coincida con “${busqueda}” debe.`
+                    : 'No hay cuentas pendientes. ¡Todo cobrado!'}
+                </p>
               </div>
             ) : (
               lista.map((d) => (

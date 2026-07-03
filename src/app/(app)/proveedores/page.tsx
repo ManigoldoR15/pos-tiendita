@@ -1,25 +1,39 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { requireModulo } from '@/lib/modulos'
 import { getRolActual } from '@/lib/rol'
 import FormProveedor from './form-proveedor'
 import ProveedorCard from './proveedor-card'
 import { crearProveedorAction } from './actions'
+import Buscador from '@/components/buscador'
 
-export default async function ProveedoresPage() {
+export default async function ProveedoresPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>
+}) {
+  const { q } = await searchParams
+  const busqueda = (q ?? '').trim()
+
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
+  await requireModulo('proveedores')
 
   const rol = await getRolActual()
   if (!rol || rol === 'empleado') redirect('/')
 
   const supabase = await createClient()
-  const { data: proveedores } = await supabase
+  let query = supabase
     .from('proveedores')
     .select('id, nombre, telefono, email, notas')
     .eq('negocio_id', negocio.id)
     .eq('activo', true)
     .order('nombre')
+
+  if (busqueda) query = query.ilike('nombre', `%${busqueda}%`)
+
+  const { data: proveedores } = await query
 
   return (
     <div className="space-y-5">
@@ -36,10 +50,17 @@ export default async function ProveedoresPage() {
         <FormProveedor action={crearProveedorAction} />
       </div>
 
+      {/* Búsqueda */}
+      <Buscador placeholder="Buscar proveedor por nombre…" defaultValue={busqueda} />
+
       {/* Lista */}
       {!proveedores || proveedores.length === 0 ? (
         <div className="mt-6 text-center text-muted-foreground">
-          <p className="text-lg">No tienes proveedores registrados aún.</p>
+          <p className="text-lg">
+            {busqueda
+              ? `No hay proveedores que coincidan con “${busqueda}”.`
+              : 'No tienes proveedores registrados aún.'}
+          </p>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

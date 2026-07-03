@@ -3,22 +3,36 @@ import { redirect } from 'next/navigation'
 import { Users, ChevronRight, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { requireModulo } from '@/lib/modulos'
 import { formatMXN } from '@/lib/dinero'
 import { EstatusCliente } from '@/components/estatus-cliente'
 import type { EstatusClienteValue } from '@/components/estatus-cliente'
+import Buscador from '@/components/buscador'
 
-export default async function ClientesPage() {
+export default async function ClientesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>
+}) {
+  const { q } = await searchParams
+  const busqueda = (q ?? '').trim()
+
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
+  await requireModulo('clientes_frecuentes')
 
   const supabase = await createClient()
 
-  const { data: clientes } = await supabase
+  let query = supabase
     .from('clientes')
     .select('id, nombre, telefono, activo, en_lista_negra, estatus, estatus_nota')
     .eq('negocio_id', negocio.id)
     .eq('activo', true)
     .order('nombre')
+
+  if (busqueda) query = query.ilike('nombre', `%${busqueda}%`)
+
+  const { data: clientes } = await query
 
   // Contar precios especiales por cliente
   const { data: pecCounts } = await supabase
@@ -51,11 +65,19 @@ export default async function ClientesPage() {
         </Link>
       </div>
 
+      <Buscador placeholder="Buscar cliente por nombre…" defaultValue={busqueda} />
+
       {(clientes ?? []).length === 0 ? (
         <div className="card-soft flex flex-col items-center gap-3 py-16 text-center">
           <Users className="h-10 w-10 text-muted-foreground/30" />
-          <p className="text-muted-foreground">Sin clientes registrados.</p>
-          <p className="text-sm text-muted-foreground">Usa el botón "Nuevo" o créalos desde el POS al cobrar.</p>
+          {busqueda ? (
+            <p className="text-muted-foreground">No hay clientes que coincidan con “{busqueda}”.</p>
+          ) : (
+            <>
+              <p className="text-muted-foreground">Sin clientes registrados.</p>
+              <p className="text-sm text-muted-foreground">Usa el botón "Nuevo" o créalos desde el POS al cobrar.</p>
+            </>
+          )}
         </div>
       ) : (
         <div className="card-soft divide-y">

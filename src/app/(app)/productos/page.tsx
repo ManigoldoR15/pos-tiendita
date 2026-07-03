@@ -8,6 +8,7 @@ import { STOCK_MINIMO } from '@/lib/constantes'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { getColorCategoria } from '@/lib/colores-categoria'
+import Buscador from '@/components/buscador'
 import { eliminarProductoAction } from './actions'
 
 const PAGE_SIZE = 48
@@ -15,9 +16,10 @@ const PAGE_SIZE = 48
 export default async function ProductosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ categoria?: string; alerta?: string; pagina?: string }>
+  searchParams: Promise<{ categoria?: string; alerta?: string; pagina?: string; q?: string }>
 }) {
-  const { categoria: categoriaFiltro, alerta, pagina } = await searchParams
+  const { categoria: categoriaFiltro, alerta, pagina, q } = await searchParams
+  const busqueda = (q ?? '').trim()
   const paginaActual = Math.max(1, parseInt(pagina ?? '1') || 1)
   const soloStockBajo = alerta === 'bajo'
   const negocio = await getNegocioActual()
@@ -35,6 +37,7 @@ export default async function ProductosPage({
 
   if (categoriaFiltro) query = query.eq('categoria_id', categoriaFiltro)
   if (soloStockBajo) query = query.gt('existencias', 0).lte('existencias', STOCK_MINIMO)
+  if (busqueda) query = query.ilike('nombre', `%${busqueda}%`)
 
   const [{ data: categorias }, { data: productos, count: totalProductos }] = await Promise.all([
     supabase
@@ -53,6 +56,7 @@ export default async function ProductosPage({
     const params = new URLSearchParams()
     if (categoriaFiltro) params.set('categoria', categoriaFiltro)
     if (soloStockBajo) params.set('alerta', 'bajo')
+    if (busqueda) params.set('q', busqueda)
     if (p > 1) params.set('pagina', String(p))
     const qs = params.toString()
     return `/productos${qs ? `?${qs}` : ''}`
@@ -84,6 +88,16 @@ export default async function ProductosPage({
           </Button>
         </div>
       </div>
+
+      {/* Búsqueda */}
+      <Buscador
+        placeholder="Buscar producto por nombre…"
+        defaultValue={busqueda}
+        baseParams={{
+          ...(categoriaFiltro ? { categoria: categoriaFiltro } : {}),
+          ...(soloStockBajo ? { alerta: 'bajo' } : {}),
+        }}
+      />
 
       {/* Filtros */}
       <div className="flex flex-wrap gap-2">
@@ -275,9 +289,11 @@ export default async function ProductosPage({
       ) : (
         <div className="mt-12 text-center text-muted-foreground">
           <p className="text-lg">
-            {categoriaFiltro
-              ? 'No hay productos en esta categoría.'
-              : 'No tienes productos aún. ¡Agrega el primero!'}
+            {busqueda
+              ? `No hay productos que coincidan con “${busqueda}”.`
+              : categoriaFiltro
+                ? 'No hay productos en esta categoría.'
+                : 'No tienes productos aún. ¡Agrega el primero!'}
           </p>
         </div>
       )}
