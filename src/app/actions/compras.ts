@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
@@ -93,5 +94,9 @@ export async function registrarCompraAction(
     })
   }
 
+  // La compra cambia stock y listados que ya pueden estar en el router cache
+  revalidatePath('/compras')
+  revalidatePath('/productos')
+  revalidatePath('/pos')
   redirect(`/compras/${data}`)
 }
