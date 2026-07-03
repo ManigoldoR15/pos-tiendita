@@ -70,7 +70,7 @@ test.describe('2. Dashboard del dueño', () => {
     await screenshot(page, '02-dashboard-dueno')
 
     // KPIs visibles
-    await expect(page.locator('text=VENTAS').first()).toBeVisible()
+    await expect(page.locator('main').locator('text=VENTAS').first()).toBeVisible()
     // Links de navegación directos
     await expect(page.locator('a[href="/pos"]').first()).toBeVisible()
     await expect(page.locator('a[href="/"]').first()).toBeVisible()
@@ -88,7 +88,7 @@ test.describe('2. Dashboard del dueño', () => {
     await page.locator('a[href="/?p=semana"]').click()
     await page.waitForURL(/p=semana/, { timeout: 8000 })
     await screenshot(page, '02b-dashboard-semana')
-    await expect(page.locator('text=VENTAS').first()).toBeVisible()
+    await expect(page.locator('main').locator('text=VENTAS').first()).toBeVisible()
   })
 
   test('Botón POS en header lleva al POS', async ({ page }) => {
@@ -114,7 +114,7 @@ test.describe('3. POS — punto de venta', () => {
     await screenshot(page, '03-pos')
 
     // Al menos un botón de producto con precio
-    const productosBtns = page.locator('button').filter({ hasText: /\$\d+/ })
+    const productosBtns = page.locator('button:not([disabled])').filter({ hasText: /\$\d+/ })
     await expect(productosBtns.first()).toBeVisible()
   })
 
@@ -122,7 +122,7 @@ test.describe('3. POS — punto de venta', () => {
     await page.goto('/pos')
     await page.waitForLoadState('networkidle')
 
-    const primer = page.locator('button').filter({ hasText: /\$\d+/ }).first()
+    const primer = page.locator('button:not([disabled])').filter({ hasText: /\$\d+/ }).first()
     const precioText = await primer.innerText()
     await primer.click()
     await page.waitForTimeout(400)
@@ -140,7 +140,7 @@ test.describe('3. POS — punto de venta', () => {
     await page.goto('/pos')
     await page.waitForLoadState('networkidle')
 
-    await page.locator('button').filter({ hasText: /\$\d+/ }).first().click()
+    await page.locator('button:not([disabled])').filter({ hasText: /\$\d+/ }).first().click()
     await page.waitForTimeout(300)
     await page.getByRole('button', { name: /cobrar/i }).click()
     await page.waitForTimeout(600)
@@ -155,7 +155,7 @@ test.describe('3. POS — punto de venta', () => {
     await page.goto('/pos')
     await page.waitForLoadState('networkidle')
 
-    await page.locator('button').filter({ hasText: /\$\d+/ }).first().click()
+    await page.locator('button:not([disabled])').filter({ hasText: /\$\d+/ }).first().click()
     await page.waitForTimeout(300)
     await page.getByRole('button', { name: /cobrar/i }).click()
     await page.waitForTimeout(500)
@@ -175,7 +175,7 @@ test.describe('3. POS — punto de venta', () => {
     await page.goto('/pos')
     await page.waitForLoadState('networkidle')
 
-    await page.locator('button').filter({ hasText: /\$\d+/ }).first().click()
+    await page.locator('button:not([disabled])').filter({ hasText: /\$\d+/ }).first().click()
     await page.waitForTimeout(300)
 
     // Busca botón de vaciar / limpiar / eliminar carrito
@@ -202,7 +202,7 @@ test.describe('4. Historial de ventas', () => {
 
     // Métricas del historial
     await expect(page.locator('text=TOTAL RECAUDADO').first()).toBeVisible()
-    await expect(page.locator('text=VENTAS').first()).toBeVisible()
+    await expect(page.locator('main').locator('text=VENTAS').first()).toBeVisible()
 
     // Al menos una fila de venta
     const href = await primerHrefVenta(page)
@@ -300,7 +300,7 @@ test.describe('5. Catálogo de productos', () => {
     await page.waitForLoadState('networkidle')
 
     // "Todos" y "Stock bajo" son <Link> (→ <a>), no botones
-    await expect(page.locator('a[href="/productos"]').first()).toBeVisible()
+    await expect(page.locator('main a[href="/productos"]').first()).toBeVisible()
     await expect(page.locator('a[href*="alerta=bajo"]').first()).toBeVisible()
   })
 })
@@ -608,7 +608,7 @@ test.describe('11. Empleado — accesos correctos', () => {
     await screenshot(page, '11c-empleado-pos')
     expect(page.url()).toContain('/pos')
     // Grilla de productos visible
-    const btns = page.locator('button').filter({ hasText: /\$\d+/ })
+    const btns = page.locator('button:not([disabled])').filter({ hasText: /\$\d+/ })
     await expect(btns.first()).toBeVisible()
   })
 
