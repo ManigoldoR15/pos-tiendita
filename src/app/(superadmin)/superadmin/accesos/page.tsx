@@ -39,6 +39,10 @@ type ActividadRow = {
   ultima_vista: string
   num_vistas: number
   ip_addresses: string[]
+  gps_lat: number | null
+  gps_lon: number | null
+  gps_precision: number | null
+  gps_at: string | null
 }
 
 const ROL_LABEL: Record<string, string> = {
@@ -104,21 +108,43 @@ export default async function AccesosPage({
     ...actividadHoy.flatMap((a) => a.ip_addresses),
   ])
 
-  // Última IP con coordenadas de cada usuario activo hoy
-  const ultimaGeo = new Map<string, { ip: string; geo: GeoIp }>()
+  // Posición de cada usuario activo hoy: GPS si dio permiso, si no su última IP
+  type Posicion = { lat: number; lon: number; fuente: 'gps' | 'ip'; ip: string | null; geo: GeoIp | null }
+  const posiciones = new Map<string, Posicion>()
   for (const a of actividadHoy) {
+    if (a.gps_lat != null && a.gps_lon != null) {
+      const ultimaIp = a.ip_addresses[a.ip_addresses.length - 1] ?? null
+      posiciones.set(a.user_id, {
+        lat: a.gps_lat, lon: a.gps_lon, fuente: 'gps',
+        ip: ultimaIp, geo: ultimaIp ? (geoPorIp[ultimaIp] ?? null) : null,
+      })
+      continue
+    }
     const ipConGeo = [...a.ip_addresses]
       .reverse()
       .map((ip) => ({ ip, geo: geoPorIp[ip] }))
       .find((x) => x.geo?.lat != null && x.geo?.lon != null)
-    if (ipConGeo) ultimaGeo.set(a.user_id, ipConGeo)
+    if (ipConGeo) {
+      posiciones.set(a.user_id, {
+        lat: ipConGeo.geo!.lat!, lon: ipConGeo.geo!.lon!, fuente: 'ip',
+        ip: ipConGeo.ip, geo: ipConGeo.geo!,
+      })
+    }
   }
 
-  // Auto-ubicar negocios sin dirección con la IP de su dueño (la dirección manda)
+  // Auto-ubicar negocios con la posición del dueño (GPS gana a IP; la dirección manda)
   await autoUbicarNegocios(
     actividadHoy
-      .filter((a) => a.rol === 'dueno' && a.negocio_id && ultimaGeo.has(a.user_id))
-      .map((a) => ({ negocioId: a.negocio_id!, geo: ultimaGeo.get(a.user_id)!.geo })),
+      .filter((a) => a.rol === 'dueno' && a.negocio_id && posiciones.has(a.user_id))
+      .map((a) => {
+        const p = posiciones.get(a.user_id)!
+        return {
+          negocioId: a.negocio_id!,
+          lat: p.lat,
+          lon: p.lon,
+          fuente: p.fuente === 'gps' ? ('auto_gps' as const) : ('auto_ip' as const),
+        }
+      }),
   )
 
   // Locales para el mapa — después de auto-ubicar, para leer coords frescas
@@ -130,9 +156,8 @@ export default async function AccesosPage({
   // Usuarios para el mapa
   const usuariosMapa: UsuarioMapa[] = []
   for (const a of actividadHoy) {
-    const ipConGeo = ultimaGeo.get(a.user_id)
-    if (!ipConGeo) continue
-    const { ip, geo } = ipConGeo
+    const p = posiciones.get(a.user_id)
+    if (!p) continue
     const negocioCoords = a.negocio_id ? coordsNegocio.get(a.negocio_id) : undefined
     const nLat = negocioCoords?.lat ?? a.negocio_lat
     const nLon = negocioCoords?.lon ?? a.negocio_lon
@@ -140,13 +165,15 @@ export default async function AccesosPage({
       email: a.email_usuario ?? '—',
       rol: a.rol ? (ROL_LABEL[a.rol] ?? a.rol) : null,
       negocio: a.negocio_nombre,
-      ip,
-      lugar: geoTexto(geo),
-      lat: geo.lat!,
-      lon: geo.lon!,
-      haceTexto: haceTexto(a.ultima_vista),
+      ip: p.ip ?? '—',
+      lugar: geoTexto(p.geo ?? undefined),
+      lat: p.lat,
+      lon: p.lon,
+      fuente: p.fuente,
+      precisionM: p.fuente === 'gps' ? (a.gps_precision ?? null) : null,
+      haceTexto: haceTexto(p.fuente === 'gps' && a.gps_at ? a.gps_at : a.ultima_vista),
       distanciaKm:
-        nLat != null && nLon != null ? distanciaKm(geo.lat!, geo.lon!, nLat, nLon) : null,
+        nLat != null && nLon != null ? distanciaKm(p.lat, p.lon, nLat, nLon) : null,
     })
   }
 
@@ -285,11 +312,18 @@ export default async function AccesosPage({
                       <p className="text-xs font-bold text-slate-300 tabular-nums">{a.num_vistas}</p>
                     </div>
                   </div>
-                  {ultimaIp && (
-                    <p className="mt-2.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+                  {(ultimaIp || a.gps_lat != null) && (
+                    <p className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
                       <MapPin className="h-3 w-3 text-amber-400 shrink-0" />
                       {lugar ?? 'Ubicación desconocida'}
-                      <span className="font-mono text-[10px] text-slate-600">· {ultimaIp}</span>
+                      {ultimaIp && (
+                        <span className="font-mono text-[10px] text-slate-600">· {ultimaIp}</span>
+                      )}
+                      {a.gps_lat != null && (
+                        <span className="inline-flex items-center rounded-full bg-blue-950/60 border border-blue-800/40 px-1.5 py-px text-[9px] font-bold text-blue-400">
+                          GPS{a.gps_precision ? ` ±${Math.round(a.gps_precision)} m` : ''}
+                        </span>
+                      )}
                     </p>
                   )}
                 </div>

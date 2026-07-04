@@ -1,25 +1,28 @@
 import { createServiceClient } from '@/lib/supabase/service'
-import type { GeoIp } from '@/lib/geoip'
 
 type NominatimRow = { lat: string; lon: string }
 
 /**
- * Auto-ubica negocios con la IP de su dueño: si el negocio no tiene dirección
- * geocodificada ('direccion'), sus coordenadas se estiman/refrescan con la
- * geolocalización de la última IP del dueño. La dirección escrita manda siempre.
+ * Auto-ubica negocios con la posición de su dueño: GPS si dio permiso
+ * (fuente 'auto_gps'), si no la geolocalización de su última IP ('auto_ip').
+ * Jerarquía: 'direccion' (escrita en la ficha) > 'auto_gps' > 'auto_ip'.
  */
 export async function autoUbicarNegocios(
-  candidatos: { negocioId: string; geo: GeoIp }[],
+  candidatos: { negocioId: string; lat: number; lon: number; fuente: 'auto_gps' | 'auto_ip' }[],
 ): Promise<void> {
   if (candidatos.length === 0) return
   const svc = createServiceClient()
   await Promise.all(
-    candidatos.map(({ negocioId, geo }) =>
+    candidatos.map(({ negocioId, lat, lon, fuente }) =>
       svc
         .from('negocios')
-        .update({ lat: geo.lat, lon: geo.lon, geo_fuente: 'auto_ip' })
+        .update({ lat, lon, geo_fuente: fuente })
         .eq('id', negocioId)
-        .or('geo_fuente.is.null,geo_fuente.eq.auto_ip'),
+        .or(
+          fuente === 'auto_gps'
+            ? 'geo_fuente.is.null,geo_fuente.eq.auto_ip,geo_fuente.eq.auto_gps'
+            : 'geo_fuente.is.null,geo_fuente.eq.auto_ip',
+        ),
     ),
   )
 }

@@ -3,6 +3,7 @@ import { getNegocioActual } from '@/lib/negocio'
 import { createClient } from '@/lib/supabase/server'
 import { STOCK_MINIMO } from '@/lib/constantes'
 import NavBar from '@/components/nav-bar'
+import GpsTracker from '@/components/gps-tracker'
 import { getRolActual } from '@/lib/rol'
 import { isSuperAdmin } from '@/lib/superadmin'
 import { getModulos } from '@/lib/modulos'
@@ -54,6 +55,7 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen bg-background">
+      <GpsTracker />
       {banner?.banner_texto && (
         <div className="sticky top-0 z-50 bg-primary text-primary-foreground py-2 text-center text-sm font-semibold shadow-sm">
           {banner.emoji} {banner.banner_texto}

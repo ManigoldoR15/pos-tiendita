@@ -23,6 +23,10 @@ export type UsuarioMapa = {
   lugar: string | null
   lat: number
   lon: number
+  /** 'gps' = posición real del dispositivo; 'ip' = estimada por IP */
+  fuente: 'gps' | 'ip'
+  /** Precisión GPS en metros (solo fuente 'gps') */
+  precisionM: number | null
   haceTexto: string
   /** Distancia en km a su negocio; null si el negocio no tiene coordenadas */
   distanciaKm: number | null
@@ -89,11 +93,15 @@ export default function MapaAccesos({
       for (const u of usuarios) {
         const color =
           u.distanciaKm === null ? '#94a3b8' : u.distanciaKm <= 30 ? '#10b981' : '#ef4444'
+        const esGps = u.fuente === 'gps'
+        // GPS: punto con centro blanco (posición real); IP: punto sólido (estimada)
         const icono = L.divIcon({
           className: '',
-          html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid rgba(255,255,255,.85);box-shadow:0 0 8px ${color}"></div>`,
-          iconSize: [16, 16],
-          iconAnchor: [8, 8],
+          html: esGps
+            ? `<div style="width:18px;height:18px;border-radius:50%;background:${color};border:2.5px solid rgba(255,255,255,.9);box-shadow:0 0 10px ${color};display:flex;align-items:center;justify-content:center"><div style="width:6px;height:6px;border-radius:50%;background:#fff"></div></div>`
+            : `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid rgba(255,255,255,.85);box-shadow:0 0 8px ${color}"></div>`,
+          iconSize: esGps ? [18, 18] : [16, 16],
+          iconAnchor: esGps ? [9, 9] : [8, 8],
         })
         const distTexto =
           u.distanciaKm === null
@@ -101,12 +109,16 @@ export default function MapaAccesos({
             : u.distanciaKm <= 30
               ? `A ~${Math.round(u.distanciaKm)} km de su local ✓`
               : `⚠ A ~${Math.round(u.distanciaKm)} km de su local`
+        const fuenteTexto = esGps
+          ? `📍 GPS real${u.precisionM ? ` (±${Math.round(u.precisionM)} m)` : ''}`
+          : 'Estimado por IP (nivel ciudad)'
         L.marker([u.lat, u.lon], { icon: icono })
           .addTo(map)
           .bindPopup(
             `<strong>${escapeHtml(u.email)}</strong>${u.rol ? ` · ${escapeHtml(u.rol)}` : ''}<br/>` +
               `${escapeHtml(u.negocio ?? 'Sin negocio')}<br/>` +
               `<span style="color:#64748b">${escapeHtml(u.lugar ?? u.ip)} · ${escapeHtml(u.haceTexto)}</span><br/>` +
+              `${escapeHtml(fuenteTexto)}<br/>` +
               `${distTexto}`,
           )
         puntos.push([u.lat, u.lon])
@@ -147,8 +159,9 @@ export default function MapaAccesos({
         </span>
       </div>
       <p className="mt-2 text-[11px] text-slate-500">
-        La posición del usuario se estima por su IP: es a nivel ciudad/zona, no GPS. Con datos
-        móviles la IP puede aparecer en otra ciudad — úsalo como indicio, no como prueba.
+        Los puntos con centro blanco son GPS real del dispositivo (precisión de metros, requiere
+        que el usuario acepte el permiso de ubicación). Los puntos sólidos se estiman por IP
+        (nivel ciudad; con datos móviles pueden aparecer en otra ciudad).
       </p>
     </div>
   )
