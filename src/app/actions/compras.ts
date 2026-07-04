@@ -12,6 +12,7 @@ export type CompraItem = {
   producto_id: string
   cantidad: number
   costo_unitario: number
+  caducidad?: string | null // 'YYYY-MM-DD' opcional — fecha_caducidad del lote
 }
 
 export async function registrarCompraAction(
@@ -42,7 +43,12 @@ export async function registrarCompraAction(
     if (!it.producto_id) return 'Producto inválido en la lista.'
     if (it.cantidad <= 0) return 'La cantidad debe ser mayor a cero.'
     if (it.costo_unitario < 0) return 'El costo unitario no puede ser negativo.'
+    if (it.caducidad && !/^\d{4}-\d{2}-\d{2}$/.test(it.caducidad)) {
+      return 'Fecha de caducidad inválida en la lista.'
+    }
   }
+
+  const local_id = (formData.get('local_id') as string) || null
 
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('registrar_compra', {
@@ -51,6 +57,7 @@ export async function registrarCompraAction(
     p_fecha:        fecha,
     p_notas:        notas,
     p_items:        items,
+    p_local_id:     local_id,
   })
 
   if (error) return error.message
@@ -98,5 +105,6 @@ export async function registrarCompraAction(
   revalidatePath('/compras')
   revalidatePath('/productos')
   revalidatePath('/pos')
+  revalidatePath('/caducidad')
   redirect(`/compras/${data}`)
 }

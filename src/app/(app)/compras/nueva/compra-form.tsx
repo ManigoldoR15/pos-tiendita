@@ -21,21 +21,29 @@ type Proveedor = {
   nombre: string
 }
 
+type Plaza = {
+  id: string
+  nombre: string
+}
+
 type LineaCompra = {
   producto: Producto
   cantidad: number
   costo_unitario: number
   usarTara: boolean
   pesoBruto: string
+  caducidad: string // 'YYYY-MM-DD' o '' = sin caducidad
 }
 
 export default function CompraForm({
   productos,
   proveedores,
+  plazas = [],
   hoy,
 }: {
   productos: Producto[]
   proveedores: Proveedor[]
+  plazas?: Plaza[]
   hoy: string
 }) {
   const [error, action, pending] = useActionState(registrarCompraAction, null)
@@ -88,6 +96,7 @@ export default function CompraForm({
           costo_unitario: p.precio_costo ?? 0,
           usarTara: false,
           pesoBruto: '',
+          caducidad: '',
         },
       ])
       setBusqueda('')
@@ -138,11 +147,16 @@ export default function CompraForm({
     )
   }
 
+  const setCaducidadLinea = (idx: number, valor: string) => {
+    setLineas((prev) => prev.map((l, i) => (i === idx ? { ...l, caducidad: valor } : l)))
+  }
+
   const itemsPayload = JSON.stringify(
     lineas.map((l) => ({
       producto_id: l.producto.id,
       cantidad: l.cantidad,
       costo_unitario: l.costo_unitario,
+      caducidad: l.caducidad || null,
     })),
   )
 
@@ -180,6 +194,23 @@ export default function CompraForm({
               className="w-full rounded-xl border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
+
+          {plazas.length > 1 && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Plaza donde entra (opcional)</label>
+              <select
+                name="local_id"
+                className="w-full rounded-xl border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">— Sin plaza específica —</option>
+                {plazas.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="space-y-1.5">
@@ -259,8 +290,22 @@ export default function CompraForm({
                   {/* Nombre */}
                   <div className="min-w-0 sm:col-span-1">
                     <p className="truncate text-sm font-medium">{l.producto.nombre}</p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className="text-xs text-muted-foreground">{l.producto.unidad_medida}</p>
+                      <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        Caducidad:
+                        <input
+                          type="date"
+                          min={hoy}
+                          value={l.caducidad}
+                          onChange={(e) => setCaducidadLinea(idx, e.target.value)}
+                          className={cn(
+                            'rounded border bg-background px-1 py-0.5 text-[11px] focus:outline-none focus:ring-1 focus:ring-primary',
+                            l.caducidad ? 'border-primary/40 text-foreground' : 'text-muted-foreground',
+                          )}
+                          title="Fecha de caducidad del lote (opcional) — entra al semáforo de caducidad"
+                        />
+                      </label>
                       {l.producto.unidad_medida !== 'pieza' && l.producto.tara != null && l.producto.tara > 0 && (
                         <button
                           type="button"

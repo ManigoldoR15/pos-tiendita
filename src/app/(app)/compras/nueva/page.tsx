@@ -23,6 +23,7 @@ export default async function NuevaCompraPage() {
     { data: productos },
     { data: proveedores },
     { data: productosAlerta },
+    { data: plazas },
   ] = await Promise.all([
     supabase
       .from('productos')
@@ -44,6 +45,12 @@ export default async function NuevaCompraPage() {
       .lte('existencias', STOCK_MINIMO)
       .order('existencias', { ascending: true })
       .limit(10),
+    supabase
+      .from('locales')
+      .select('id, nombre')
+      .eq('negocio_id', negocio.id)
+      .eq('activo', true)
+      .order('nombre'),
   ])
 
   // Velocidad de venta últimos 30 días para productos en alerta
@@ -151,6 +158,7 @@ export default async function NuevaCompraPage() {
       <CompraForm
         productos={productos ?? []}
         proveedores={proveedores ?? []}
+        plazas={plazas ?? []}
         hoy={hoyMX()}
       />
     </div>
