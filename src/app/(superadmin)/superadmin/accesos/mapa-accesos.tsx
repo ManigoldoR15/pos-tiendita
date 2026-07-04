@@ -80,12 +80,15 @@ export default function MapaAccesos({
         const origen =
           n.geo_fuente === 'auto_ip'
             ? 'Ubicación estimada por la IP del dueño'
-            : (n.ubicacion ?? 'Local registrado')
+            : n.geo_fuente === 'auto_gps'
+              ? 'Ubicación por GPS del dueño'
+              : (n.ubicacion ?? 'Local registrado')
         L.marker([n.lat, n.lon], { icon: icono })
           .addTo(map)
           .bindPopup(
             `<strong>${escapeHtml(n.nombre)}</strong>${n.es_demo ? ' (demo)' : ''}${n.suspendido ? ' — suspendido' : ''}<br/>` +
-              `<span style="color:#64748b">${escapeHtml(origen)}</span>`,
+              `<span style="color:#64748b">${escapeHtml(origen)}</span><br/>` +
+              `<a href="https://www.google.com/maps/search/?api=1&query=${n.lat},${n.lon}" target="_blank" rel="noopener" style="font-weight:600">Ver en Google Maps ↗</a>`,
           )
         puntos.push([n.lat, n.lon])
       }
@@ -112,6 +115,7 @@ export default function MapaAccesos({
         const fuenteTexto = esGps
           ? `📍 GPS real${u.precisionM ? ` (±${Math.round(u.precisionM)} m)` : ''}`
           : 'Estimado por IP (nivel ciudad)'
+        const gmaps = `https://www.google.com/maps/search/?api=1&query=${u.lat},${u.lon}`
         L.marker([u.lat, u.lon], { icon: icono })
           .addTo(map)
           .bindPopup(
@@ -119,7 +123,8 @@ export default function MapaAccesos({
               `${escapeHtml(u.negocio ?? 'Sin negocio')}<br/>` +
               `<span style="color:#64748b">${escapeHtml(u.lugar ?? u.ip)} · ${escapeHtml(u.haceTexto)}</span><br/>` +
               `${escapeHtml(fuenteTexto)}<br/>` +
-              `${distTexto}`,
+              `${distTexto}<br/>` +
+              `<a href="${gmaps}" target="_blank" rel="noopener" style="font-weight:600">Ver en Google Maps ↗</a>`,
           )
         puntos.push([u.lat, u.lon])
       }

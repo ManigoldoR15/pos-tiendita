@@ -7,9 +7,9 @@ import ws from 'ws'
 
 dotenv.config({ path: path.resolve(__dirname, '../.env.local') })
 
-export const TEST_DUENO    = { email: 'test-dueno@pos-test.local',    password: 'TestDueno123!' }
-export const TEST_EMPLEADO = { email: 'test-empleado@pos-test.local', password: 'TestEmpleado123!' }
-export const TEST_ADMIN    = { email: 'test-admin@pos-test.local',    password: 'TestAdmin123!' }
+export const TEST_DUENO    = { email: 'test-dueno@pos-test.local',    password: 'Ts!K9sEkq7WbU2PT38V' }
+export const TEST_EMPLEADO = { email: 'test-empleado@pos-test.local', password: 'Ts!N1go_VKjSRLF8A25' }
+export const TEST_ADMIN    = { email: 'test-admin@pos-test.local',    password: 'Ts!PkKQjiqHOH2GPoFJ' }
 export const TEST_BARCODE  = 'TEST-7501234567890'
 
 const STORAGE_DIR = path.join(__dirname, '.auth')
