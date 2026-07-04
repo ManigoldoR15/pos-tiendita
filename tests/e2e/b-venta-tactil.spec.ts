@@ -23,6 +23,7 @@ test.describe('Venta táctil: agregar producto, cobrar, verificar stock', () => 
       .eq('negocio_id', negocioId)
       .eq('activo', true)
       .gt('existencias', 2)
+      .eq('unidad_medida', 'pieza')
       .order('nombre')
       .limit(1)
       .single()

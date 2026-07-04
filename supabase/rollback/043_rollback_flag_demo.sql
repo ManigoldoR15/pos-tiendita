@@ -1,0 +1,17 @@
+-- ROLLBACK 043: quita el flag demo.
+-- Restaura sa_stats_globales y sa_estudios_* SIN el filtro es_demo aplicando
+-- las definiciones previas (idénticas a las de 043 pero sin las condiciones
+-- "NOT es_demo" / "negocio_id IN (SELECT id FROM negocios WHERE NOT es_demo)").
+-- Para sa_lista_negocios, re-aplicar la versión de la migración 041.
+-- Al final, dropear la columna:
+--
+--   ALTER TABLE negocios DROP COLUMN IF EXISTS es_demo;
+--
+-- (Se deja como guía en vez de duplicar ~300 líneas de SQL: las definiciones
+-- pre-043 están en supabase/migrations/041_sa_lista_unificada.sql y en el
+-- historial de migraciones remotas 'sa_stats_globales'/'sa_estudios'.)
+ALTER TABLE negocios DROP COLUMN IF EXISTS es_demo;
+-- OJO: dropear la columna invalida las funciones que la referencian; después
+-- de esto es obligatorio re-aplicar las definiciones previas de:
+--   sa_lista_negocios (041), sa_stats_globales, sa_estudios_retencion,
+--   sa_estudios_crecimiento, sa_estudios_segmentacion.

@@ -114,7 +114,7 @@ test.describe('3. POS — punto de venta', () => {
     await screenshot(page, '03-pos')
 
     // Al menos un botón de producto con precio
-    const productosBtns = page.locator('button:not([disabled])').filter({ hasText: /\$\d+/ })
+    const productosBtns = page.locator('button:not([disabled])').filter({ hasText: /\$\d+/, hasNotText: '/ kg' })
     await expect(productosBtns.first()).toBeVisible()
   })
 
@@ -122,7 +122,7 @@ test.describe('3. POS — punto de venta', () => {
     await page.goto('/pos')
     await page.waitForLoadState('networkidle')
 
-    const primer = page.locator('button:not([disabled])').filter({ hasText: /\$\d+/ }).first()
+    const primer = page.locator('button:not([disabled])').filter({ hasText: /\$\d+/, hasNotText: '/ kg' }).first()
     const precioText = await primer.innerText()
     await primer.click()
     await page.waitForTimeout(400)
@@ -140,7 +140,7 @@ test.describe('3. POS — punto de venta', () => {
     await page.goto('/pos')
     await page.waitForLoadState('networkidle')
 
-    await page.locator('button:not([disabled])').filter({ hasText: /\$\d+/ }).first().click()
+    await page.locator('button:not([disabled])').filter({ hasText: /\$\d+/, hasNotText: '/ kg' }).first().click()
     await page.waitForTimeout(300)
     await page.getByRole('button', { name: /cobrar/i }).click()
     await page.waitForTimeout(600)
@@ -155,7 +155,7 @@ test.describe('3. POS — punto de venta', () => {
     await page.goto('/pos')
     await page.waitForLoadState('networkidle')
 
-    await page.locator('button:not([disabled])').filter({ hasText: /\$\d+/ }).first().click()
+    await page.locator('button:not([disabled])').filter({ hasText: /\$\d+/, hasNotText: '/ kg' }).first().click()
     await page.waitForTimeout(300)
     await page.getByRole('button', { name: /cobrar/i }).click()
     await page.waitForTimeout(500)
@@ -175,7 +175,7 @@ test.describe('3. POS — punto de venta', () => {
     await page.goto('/pos')
     await page.waitForLoadState('networkidle')
 
-    await page.locator('button:not([disabled])').filter({ hasText: /\$\d+/ }).first().click()
+    await page.locator('button:not([disabled])').filter({ hasText: /\$\d+/, hasNotText: '/ kg' }).first().click()
     await page.waitForTimeout(300)
 
     // Busca botón de vaciar / limpiar / eliminar carrito
@@ -386,7 +386,7 @@ const SA_TEST_PASS  = 'SAtest12345!'
 let saUserId: string | null = null
 let saContext: BrowserContext | null = null
 
-test.describe('10. Admin Sistema — panel de operador', () => {
+test.describe('10. Superadmin — panel unificado (fusión admin-sistema)', () => {
   test.beforeAll(async ({ browser }) => {
     const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -448,55 +448,56 @@ test.describe('10. Admin Sistema — panel de operador', () => {
     if (saContext) await saContext.close()
   })
 
-  test('Dashboard oscuro con 6 métricas de plataforma', async () => {
+  test('Lista unificada con 6 métricas de plataforma (cuenta + operación)', async () => {
     if (!saContext) { test.skip(); return }
     const page = await saContext.newPage()
+    // /admin-sistema redirige al panel unificado
     await page.goto('http://localhost:3000/admin-sistema')
     await page.waitForLoadState('networkidle')
     await screenshot(page, '10-admin-sistema')
 
-    // Sidebar con identidad de consola
-    await expect(page.locator('text=Admin Sistema')).toBeVisible()
-    await expect(page.locator('text=Panel de operador')).toBeVisible()
+    expect(page.url()).toContain('/superadmin/negocios')
+    await expect(page.locator('text=Super Admin').first()).toBeVisible()
 
     // 6 tarjetas de métricas
     await expect(page.locator('text=Total').first()).toBeVisible()
-    await expect(page.locator('text=Activos').first()).toBeVisible()
+    await expect(page.locator('text=Cuenta activa').first()).toBeVisible()
     await expect(page.locator('text=En prueba').first()).toBeVisible()
     await expect(page.locator('text=Vencidos').first()).toBeVisible()
     await expect(page.locator('text=Suspendidos').first()).toBeVisible()
-    await expect(page.locator('text=Nuevos / mes').first()).toBeVisible()
+    await expect(page.locator('text=Activos hoy').first()).toBeVisible()
 
     await page.close()
   })
 
-  test('Tabla muestra columnas: Negocio, Dueño/Contacto, Fecha de alta, Vencimiento, Estado', async () => {
+  test('Tabla unificada muestra columnas: Negocio, Dueño/Contacto, Cuenta, Actividad, Health', async () => {
     if (!saContext) { test.skip(); return }
     const page = await saContext.newPage()
-    await page.goto('http://localhost:3000/admin-sistema')
+    await page.goto('http://localhost:3000/superadmin/negocios')
     await page.waitForLoadState('networkidle')
 
     // Los headers de la tabla son <th> — evitar match con <option> del select
+    await expect(page.locator('th', { hasText: 'Negocio' }).first()).toBeVisible()
     await expect(page.locator('th', { hasText: 'Dueño / Contacto' }).first()).toBeVisible()
-    await expect(page.locator('th', { hasText: 'Fecha de alta' }).first()).toBeVisible()
-    await expect(page.locator('th', { hasText: 'Vencimiento' }).first()).toBeVisible()
-    await expect(page.locator('th', { hasText: 'Estado' }).first()).toBeVisible()
+    await expect(page.locator('th', { hasText: 'Cuenta' }).first()).toBeVisible()
+    await expect(page.locator('th', { hasText: 'Actividad' }).first()).toBeVisible()
+    await expect(page.locator('th', { hasText: 'Health' }).first()).toBeVisible()
 
     await page.close()
   })
 
-  test('Filtro por estado "activo" actualiza la URL', async () => {
+  test('Filtro por cuenta "activo" actualiza la URL', async () => {
     if (!saContext) { test.skip(); return }
     const page = await saContext.newPage()
-    await page.goto('http://localhost:3000/admin-sistema')
+    await page.goto('http://localhost:3000/superadmin/negocios')
     await page.waitForLoadState('networkidle')
 
-    await page.selectOption('select[name="estado"]', 'activo')
+    await page.selectOption('select[name="cuenta"]', 'activo')
     await page.getByRole('button', { name: /filtrar/i }).click()
     await page.waitForLoadState('networkidle')
     await screenshot(page, '10b-admin-filtro')
 
-    expect(page.url()).toContain('estado=activo')
+    expect(page.url()).toContain('cuenta=activo')
     await page.close()
   })
 
@@ -515,31 +516,31 @@ test.describe('10. Admin Sistema — panel de operador', () => {
     await page.close()
   })
 
-  test('"Dar de alta negocio" navega al formulario oscuro', async () => {
+  test('"Dar de alta cliente" navega al formulario de alta', async () => {
     if (!saContext) { test.skip(); return }
     const page = await saContext.newPage()
-    await page.goto('http://localhost:3000/admin-sistema')
+    await page.goto('http://localhost:3000/superadmin/negocios')
     await page.waitForLoadState('networkidle')
 
     await Promise.all([
-      page.waitForURL(/negocios\/nuevo/, { timeout: 10000 }),
-      page.locator('a[href="/admin-sistema/negocios/nuevo"]').first().click(),
+      page.waitForURL(/negocios\/alta/, { timeout: 10000 }),
+      page.locator('a[href="/superadmin/negocios/alta"]').first().click(),
     ])
     await screenshot(page, '10d-admin-nuevo')
 
-    expect(page.url()).toContain('/admin-sistema/negocios/nuevo')
+    expect(page.url()).toContain('/superadmin/negocios/alta')
     await expect(page.getByRole('heading', { name: /nuevo cliente/i })).toBeVisible()
     await expect(page.locator('input[name="nombre"]')).toBeVisible()
     await expect(page.locator('input[name="email_dueno"]')).toBeVisible()
-    await expect(page.locator('select[name="plan"]')).toBeVisible()
+    await expect(page.locator('select[name="plan"]').first()).toBeVisible()
 
     await page.close()
   })
 
-  test('Click en "Gestionar" de un negocio abre detalle con formulario editable', async () => {
+  test('Click en "Gestionar" de un negocio abre la ficha única con formulario editable', async () => {
     if (!saContext) { test.skip(); return }
     const page = await saContext.newPage()
-    await page.goto('http://localhost:3000/admin-sistema')
+    await page.goto('http://localhost:3000/superadmin/negocios')
     await page.waitForLoadState('networkidle')
 
     const gestionarLink = page.getByRole('link', { name: /gestionar/i }).first()
@@ -550,23 +551,24 @@ test.describe('10. Admin Sistema — panel de operador', () => {
     ])
     await screenshot(page, '10e-admin-detalle')
 
-    expect(page.url()).toMatch(/\/admin-sistema\/negocios\/[a-f0-9-]+$/)
+    expect(page.url()).toMatch(/\/superadmin\/negocios\/[a-f0-9-]+$/)
     await expect(page.locator('input[name="nombre_negocio"]')).toBeVisible()
-    await expect(page.locator('select[name="plan"]')).toBeVisible()
+    await expect(page.locator('select[name="plan"]').first()).toBeVisible()
     await expect(page.getByRole('button', { name: /guardar cambios/i })).toBeVisible()
 
     await page.close()
   })
 
-  test('/admin-sistema/negocios redirige al dashboard', async () => {
+  test('/admin-sistema/negocios redirige al panel unificado', async () => {
     if (!saContext) { test.skip(); return }
     const page = await saContext.newPage()
     await page.goto('http://localhost:3000/admin-sistema/negocios')
     await page.waitForLoadState('networkidle')
     await screenshot(page, '10f-admin-negocios-redirect')
 
-    // Debe redirigir al dashboard (muestra Admin Sistema)
-    await expect(page.locator('text=Admin Sistema')).toBeVisible()
+    // Debe redirigir a la lista unificada del superadmin
+    expect(page.url()).toContain('/superadmin/negocios')
+    await expect(page.locator('text=Super Admin').first()).toBeVisible()
     await page.close()
   })
 })
@@ -608,7 +610,7 @@ test.describe('11. Empleado — accesos correctos', () => {
     await screenshot(page, '11c-empleado-pos')
     expect(page.url()).toContain('/pos')
     // Grilla de productos visible
-    const btns = page.locator('button:not([disabled])').filter({ hasText: /\$\d+/ })
+    const btns = page.locator('button:not([disabled])').filter({ hasText: /\$\d+/, hasNotText: '/ kg' })
     await expect(btns.first()).toBeVisible()
   })
 

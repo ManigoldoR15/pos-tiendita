@@ -35,6 +35,7 @@ test.describe('Precios especiales por cliente', () => {
       .eq('negocio_id', negocioId)
       .eq('activo', true)
       .gt('existencias', 2)
+      .eq('unidad_medida', 'pieza')
       .order('nombre')
       .limit(1)
       .single()

@@ -6,12 +6,11 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   Menu, X, ArrowLeft,
-  LayoutDashboard, Users, FlaskConical, BarChart3, Palette, Megaphone, Activity,
+  LayoutDashboard, FlaskConical, BarChart3, Palette, Megaphone, Activity,
 } from 'lucide-react'
 
 const NAV = [
   { href: '/superadmin',              label: 'Dashboard',    Icon: LayoutDashboard },
-  { href: '/superadmin/clientes',     label: 'Clientes',     Icon: Users },
   { href: '/superadmin/accesos',      label: 'Accesos',      Icon: Activity },
   { href: '/superadmin/estudios',     label: 'Estudios',     Icon: FlaskConical },
   { href: '/superadmin/estadisticas', label: 'Mercado',      Icon: BarChart3 },

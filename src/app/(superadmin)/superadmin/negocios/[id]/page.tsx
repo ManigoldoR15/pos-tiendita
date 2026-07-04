@@ -9,6 +9,22 @@ import LicenciaForm from './licencia-form'
 import LicenciaEmpleadosForm from './licencia-empleados-form'
 import LicenciaCajasForm from './licencia-cajas-form'
 import ModulosForm from './modulos-form'
+import SuscripcionForm from './suscripcion-form'
+import PagoForm from './pago-form'
+import DemoToggle from './demo-toggle'
+import { hoyMX, fmtFechaCorta } from '@/lib/fecha'
+import { calcEstadoCuenta, EstadoCuentaBadge, ESTADOS_CUENTA } from '../../../estados'
+
+type Pago = {
+  id: string
+  fecha_pago: string
+  monto: number
+  plan: string
+  periodo_inicio: string
+  periodo_fin: string
+  metodo: string
+  notas: string | null
+}
 import { MODULOS_DEFAULT } from '@/lib/modulos-config'
 import type { ModulosConfig } from '@/lib/modulos-config'
 
@@ -44,11 +60,22 @@ export default async function NegocioDetallePage({
   const { id } = await params
   const { supabase } = await requireSuperAdmin()
 
-  const { data, error } = await supabase.rpc('sa_negocio_detalle', { p_id: id })
+  const [{ data, error }, { data: pagosData }] = await Promise.all([
+    supabase.rpc('sa_negocio_detalle', { p_id: id }),
+    supabase
+      .from('pagos_suscripcion')
+      .select('id, fecha_pago, monto, plan, periodo_inicio, periodo_fin, metodo, notas')
+      .eq('negocio_id', id)
+      .order('fecha_pago', { ascending: false })
+      .limit(24),
+  ])
   if (error || !data) notFound()
+  const pagos = (pagosData ?? []) as Pago[]
+  const totalPagado = pagos.reduce((s, p) => s + p.monto, 0)
 
   const d = data as NegocioDetalle
   const n = d.negocio
+  const estadoCuenta = calcEstadoCuenta(n)
   const utilidad = d.ventas_30d - d.gastos_30d
   const plazas = d.plazas ?? []
 
@@ -64,39 +91,82 @@ export default async function NegocioDetallePage({
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-black text-white tracking-tight">{n.nombre}</h1>
-            {n.suspendido ? (
-              <span className="rounded-full bg-red-900/50 border border-red-700/50 px-3 py-1 text-xs font-bold text-red-400 uppercase tracking-wide">
-                Suspendido
-              </span>
-            ) : (
-              <span className="rounded-full bg-emerald-900/40 border border-emerald-700/40 px-3 py-1 text-xs font-bold text-emerald-400 uppercase tracking-wide">
-                Activo
-              </span>
-            )}
+            <EstadoCuentaBadge estado={estadoCuenta} className="px-3 py-1 text-xs uppercase tracking-wide" />
+            <DemoToggle negocioId={n.id} esDemo={(n as unknown as { es_demo: boolean }).es_demo ?? false} />
           </div>
           <p className="mt-1 text-sm text-slate-400">
             Registrado {fmtFechaHoraCorta(n.created_at)}
             {n.plan && ` · Plan ${n.plan}`}
+            {` · Cuenta: ${ESTADOS_CUENTA[estadoCuenta].descr}`}
+            {n.suscripcion_fin && estadoCuenta !== 'prueba' && ` (vence ${n.suscripcion_fin})`}
           </p>
         </div>
         <SuspenderNegocioBtn negocioId={n.id} suspendido={n.suspendido} nombre={n.nombre} />
       </div>
 
-      {/* Datos del dueño */}
+      {/* Cuenta y suscripción (editable: contacto, plan, fechas, suspensión, notas) */}
       <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5">
-        <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4">Información del dueño</p>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <Field label="Nombre" value={n.nombre_dueno} />
-          <Field label="Email" value={n.email_dueno} />
-          <Field label="Teléfono" value={n.telefono_dueno} />
-          <Field label="Ubicación" value={n.ubicacion} />
-          <Field label="Suscripción inicio" value={n.suscripcion_inicio} />
-          <Field label="Suscripción fin" value={n.suscripcion_fin} />
+        <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4">Cuenta y suscripción</p>
+        <SuscripcionForm
+          negocio={{
+            id: n.id,
+            nombre: n.nombre,
+            email_dueno: n.email_dueno,
+            nombre_dueno: n.nombre_dueno,
+            telefono_dueno: n.telefono_dueno,
+            ubicacion: n.ubicacion,
+            plan: n.plan ?? 'prueba',
+            suscripcion_inicio: n.suscripcion_inicio,
+            suscripcion_fin: n.suscripcion_fin,
+            suspendido: n.suspendido,
+            notas_admin: n.notas_admin,
+          }}
+        />
+      </div>
+
+      {/* Pagos de suscripción */}
+      <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Pagos de suscripción</p>
+          {pagos.length > 0 && (
+            <p className="text-xs text-slate-500">
+              {pagos.length} pago{pagos.length !== 1 ? 's' : ''} · total <span className="text-slate-300 font-semibold">{formatMXN(totalPagado)}</span>
+            </p>
+          )}
         </div>
-        {n.notas_admin && (
-          <div className="mt-4 rounded-lg bg-amber-950/30 border border-amber-800/30 px-4 py-3">
-            <p className="text-xs font-semibold text-amber-400 mb-1">Notas admin</p>
-            <p className="text-sm text-amber-200/80">{n.notas_admin}</p>
+
+        <PagoForm negocioId={n.id} planActual={n.plan} hoy={hoyMX()} />
+
+        {pagos.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            Sin pagos registrados. Al registrar el primero, el vencimiento se extiende automáticamente.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800">
+                  <th className="text-left py-2 pr-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Fecha</th>
+                  <th className="text-right py-2 pr-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Monto</th>
+                  <th className="text-left py-2 pr-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Plan</th>
+                  <th className="text-left py-2 pr-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cubre hasta</th>
+                  <th className="text-left py-2 pr-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Método</th>
+                  <th className="text-left py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Notas</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {pagos.map((p) => (
+                  <tr key={p.id}>
+                    <td className="py-2.5 pr-4 text-slate-300 whitespace-nowrap">{fmtFechaCorta(p.fecha_pago + 'T12:00:00')}</td>
+                    <td className="py-2.5 pr-4 text-right font-semibold text-emerald-400 tabular-nums">{formatMXN(p.monto)}</td>
+                    <td className="py-2.5 pr-4 text-slate-400 capitalize">{p.plan}</td>
+                    <td className="py-2.5 pr-4 text-slate-300 whitespace-nowrap">{fmtFechaCorta(p.periodo_fin + 'T12:00:00')}</td>
+                    <td className="py-2.5 pr-4 text-slate-400 capitalize hidden sm:table-cell">{p.metodo}</td>
+                    <td className="py-2.5 text-slate-500 hidden lg:table-cell truncate max-w-[200px]">{p.notas ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -210,15 +280,6 @@ export default async function NegocioDetallePage({
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function Field({ label, value }: { label: string; value: string | null | undefined }) {
-  return (
-    <div>
-      <p className="text-xs text-slate-500 mb-0.5">{label}</p>
-      <p className="text-slate-200">{value || '—'}</p>
     </div>
   )
 }
