@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { type NextFetchEvent, type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 import { createServiceClient } from '@/lib/supabase/service'
 
@@ -8,7 +8,7 @@ const RUTAS_SIEMPRE_PUBLICAS = ['/cuenta-suspendida']
 // Rutas de auth: sin sesión pueden acceder, con sesión se redirigen a /
 const RUTAS_AUTH = ['/login', '/registro']
 
-export async function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const { supabaseResponse, user } = await updateSession(request)
   const pathname = request.nextUrl.pathname
 
@@ -63,15 +63,22 @@ export async function proxy(request: NextRequest) {
     const mismoDiaYIP = cookieDate === hoy && cookieIp === (ip ?? '')
 
     if (!mismoDiaYIP) {
-      // Fire-and-forget — fallo silencioso, nunca bloquea el render
+      // El builder de Supabase es lazy: solo ejecuta la petición al hacer .then().
+      // waitUntil mantiene vivo el proxy hasta que termine, sin bloquear el render.
       const svc = createServiceClient()
-      void svc.rpc('log_acceso', {
-        p_user_id:    user.id,
-        p_email:      user.email ?? null,
-        p_fecha:      hoy,
-        p_ip:         ip,
-        p_user_agent: ua,
-      })
+      event.waitUntil(
+        Promise.resolve(
+          svc.rpc('log_acceso', {
+            p_user_id:    user.id,
+            p_email:      user.email ?? null,
+            p_fecha:      hoy,
+            p_ip:         ip,
+            p_user_agent: ua,
+          }),
+        ).then(({ error }) => {
+          if (error) console.error('log_acceso:', error.message)
+        }),
+      )
 
       supabaseResponse.cookies.set(cookieKey, `${hoy}|${ip ?? ''}`, {
         httpOnly: true,

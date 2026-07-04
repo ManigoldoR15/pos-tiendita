@@ -115,6 +115,36 @@ export async function toggleDemoAction(negocioId: string, esDemo: boolean) {
   return { ok: true }
 }
 
+export async function eliminarNegocioAction(negocioId: string, nombreConfirmacion: string) {
+  const { supabase } = await requireSuperAdmin()
+
+  const { data: negocio } = await supabase
+    .from('negocios')
+    .select('nombre')
+    .eq('id', negocioId)
+    .single()
+  if (!negocio) return { error: 'Negocio no encontrado.' }
+  if (negocio.nombre.trim().toLowerCase() !== nombreConfirmacion.trim().toLowerCase()) {
+    return { error: `El nombre no coincide. Escribe exactamente "${negocio.nombre}" para confirmar.` }
+  }
+
+  const { data: huerfanos, error } = await supabase.rpc('sa_eliminar_negocio', {
+    p_negocio_id: negocioId,
+  })
+  if (error) return { error: error.message }
+
+  // Borrar de auth los usuarios que quedaron sin ningún negocio
+  const admin = createServiceClient()
+  for (const uid of (huerfanos as string[] | null) ?? []) {
+    const { error: delError } = await admin.auth.admin.deleteUser(uid)
+    if (delError) console.error('deleteUser:', uid, delError.message)
+  }
+
+  revalidatePath('/superadmin/negocios')
+  revalidatePath('/superadmin')
+  return { ok: true }
+}
+
 export async function toggleSuspenderAction(negocioId: string, suspender: boolean) {
   await requireSuperAdmin()
   const admin = createServiceClient()

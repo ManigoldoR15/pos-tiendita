@@ -1,6 +1,7 @@
 import { requireSuperAdmin } from '@/lib/superadmin'
 import { fmtFechaHoraCorta } from '@/lib/fecha'
-import { Activity, Users, Clock, TrendingUp, Wifi, AlertTriangle } from 'lucide-react'
+import { geolocalizarIps, geoTexto } from '@/lib/geoip'
+import { Activity, Users, Clock, TrendingUp, Wifi, AlertTriangle, MapPin } from 'lucide-react'
 import { SospechaBadge } from './SospechaBadge'
 
 type BitacoraRow = {
@@ -44,6 +45,9 @@ export default async function AccesosPage({
     ((activos as ActiveRow[] | null) ?? []).map((r) => [r.periodo, r.cantidad]),
   )
   const ipFilas = (ipsPorUsuario as IpRow[] | null) ?? []
+
+  // Geolocalizar todas las IPs vistas (con caché en ip_geo)
+  const geoPorIp = await geolocalizarIps(ipFilas.flatMap((f) => f.ips))
 
   // Contadores para el resumen de IPs
   const conMultiplesIPs = ipFilas.filter((r) => r.num_ips >= 3).length
@@ -145,8 +149,8 @@ export default async function AccesosPage({
                   <th className="text-center px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     IPs distintas
                   </th>
-                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell">
-                    Direcciones IP
+                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    Direcciones IP y ubicación
                   </th>
                   <th className="text-center px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     Sospecha
@@ -198,16 +202,25 @@ export default async function AccesosPage({
                           <p className="text-[9px] text-amber-500 mt-0.5">⚠ posible</p>
                         )}
                       </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
-                        <div className="flex flex-wrap gap-1">
-                          {f.ips.map((ip) => (
-                            <span
-                              key={ip}
-                              className="inline-block rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-slate-400"
-                            >
-                              {ip}
-                            </span>
-                          ))}
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1.5">
+                          {f.ips.map((ip) => {
+                            const lugar = geoTexto(geoPorIp[ip])
+                            return (
+                              <span
+                                key={ip}
+                                className="inline-flex flex-col rounded bg-slate-800 px-1.5 py-0.5"
+                              >
+                                <span className="text-[10px] font-mono text-slate-400">{ip}</span>
+                                {lugar && (
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] text-slate-500">
+                                    <MapPin className="h-2.5 w-2.5" />
+                                    {lugar}
+                                  </span>
+                                )}
+                              </span>
+                            )
+                          })}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">

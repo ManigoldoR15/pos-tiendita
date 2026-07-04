@@ -5,6 +5,7 @@ import { fmtFechaHoraCorta } from '@/lib/fecha'
 import Link from 'next/link'
 import { ArrowLeft, Package, Users, TrendingUp, Receipt, ShoppingBag, Ban, CheckCircle } from 'lucide-react'
 import SuspenderNegocioBtn from './suspender-btn'
+import EliminarNegocioBtn from './eliminar-btn'
 import LicenciaForm from './licencia-form'
 import LicenciaEmpleadosForm from './licencia-empleados-form'
 import LicenciaCajasForm from './licencia-cajas-form'
@@ -280,6 +281,16 @@ export default async function NegocioDetallePage({
           </div>
         </div>
       )}
+
+      {/* Zona de peligro */}
+      <div className="rounded-2xl border border-red-900/50 bg-red-950/20 p-5">
+        <p className="text-xs font-bold uppercase tracking-widest text-red-400 mb-1">Zona de peligro</p>
+        <p className="text-xs text-slate-400 mb-4">
+          Borra el negocio con todas sus ventas, productos, clientes, empleados y cuentas de acceso.
+          Si solo quieres bloquear el acceso, usa &quot;Suspender&quot; arriba.
+        </p>
+        <EliminarNegocioBtn negocioId={n.id} nombre={n.nombre} />
+      </div>
     </div>
   )
 }
