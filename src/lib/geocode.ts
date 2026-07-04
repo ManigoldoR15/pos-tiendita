@@ -1,6 +1,28 @@
 import { createServiceClient } from '@/lib/supabase/service'
+import type { GeoIp } from '@/lib/geoip'
 
 type NominatimRow = { lat: string; lon: string }
+
+/**
+ * Auto-ubica negocios con la IP de su dueño: si el negocio no tiene dirección
+ * geocodificada ('direccion'), sus coordenadas se estiman/refrescan con la
+ * geolocalización de la última IP del dueño. La dirección escrita manda siempre.
+ */
+export async function autoUbicarNegocios(
+  candidatos: { negocioId: string; geo: GeoIp }[],
+): Promise<void> {
+  if (candidatos.length === 0) return
+  const svc = createServiceClient()
+  await Promise.all(
+    candidatos.map(({ negocioId, geo }) =>
+      svc
+        .from('negocios')
+        .update({ lat: geo.lat, lon: geo.lon, geo_fuente: 'auto_ip' })
+        .eq('id', negocioId)
+        .or('geo_fuente.is.null,geo_fuente.eq.auto_ip'),
+    ),
+  )
+}
 
 const MAX_GEOCODE_POR_CARGA = 3
 
@@ -47,7 +69,11 @@ export async function geocodificarNegociosPendientes(): Promise<void> {
 
     await svc
       .from('negocios')
-      .update({ lat, lon, geo_intentado_en: new Date().toISOString() })
+      .update({
+        lat, lon,
+        geo_fuente: lat != null ? 'direccion' : null,
+        geo_intentado_en: new Date().toISOString(),
+      })
       .eq('id', n.id)
 
     // Política de uso de Nominatim: máximo 1 petición por segundo

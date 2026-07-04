@@ -12,6 +12,7 @@ export type NegocioMapa = {
   lon: number
   es_demo: boolean
   suspendido: boolean
+  geo_fuente: 'direccion' | 'auto_ip' | null
 }
 
 export type UsuarioMapa = {
@@ -72,11 +73,15 @@ export default function MapaAccesos({
           iconSize: [30, 30],
           iconAnchor: [15, 15],
         })
+        const origen =
+          n.geo_fuente === 'auto_ip'
+            ? 'Ubicación estimada por la IP del dueño'
+            : (n.ubicacion ?? 'Local registrado')
         L.marker([n.lat, n.lon], { icon: icono })
           .addTo(map)
           .bindPopup(
             `<strong>${escapeHtml(n.nombre)}</strong>${n.es_demo ? ' (demo)' : ''}${n.suspendido ? ' — suspendido' : ''}<br/>` +
-              `<span style="color:#64748b">${escapeHtml(n.ubicacion ?? 'Local registrado')}</span>`,
+              `<span style="color:#64748b">${escapeHtml(origen)}</span>`,
           )
         puntos.push([n.lat, n.lon])
       }

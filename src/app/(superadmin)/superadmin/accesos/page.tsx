@@ -1,7 +1,7 @@
 import { requireSuperAdmin } from '@/lib/superadmin'
 import { fmtFechaHoraCorta } from '@/lib/fecha'
-import { geolocalizarIps, geoTexto } from '@/lib/geoip'
-import { geocodificarNegociosPendientes } from '@/lib/geocode'
+import { geolocalizarIps, geoTexto, type GeoIp } from '@/lib/geoip'
+import { geocodificarNegociosPendientes, autoUbicarNegocios } from '@/lib/geocode'
 import { Activity, Users, Clock, TrendingUp, Wifi, AlertTriangle, MapPin, Map as MapIcon, Store } from 'lucide-react'
 import { SospechaBadge } from './SospechaBadge'
 import MapaAccesos, { type NegocioMapa, type UsuarioMapa } from './mapa-accesos'
@@ -83,13 +83,12 @@ export default async function AccesosPage({
   // Geocodificar direcciones de locales pendientes (máx 3 por carga, con caché)
   await geocodificarNegociosPendientes()
 
-  const [{ data: bitacora }, { data: activos }, { data: ipsPorUsuario }, { data: actividad }, { data: negociosMapa }] =
+  const [{ data: bitacora }, { data: activos }, { data: ipsPorUsuario }, { data: actividad }] =
     await Promise.all([
       supabase.rpc('sa_bitacora', { p_dias: dias }),
       supabase.rpc('sa_usuarios_activos'),
       supabase.rpc('sa_ips_por_usuario', { p_dias: dias }),
       supabase.rpc('sa_actividad_dia'),
-      supabase.rpc('sa_negocios_mapa'),
     ])
 
   const filas = (bitacora as BitacoraRow[] | null) ?? []
@@ -98,7 +97,6 @@ export default async function AccesosPage({
   )
   const ipFilas = (ipsPorUsuario as IpRow[] | null) ?? []
   const actividadHoy = (actividad as ActividadRow[] | null) ?? []
-  const locales = ((negociosMapa as NegocioMapa[] | null) ?? []).filter((n) => !n.es_demo)
 
   // Geolocalizar todas las IPs vistas (con caché en ip_geo)
   const geoPorIp = await geolocalizarIps([
@@ -106,28 +104,49 @@ export default async function AccesosPage({
     ...actividadHoy.flatMap((a) => a.ip_addresses),
   ])
 
-  // Usuarios para el mapa: última IP del día con coordenadas conocidas
-  const usuariosMapa: UsuarioMapa[] = []
+  // Última IP con coordenadas de cada usuario activo hoy
+  const ultimaGeo = new Map<string, { ip: string; geo: GeoIp }>()
   for (const a of actividadHoy) {
     const ipConGeo = [...a.ip_addresses]
       .reverse()
       .map((ip) => ({ ip, geo: geoPorIp[ip] }))
       .find((x) => x.geo?.lat != null && x.geo?.lon != null)
+    if (ipConGeo) ultimaGeo.set(a.user_id, ipConGeo)
+  }
+
+  // Auto-ubicar negocios sin dirección con la IP de su dueño (la dirección manda)
+  await autoUbicarNegocios(
+    actividadHoy
+      .filter((a) => a.rol === 'dueno' && a.negocio_id && ultimaGeo.has(a.user_id))
+      .map((a) => ({ negocioId: a.negocio_id!, geo: ultimaGeo.get(a.user_id)!.geo })),
+  )
+
+  // Locales para el mapa — después de auto-ubicar, para leer coords frescas
+  const { data: negociosMapa } = await supabase.rpc('sa_negocios_mapa')
+  const todosLocales = (negociosMapa as NegocioMapa[] | null) ?? []
+  const locales = todosLocales.filter((n) => !n.es_demo)
+  const coordsNegocio = new Map(todosLocales.map((n) => [n.id, n]))
+
+  // Usuarios para el mapa
+  const usuariosMapa: UsuarioMapa[] = []
+  for (const a of actividadHoy) {
+    const ipConGeo = ultimaGeo.get(a.user_id)
     if (!ipConGeo) continue
     const { ip, geo } = ipConGeo
+    const negocioCoords = a.negocio_id ? coordsNegocio.get(a.negocio_id) : undefined
+    const nLat = negocioCoords?.lat ?? a.negocio_lat
+    const nLon = negocioCoords?.lon ?? a.negocio_lon
     usuariosMapa.push({
       email: a.email_usuario ?? '—',
       rol: a.rol ? (ROL_LABEL[a.rol] ?? a.rol) : null,
       negocio: a.negocio_nombre,
       ip,
       lugar: geoTexto(geo),
-      lat: geo!.lat!,
-      lon: geo!.lon!,
+      lat: geo.lat!,
+      lon: geo.lon!,
       haceTexto: haceTexto(a.ultima_vista),
       distanciaKm:
-        a.negocio_lat != null && a.negocio_lon != null
-          ? distanciaKm(geo!.lat!, geo!.lon!, a.negocio_lat, a.negocio_lon)
-          : null,
+        nLat != null && nLon != null ? distanciaKm(geo.lat!, geo.lon!, nLat, nLon) : null,
     })
   }
 
@@ -297,8 +316,8 @@ export default async function AccesosPage({
               <MapIcon className="mx-auto h-8 w-8 text-slate-700 mb-2" />
               <p className="text-sm text-slate-500">Sin puntos que mostrar todavía</p>
               <p className="text-xs text-slate-600 mt-1">
-                Escribe la dirección de cada negocio (con calle y ciudad) en su ficha para ubicar el local,
-                y los usuarios aparecerán conforme entren a la app
+                Los locales se ubican solos con la IP del dueño en cuanto entra a la app.
+                Si escribes la dirección (calle y ciudad) en la ficha del negocio, esa ubicación manda.
               </p>
             </div>
           ) : (
