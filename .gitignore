@@ -49,3 +49,4 @@ test-screenshots/
 verify-*.mjs
 diseno-referencia/
 /tests/screenshots/
+tests/.auth/
