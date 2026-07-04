@@ -1,8 +1,10 @@
 import { requireSuperAdmin } from '@/lib/superadmin'
 import { fmtFechaHoraCorta } from '@/lib/fecha'
 import { geolocalizarIps, geoTexto } from '@/lib/geoip'
-import { Activity, Users, Clock, TrendingUp, Wifi, AlertTriangle, MapPin } from 'lucide-react'
+import { geocodificarNegociosPendientes } from '@/lib/geocode'
+import { Activity, Users, Clock, TrendingUp, Wifi, AlertTriangle, MapPin, Map as MapIcon, Store } from 'lucide-react'
 import { SospechaBadge } from './SospechaBadge'
+import MapaAccesos, { type NegocioMapa, type UsuarioMapa } from './mapa-accesos'
 
 type BitacoraRow = {
   email_usuario: string | null
@@ -25,6 +27,50 @@ type IpRow = {
   sospecha: boolean
 }
 
+type ActividadRow = {
+  user_id: string
+  email_usuario: string | null
+  rol: string | null
+  negocio_id: string | null
+  negocio_nombre: string | null
+  negocio_lat: number | null
+  negocio_lon: number | null
+  primera_vista: string
+  ultima_vista: string
+  num_vistas: number
+  ip_addresses: string[]
+}
+
+const ROL_LABEL: Record<string, string> = {
+  dueno: 'Dueño', empleado: 'Empleado', administrador: 'Admin',
+}
+
+function distanciaKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLon = ((lon2 - lon1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function haceTexto(iso: string): string {
+  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000))
+  if (min < 1) return 'ahora mismo'
+  if (min < 60) return `hace ${min} min`
+  const h = Math.floor(min / 60)
+  if (h < 24) return `hace ${h} h ${min % 60} min`
+  return `hace ${Math.floor(h / 24)} día${h >= 48 ? 's' : ''}`
+}
+
+function duracionTexto(inicioIso: string, finIso: string): string {
+  const min = Math.max(0, Math.round((new Date(finIso).getTime() - new Date(inicioIso).getTime()) / 60000))
+  if (min < 1) return 'recién entró'
+  if (min < 60) return `${min} min`
+  return `${Math.floor(min / 60)} h ${min % 60} min`
+}
+
 export default async function AccesosPage({
   searchParams,
 }: {
@@ -34,20 +80,60 @@ export default async function AccesosPage({
   const sp = await searchParams
   const dias = parseInt(sp.dias ?? '7')
 
-  const [{ data: bitacora }, { data: activos }, { data: ipsPorUsuario }] = await Promise.all([
-    supabase.rpc('sa_bitacora', { p_dias: dias }),
-    supabase.rpc('sa_usuarios_activos'),
-    supabase.rpc('sa_ips_por_usuario', { p_dias: dias }),
-  ])
+  // Geocodificar direcciones de locales pendientes (máx 3 por carga, con caché)
+  await geocodificarNegociosPendientes()
+
+  const [{ data: bitacora }, { data: activos }, { data: ipsPorUsuario }, { data: actividad }, { data: negociosMapa }] =
+    await Promise.all([
+      supabase.rpc('sa_bitacora', { p_dias: dias }),
+      supabase.rpc('sa_usuarios_activos'),
+      supabase.rpc('sa_ips_por_usuario', { p_dias: dias }),
+      supabase.rpc('sa_actividad_dia'),
+      supabase.rpc('sa_negocios_mapa'),
+    ])
 
   const filas = (bitacora as BitacoraRow[] | null) ?? []
   const activosMap = Object.fromEntries(
     ((activos as ActiveRow[] | null) ?? []).map((r) => [r.periodo, r.cantidad]),
   )
   const ipFilas = (ipsPorUsuario as IpRow[] | null) ?? []
+  const actividadHoy = (actividad as ActividadRow[] | null) ?? []
+  const locales = ((negociosMapa as NegocioMapa[] | null) ?? []).filter((n) => !n.es_demo)
 
   // Geolocalizar todas las IPs vistas (con caché en ip_geo)
-  const geoPorIp = await geolocalizarIps(ipFilas.flatMap((f) => f.ips))
+  const geoPorIp = await geolocalizarIps([
+    ...ipFilas.flatMap((f) => f.ips),
+    ...actividadHoy.flatMap((a) => a.ip_addresses),
+  ])
+
+  // Usuarios para el mapa: última IP del día con coordenadas conocidas
+  const usuariosMapa: UsuarioMapa[] = []
+  for (const a of actividadHoy) {
+    const ipConGeo = [...a.ip_addresses]
+      .reverse()
+      .map((ip) => ({ ip, geo: geoPorIp[ip] }))
+      .find((x) => x.geo?.lat != null && x.geo?.lon != null)
+    if (!ipConGeo) continue
+    const { ip, geo } = ipConGeo
+    usuariosMapa.push({
+      email: a.email_usuario ?? '—',
+      rol: a.rol ? (ROL_LABEL[a.rol] ?? a.rol) : null,
+      negocio: a.negocio_nombre,
+      ip,
+      lugar: geoTexto(geo),
+      lat: geo!.lat!,
+      lon: geo!.lon!,
+      haceTexto: haceTexto(a.ultima_vista),
+      distanciaKm:
+        a.negocio_lat != null && a.negocio_lon != null
+          ? distanciaKm(geo!.lat!, geo!.lon!, a.negocio_lat, a.negocio_lon)
+          : null,
+    })
+  }
+
+  const enLinea = actividadHoy.filter(
+    (a) => Date.now() - new Date(a.ultima_vista).getTime() < 10 * 60000,
+  ).length
 
   // Contadores para el resumen de IPs
   const conMultiplesIPs = ipFilas.filter((r) => r.num_ips >= 3).length
@@ -99,6 +185,125 @@ export default async function AccesosPage({
           </div>
           <p className="text-3xl font-black text-violet-400">{activosMap['30d'] ?? 0}</p>
           <p className="text-xs text-slate-500 mt-1">usuarios únicos</p>
+        </div>
+      </div>
+
+      {/* ── Actividad de hoy por usuario ───────────────────────────────────── */}
+      <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <Users className="h-4 w-4 text-emerald-400" />
+            <div>
+              <p className="text-sm font-bold text-white">Actividad de hoy</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Quién ha entrado hoy, cuánto tiempo lleva y desde dónde
+              </p>
+            </div>
+          </div>
+          {enLinea > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950/60 border border-emerald-800/40 px-2.5 py-1 text-[10px] font-bold text-emerald-400 shrink-0">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              {enLinea} en línea
+            </span>
+          )}
+        </div>
+
+        {actividadHoy.length === 0 ? (
+          <div className="py-10 text-center">
+            <Users className="mx-auto h-8 w-8 text-slate-700 mb-2" />
+            <p className="text-sm text-slate-500">Nadie ha entrado hoy todavía</p>
+          </div>
+        ) : (
+          <div className="grid gap-3 p-4 md:grid-cols-2">
+            {actividadHoy.map((a) => {
+              const activo = Date.now() - new Date(a.ultima_vista).getTime() < 10 * 60000
+              const ultimaIp = a.ip_addresses[a.ip_addresses.length - 1]
+              const lugar = ultimaIp ? geoTexto(geoPorIp[ultimaIp]) : null
+              return (
+                <div key={a.user_id} className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="h-9 w-9 rounded-full bg-violet-900/60 flex items-center justify-center text-sm font-bold text-violet-300 shrink-0">
+                        {(a.email_usuario ?? '?').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-200 truncate">
+                          {a.email_usuario ?? '—'}
+                        </p>
+                        <p className="text-[11px] text-slate-500 truncate flex items-center gap-1">
+                          <Store className="h-3 w-3 shrink-0" />
+                          {a.negocio_nombre ?? 'Sin negocio'}
+                          {a.rol && ` · ${ROL_LABEL[a.rol] ?? a.rol}`}
+                        </p>
+                      </div>
+                    </div>
+                    {activo ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950/60 px-2 py-0.5 text-[9px] font-bold text-emerald-400 shrink-0 uppercase">
+                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" /> En línea
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-500 shrink-0">{haceTexto(a.ultima_vista)}</span>
+                    )}
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-lg bg-slate-900 px-1 py-1.5">
+                      <p className="text-[9px] uppercase tracking-wider text-slate-500">Entró</p>
+                      <p className="text-xs font-bold text-slate-300 tabular-nums">
+                        {new Date(a.primera_vista).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mexico_City' })}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-slate-900 px-1 py-1.5">
+                      <p className="text-[9px] uppercase tracking-wider text-slate-500">Tiempo activo</p>
+                      <p className="text-xs font-bold text-slate-300 tabular-nums">
+                        {duracionTexto(a.primera_vista, a.ultima_vista)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-slate-900 px-1 py-1.5">
+                      <p className="text-[9px] uppercase tracking-wider text-slate-500">Visitas</p>
+                      <p className="text-xs font-bold text-slate-300 tabular-nums">{a.num_vistas}</p>
+                    </div>
+                  </div>
+                  {ultimaIp && (
+                    <p className="mt-2.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+                      <MapPin className="h-3 w-3 text-amber-400 shrink-0" />
+                      {lugar ?? 'Ubicación desconocida'}
+                      <span className="font-mono text-[10px] text-slate-600">· {ultimaIp}</span>
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Mapa de locales y usuarios ─────────────────────────────────────── */}
+      <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-800 flex items-center gap-2.5">
+          <MapIcon className="h-4 w-4 text-blue-400" />
+          <div>
+            <p className="text-sm font-bold text-white">Mapa de locales y usuarios</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Dónde están los locales registrados y desde dónde se conectaron hoy los usuarios
+            </p>
+          </div>
+        </div>
+        <div className="p-4">
+          {locales.length === 0 && usuariosMapa.length === 0 ? (
+            <div className="py-10 text-center">
+              <MapIcon className="mx-auto h-8 w-8 text-slate-700 mb-2" />
+              <p className="text-sm text-slate-500">Sin puntos que mostrar todavía</p>
+              <p className="text-xs text-slate-600 mt-1">
+                Escribe la dirección de cada negocio (con calle y ciudad) en su ficha para ubicar el local,
+                y los usuarios aparecerán conforme entren a la app
+              </p>
+            </div>
+          ) : (
+            <MapaAccesos negocios={locales} usuarios={usuariosMapa} />
+          )}
         </div>
       </div>
 

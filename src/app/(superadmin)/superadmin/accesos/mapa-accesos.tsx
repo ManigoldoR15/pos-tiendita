@@ -1,0 +1,150 @@
+'use client'
+
+import { useEffect, useRef } from 'react'
+import 'leaflet/dist/leaflet.css'
+import type { Map as LeafletMap } from 'leaflet'
+
+export type NegocioMapa = {
+  id: string
+  nombre: string
+  ubicacion: string | null
+  lat: number
+  lon: number
+  es_demo: boolean
+  suspendido: boolean
+}
+
+export type UsuarioMapa = {
+  email: string
+  rol: string | null
+  negocio: string | null
+  ip: string
+  lugar: string | null
+  lat: number
+  lon: number
+  haceTexto: string
+  /** Distancia en km a su negocio; null si el negocio no tiene coordenadas */
+  distanciaKm: number | null
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
+  )
+}
+
+export default function MapaAccesos({
+  negocios,
+  usuarios,
+}: {
+  negocios: NegocioMapa[]
+  usuarios: UsuarioMapa[]
+}) {
+  const contRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<LeafletMap | null>(null)
+
+  useEffect(() => {
+    let cancelado = false
+
+    async function init() {
+      if (!contRef.current || mapRef.current) return
+      const L = (await import('leaflet')).default
+      if (cancelado || !contRef.current) return
+
+      const map = L.map(contRef.current, {
+        center: [23.6, -102.5], // centro de México
+        zoom: 5,
+        scrollWheelZoom: false,
+      })
+      mapRef.current = map
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        maxZoom: 19,
+      }).addTo(map)
+
+      const puntos: [number, number][] = []
+
+      for (const n of negocios) {
+        const icono = L.divIcon({
+          className: '',
+          html: `<div style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:10px;background:#7c3aed;border:2px solid #c4b5fd;box-shadow:0 2px 6px rgba(0,0,0,.5);font-size:15px">🏪</div>`,
+          iconSize: [30, 30],
+          iconAnchor: [15, 15],
+        })
+        L.marker([n.lat, n.lon], { icon: icono })
+          .addTo(map)
+          .bindPopup(
+            `<strong>${escapeHtml(n.nombre)}</strong>${n.es_demo ? ' (demo)' : ''}${n.suspendido ? ' — suspendido' : ''}<br/>` +
+              `<span style="color:#64748b">${escapeHtml(n.ubicacion ?? 'Local registrado')}</span>`,
+          )
+        puntos.push([n.lat, n.lon])
+      }
+
+      for (const u of usuarios) {
+        const color =
+          u.distanciaKm === null ? '#94a3b8' : u.distanciaKm <= 30 ? '#10b981' : '#ef4444'
+        const icono = L.divIcon({
+          className: '',
+          html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid rgba(255,255,255,.85);box-shadow:0 0 8px ${color}"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        })
+        const distTexto =
+          u.distanciaKm === null
+            ? 'Local sin ubicación registrada'
+            : u.distanciaKm <= 30
+              ? `A ~${Math.round(u.distanciaKm)} km de su local ✓`
+              : `⚠ A ~${Math.round(u.distanciaKm)} km de su local`
+        L.marker([u.lat, u.lon], { icon: icono })
+          .addTo(map)
+          .bindPopup(
+            `<strong>${escapeHtml(u.email)}</strong>${u.rol ? ` · ${escapeHtml(u.rol)}` : ''}<br/>` +
+              `${escapeHtml(u.negocio ?? 'Sin negocio')}<br/>` +
+              `<span style="color:#64748b">${escapeHtml(u.lugar ?? u.ip)} · ${escapeHtml(u.haceTexto)}</span><br/>` +
+              `${distTexto}`,
+          )
+        puntos.push([u.lat, u.lon])
+      }
+
+      if (puntos.length > 0) {
+        map.fitBounds(L.latLngBounds(puntos), { padding: [40, 40], maxZoom: 12 })
+      }
+    }
+
+    void init()
+    return () => {
+      cancelado = true
+      mapRef.current?.remove()
+      mapRef.current = null
+    }
+  }, [negocios, usuarios])
+
+  return (
+    <div>
+      <div ref={contRef} className="h-[420px] w-full rounded-xl overflow-hidden bg-slate-950" />
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-4 w-4 rounded-md bg-violet-600 border border-violet-300 text-[9px] text-center leading-4">🏪</span>
+          Local del negocio
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-full bg-emerald-500" />
+          Usuario cerca de su local (&le;30 km)
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-full bg-red-500" />
+          Usuario lejos de su local
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-full bg-slate-400" />
+          Local sin ubicación registrada
+        </span>
+      </div>
+      <p className="mt-2 text-[11px] text-slate-500">
+        La posición del usuario se estima por su IP: es a nivel ciudad/zona, no GPS. Con datos
+        móviles la IP puede aparecer en otra ciudad — úsalo como indicio, no como prueba.
+      </p>
+    </div>
+  )
+}
