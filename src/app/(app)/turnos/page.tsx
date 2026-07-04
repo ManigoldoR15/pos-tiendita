@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { requireModulo } from '@/lib/modulos'
 import { hoyMX, mexicoDayRange, TZ } from '@/lib/fecha'
+import { formatMXN } from '@/lib/dinero'
 
 function emailLabel(email: string | null) {
   return email ? email.split('@')[0] : '—'
@@ -12,6 +13,7 @@ function emailLabel(email: string | null) {
 
 type MiembroRow = { user_id: string; email: string; rol: string }
 type RegistroRow = { id: string; user_id: string; nombre: string; entrada_at: string; salida_at: string | null }
+type VentaRow = { vendedor_id: string | null; total: number; created_at: string }
 
 export default async function TurnosPage({
   searchParams,
@@ -29,9 +31,10 @@ export default async function TurnosPage({
   const { start: inicioHoy, end: finHoy } = mexicoDayRange(hoy)
 
   // Filtros del historial (default: hoy)
-  const empId  = params.emp  ?? null
-  const desde  = params.desde ?? hoy
-  const hasta  = params.hasta ?? hoy
+  const empId   = params.emp   ?? null
+  const plazaId = params.plaza ?? null
+  const desde   = params.desde ?? hoy
+  const hasta   = params.hasta ?? hoy
 
   const desdeRange = mexicoDayRange(desde)
   const hastaRange = mexicoDayRange(hasta)
@@ -51,6 +54,9 @@ export default async function TurnosPage({
     { data: cajasAbiertas },
     { data: turnosActivosHoy },
     { data: registrosFiltrados },
+    { data: locales },
+    { data: asignaciones },
+    { data: ventasRango },
   ] = await Promise.all([
     supabase.rpc('get_miembros_negocio', { p_negocio_id: negocio.id }),
     supabase
@@ -68,12 +74,52 @@ export default async function TurnosPage({
       .lte('entrada_at', finHoy)
       .order('entrada_at', { ascending: true }),
     registrosQuery,
+    supabase
+      .from('locales')
+      .select('id, nombre, color')
+      .eq('negocio_id', negocio.id)
+      .eq('activo', true)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('usuarios_negocio')
+      .select('user_id, local_id')
+      .eq('negocio_id', negocio.id),
+    supabase
+      .from('ventas')
+      .select('vendedor_id, total, created_at')
+      .eq('negocio_id', negocio.id)
+      .eq('estado', 'completada')
+      .gte('created_at', desdeRange.start)
+      .lte('created_at', hastaRange.end),
   ])
 
   const miembrosMap = new Map(
     ((miembros ?? []) as MiembroRow[]).map((m) => [m.user_id, m.email])
   )
   const empleados = ((miembros ?? []) as MiembroRow[]).filter((m) => m.rol !== 'dueno')
+
+  // Plaza asignada de cada usuario + catálogo de plazas
+  const plazaDeUsuario = new Map(
+    (asignaciones ?? []).map((a) => [a.user_id, a.local_id as string | null]),
+  )
+  const plazasMap = new Map(
+    (locales ?? []).map((l) => [l.id, { nombre: l.nombre as string, color: l.color as string }]),
+  )
+
+  // Ventas hechas por cada empleado dentro de su turno (vendedor + intervalo)
+  const ventasLista = (ventasRango ?? []) as VentaRow[]
+  function ventasDelTurno(userId: string, entrada: string, salida: string | null) {
+    const ini = new Date(entrada).getTime()
+    const fin = salida ? new Date(salida).getTime() : Date.now()
+    let total = 0
+    let num = 0
+    for (const v of ventasLista) {
+      if (v.vendedor_id !== userId) continue
+      const t = new Date(v.created_at).getTime()
+      if (t >= ini && t <= fin) { total += v.total; num += 1 }
+    }
+    return { total, num }
+  }
 
   // En línea ahora (cajas abiertas + registros activos, sin duplicados)
   type PersonaActiva = { user_id: string; label: string; desde: string }
@@ -96,7 +142,23 @@ export default async function TurnosPage({
     }
   }
   const personasActivas = [...activoMap.values()]
-  const registros = (registrosFiltrados ?? []) as RegistroRow[]
+  let registros = (registrosFiltrados ?? []) as RegistroRow[]
+  // Filtro por plaza: empleados asignados a esa plaza
+  if (plazaId) {
+    registros = registros.filter((r) => plazaDeUsuario.get(r.user_id) === plazaId)
+  }
+
+  function PlazaChip({ userId }: { userId: string }) {
+    const pid = plazaDeUsuario.get(userId)
+    const pl = pid ? plazasMap.get(pid) : null
+    if (!pl) return <span className="text-[10px] text-muted-foreground">Sin plaza</span>
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">
+        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: pl.color }} />
+        {pl.nombre}
+      </span>
+    )
+  }
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -131,6 +193,7 @@ export default async function TurnosPage({
                     {p.label.substring(0, 2).toUpperCase()}
                   </div>
                   <p className="flex-1 text-sm font-medium">{p.label}</p>
+                  <PlazaChip userId={p.user_id} />
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                     desde {hora}
@@ -168,6 +231,22 @@ export default async function TurnosPage({
               ))}
             </select>
           </div>
+
+          {(locales ?? []).length > 1 && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground">Plaza</label>
+              <select
+                name="plaza"
+                defaultValue={plazaId ?? ''}
+                className="h-9 rounded-lg border bg-background px-3 text-sm"
+              >
+                <option value="">Todas</option>
+                {(locales ?? []).map((l) => (
+                  <option key={l.id} value={l.id}>{l.nombre}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-muted-foreground">Desde</label>
@@ -224,14 +303,26 @@ export default async function TurnosPage({
               const durM = Math.floor((ms % 3_600_000) / 60_000)
               const durLabel = durH > 0 ? `${durH}h ${durM}m` : `${durM}m`
 
+              const vt = ventasDelTurno(r.user_id, r.entrada_at, r.salida_at)
+
               return (
                 <div key={r.id} className="flex items-center gap-3 px-5 py-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                     {label.substring(0, 2).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{label}</p>
-                    <p className="text-xs text-muted-foreground">{fechaDia}</p>
+                    <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                      {label}
+                      <PlazaChip userId={r.user_id} />
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {fechaDia}
+                      {vt.num > 0 && (
+                        <span className="ml-1.5 font-medium text-foreground">
+                          · {vt.num} venta{vt.num !== 1 ? 's' : ''} · {formatMXN(vt.total)}
+                        </span>
+                      )}
+                    </p>
                   </div>
                   <div className="shrink-0 text-right text-xs text-muted-foreground">
                     <p>Entrada: {horaEntrada}</p>
