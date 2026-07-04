@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Pencil, Plus, PackagePlus, AlertTriangle, Download, Upload } from 'lucide-react'
+import { Pencil, Plus, PackagePlus, AlertTriangle, Download, Upload, Barcode } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { formatMXN } from '@/lib/dinero'
@@ -78,6 +78,12 @@ export default async function ProductosPage({
             <Link href="/productos/importar">
               <Upload className="h-4 w-4" />
               Importar
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/productos/etiquetas">
+              <Barcode className="h-4 w-4" />
+              Etiquetas
             </Link>
           </Button>
           <Button asChild>
