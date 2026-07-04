@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import * as path from 'path'
 import * as fs from 'fs'
 import { adminSupabase, userSupabase } from '../helpers/supa'
+import { TEST_DUENO, TEST_EMPLEADO, TEST_ADMIN } from '../global-setup'
 
 const STORAGE = path.join(__dirname, '../.auth/dueno.json')
 const FIXTURE = path.join(__dirname, '../.auth/fixture.json')
@@ -39,7 +40,7 @@ test.describe('Anular venta: stock se restaura', () => {
     if (!mp) throw new Error('No hay método de pago')
 
     // Create sale as dueño
-    const duenoClient = await userSupabase('test-dueno@pos-test.local', 'TestDueno123!')
+    const duenoClient = await userSupabase('test-dueno@pos-test.local', TEST_DUENO.password)
     const { data: vid, error } = await duenoClient.rpc('registrar_venta', {
       p_negocio_id: negocioId,
       p_items: [{ producto_id: productoId, cantidad: 1 }],

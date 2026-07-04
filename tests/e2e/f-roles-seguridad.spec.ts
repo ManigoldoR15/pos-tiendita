@@ -6,6 +6,7 @@ import { test, expect } from '@playwright/test'
 import * as path from 'path'
 import * as fs from 'fs'
 import { adminSupabase, userSupabase } from '../helpers/supa'
+import { TEST_DUENO, TEST_EMPLEADO, TEST_ADMIN } from '../global-setup'
 
 const AUTH_EMPLEADO = path.join(__dirname, '../.auth/empleado.json')
 const AUTH_ADMIN    = path.join(__dirname, '../.auth/admin.json')
@@ -73,7 +74,7 @@ test.describe('EMPLEADO: rutas restringidas', () => {
 test.describe('[CRÍTICO] RLS: aislamiento entre negocios', () => {
   test('empleado solo ve productos de su negocio', async () => {
     const { negocioId } = JSON.parse(fs.readFileSync(FIXTURE, 'utf-8'))
-    const client = await userSupabase('test-empleado@pos-test.local', 'TestEmpleado123!')
+    const client = await userSupabase('test-empleado@pos-test.local', TEST_EMPLEADO.password)
 
     const { data } = await client.from('productos').select('id, negocio_id').limit(100)
     const cross = (data ?? []).filter((p) => p.negocio_id !== negocioId)
@@ -82,7 +83,7 @@ test.describe('[CRÍTICO] RLS: aislamiento entre negocios', () => {
 
   test('empleado solo ve ventas de su negocio', async () => {
     const { negocioId } = JSON.parse(fs.readFileSync(FIXTURE, 'utf-8'))
-    const client = await userSupabase('test-empleado@pos-test.local', 'TestEmpleado123!')
+    const client = await userSupabase('test-empleado@pos-test.local', TEST_EMPLEADO.password)
 
     const { data } = await client.from('ventas').select('id, negocio_id').limit(100)
     const cross = (data ?? []).filter((v) => v.negocio_id !== negocioId)
@@ -91,7 +92,7 @@ test.describe('[CRÍTICO] RLS: aislamiento entre negocios', () => {
 
   test('empleado solo ve gastos de su negocio', async () => {
     const { negocioId } = JSON.parse(fs.readFileSync(FIXTURE, 'utf-8'))
-    const client = await userSupabase('test-empleado@pos-test.local', 'TestEmpleado123!')
+    const client = await userSupabase('test-empleado@pos-test.local', TEST_EMPLEADO.password)
 
     const { data } = await client.from('gastos').select('id, negocio_id').limit(100)
     const cross = (data ?? []).filter((g) => g.negocio_id !== negocioId)
@@ -110,7 +111,7 @@ test.describe('[CRÍTICO] RLS: aislamiento entre negocios', () => {
 
     if (!venta) { test.skip(true, 'Sin ventas completadas'); return }
 
-    const client = await userSupabase('test-empleado@pos-test.local', 'TestEmpleado123!')
+    const client = await userSupabase('test-empleado@pos-test.local', TEST_EMPLEADO.password)
     const { error } = await client.rpc('anular_venta', { p_venta_id: venta.id })
 
     expect(error, 'El RPC debe rechazar al empleado con error de permiso').not.toBeNull()

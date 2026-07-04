@@ -12,7 +12,7 @@ function emailLabel(email: string | null) {
 }
 
 type MiembroRow = { user_id: string; email: string; rol: string }
-type RegistroRow = { id: string; user_id: string; nombre: string; entrada_at: string; salida_at: string | null }
+type RegistroRow = { id: string; user_id: string; nombre: string; entrada_at: string; salida_at: string | null; local_id: string | null }
 type VentaRow = { vendedor_id: string | null; total: number; created_at: string }
 
 export default async function TurnosPage({
@@ -42,7 +42,7 @@ export default async function TurnosPage({
   // Query base registros_turno filtrados
   let registrosQuery = supabase
     .from('registros_turno')
-    .select('id, user_id, nombre, entrada_at, salida_at')
+    .select('id, user_id, nombre, entrada_at, salida_at, local_id')
     .eq('negocio_id', negocio.id)
     .gte('entrada_at', desdeRange.start)
     .lte('entrada_at', hastaRange.end)
@@ -143,14 +143,15 @@ export default async function TurnosPage({
   }
   const personasActivas = [...activoMap.values()]
   let registros = (registrosFiltrados ?? []) as RegistroRow[]
-  // Filtro por plaza: empleados asignados a esa plaza
+  // Filtro por plaza: la del registro (histórica); si el registro es viejo y
+  // no la tiene, cae a la asignación actual del empleado
+  const plazaDelRegistro = (r: RegistroRow) => r.local_id ?? plazaDeUsuario.get(r.user_id) ?? null
   if (plazaId) {
-    registros = registros.filter((r) => plazaDeUsuario.get(r.user_id) === plazaId)
+    registros = registros.filter((r) => plazaDelRegistro(r) === plazaId)
   }
 
-  function PlazaChip({ userId }: { userId: string }) {
-    const pid = plazaDeUsuario.get(userId)
-    const pl = pid ? plazasMap.get(pid) : null
+  function PlazaChip({ localId }: { localId: string | null }) {
+    const pl = localId ? plazasMap.get(localId) : null
     if (!pl) return <span className="text-[10px] text-muted-foreground">Sin plaza</span>
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">
@@ -193,7 +194,7 @@ export default async function TurnosPage({
                     {p.label.substring(0, 2).toUpperCase()}
                   </div>
                   <p className="flex-1 text-sm font-medium">{p.label}</p>
-                  <PlazaChip userId={p.user_id} />
+                  <PlazaChip localId={plazaDeUsuario.get(p.user_id) ?? null} />
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                     desde {hora}
@@ -313,7 +314,7 @@ export default async function TurnosPage({
                   <div className="flex-1 min-w-0">
                     <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
                       {label}
-                      <PlazaChip userId={r.user_id} />
+                      <PlazaChip localId={plazaDelRegistro(r)} />
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {fechaDia}

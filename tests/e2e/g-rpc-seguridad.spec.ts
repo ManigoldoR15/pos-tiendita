@@ -11,6 +11,7 @@ import { test, expect } from '@playwright/test'
 import * as fs from 'fs'
 import * as path from 'path'
 import { adminSupabase, userSupabase } from '../helpers/supa'
+import { TEST_DUENO, TEST_EMPLEADO, TEST_ADMIN } from '../global-setup'
 
 const FIXTURE = path.join(__dirname, '../.auth/fixture.json')
 
@@ -70,7 +71,7 @@ test.describe('[CRÍTICO] Seguridad DB: RPC y API directa con token de empleado'
   test('[CRÍTICO] anular_venta RPC rechaza empleado', async () => {
     if (!ventaId) { test.skip(true, 'Sin venta completada para testear'); return }
 
-    const client = await userSupabase('test-empleado@pos-test.local', 'TestEmpleado123!')
+    const client = await userSupabase('test-empleado@pos-test.local', TEST_EMPLEADO.password)
     const { error } = await client.rpc('anular_venta', { p_venta_id: ventaId })
 
     expect(error, 'El RPC debe rechazar al empleado').not.toBeNull()
@@ -80,7 +81,7 @@ test.describe('[CRÍTICO] Seguridad DB: RPC y API directa con token de empleado'
   test('[CRÍTICO] cerrar_corte RPC rechaza empleado', async () => {
     if (!corteTestId) { test.skip(true, 'Sin corte de prueba'); return }
 
-    const client = await userSupabase('test-empleado@pos-test.local', 'TestEmpleado123!')
+    const client = await userSupabase('test-empleado@pos-test.local', TEST_EMPLEADO.password)
     const { error } = await client.rpc('cerrar_corte', {
       p_corte_id: corteTestId,
       p_monto_contado: 40000,
@@ -98,7 +99,7 @@ test.describe('[CRÍTICO] Seguridad DB: RPC y API directa con token de empleado'
     const precioOriginal = before!.precio_venta
     const precioAtaque   = precioOriginal === 1 ? 2 : 1
 
-    const client = await userSupabase('test-empleado@pos-test.local', 'TestEmpleado123!')
+    const client = await userSupabase('test-empleado@pos-test.local', TEST_EMPLEADO.password)
     // RLS bloquea silenciosamente (0 filas, no error) — verificamos que el valor NO cambió
     await client.from('productos').update({ precio_venta: precioAtaque }).eq('id', productoId)
 
@@ -113,7 +114,7 @@ test.describe('[CRÍTICO] Seguridad DB: RPC y API directa con token de empleado'
     const { data: before } = await admin.from('ventas').select('estado').eq('id', ventaId).single()
     const estadoOriginal = before!.estado
 
-    const client = await userSupabase('test-empleado@pos-test.local', 'TestEmpleado123!')
+    const client = await userSupabase('test-empleado@pos-test.local', TEST_EMPLEADO.password)
     // RLS bloquea silenciosamente — verificamos que el estado NO cambió
     await client.from('ventas').update({ estado: 'cancelada' }).eq('id', ventaId)
 
@@ -124,7 +125,7 @@ test.describe('[CRÍTICO] Seguridad DB: RPC y API directa con token de empleado'
   test('[CRÍTICO] empleado no puede insertar gasto directamente vía API', async () => {
     if (!categoriaGastoId) { test.skip(true, 'Sin categoría de gasto'); return }
 
-    const client = await userSupabase('test-empleado@pos-test.local', 'TestEmpleado123!')
+    const client = await userSupabase('test-empleado@pos-test.local', TEST_EMPLEADO.password)
     const { error } = await client
       .from('gastos')
       .insert({ negocio_id: negocioId, categoria_id: categoriaGastoId, monto: 99999 })
@@ -135,7 +136,7 @@ test.describe('[CRÍTICO] Seguridad DB: RPC y API directa con token de empleado'
   test('[CRÍTICO] empleado no puede insertar venta_item directamente vía API', async () => {
     if (!ventaId || !productoId) { test.skip(true, 'Sin venta/producto'); return }
 
-    const client = await userSupabase('test-empleado@pos-test.local', 'TestEmpleado123!')
+    const client = await userSupabase('test-empleado@pos-test.local', TEST_EMPLEADO.password)
     const { error } = await client
       .from('venta_items')
       .insert({ venta_id: ventaId, producto_id: productoId, cantidad: 1, precio_unitario: 1, subtotal: 1 })
@@ -144,7 +145,7 @@ test.describe('[CRÍTICO] Seguridad DB: RPC y API directa con token de empleado'
   })
 
   test('[CRÍTICO] get_miembros_negocio RPC rechaza empleado', async () => {
-    const client = await userSupabase('test-empleado@pos-test.local', 'TestEmpleado123!')
+    const client = await userSupabase('test-empleado@pos-test.local', TEST_EMPLEADO.password)
     const { error } = await client.rpc('get_miembros_negocio', { p_negocio_id: negocioId })
 
     expect(error, 'El RPC debe rechazar al empleado').not.toBeNull()
@@ -154,7 +155,7 @@ test.describe('[CRÍTICO] Seguridad DB: RPC y API directa con token de empleado'
   test('[CRÍTICO] empleado no puede abrir corte de caja vía API', async () => {
     // Cerrar el corte de prueba primero (si está abierto) para poder intentar abrir uno
     // No modificamos el estado real — solo verificamos que el INSERT falla para empleado
-    const client = await userSupabase('test-empleado@pos-test.local', 'TestEmpleado123!')
+    const client = await userSupabase('test-empleado@pos-test.local', TEST_EMPLEADO.password)
     // Use a fake negocioId for the INSERT attempt to avoid unique constraint conflicts
     const fakeNegocioId = '00000000-0000-0000-0000-000000000001'
     const { error } = await client
@@ -170,7 +171,7 @@ test.describe('[CRÍTICO] Seguridad DB: RPC y API directa con token de empleado'
   // ── DUEÑO: debe poder ejecutar las operaciones restringidas ───────────────
 
   test('[OK] dueño puede invocar anular_venta sin error de permiso', async () => {
-    const client = await userSupabase('test-dueno@pos-test.local', 'TestDueno123!')
+    const client = await userSupabase('test-dueno@pos-test.local', TEST_DUENO.password)
 
     // Si no hay venta completada, usamos un UUID inexistente — debe retornar
     // "Venta no encontrada", NO un error de permiso.
@@ -187,7 +188,7 @@ test.describe('[CRÍTICO] Seguridad DB: RPC y API directa con token de empleado'
   test('[OK] dueño puede invocar cerrar_corte', async () => {
     if (!corteTestId) { test.skip(true, 'Sin corte de prueba'); return }
 
-    const client = await userSupabase('test-dueno@pos-test.local', 'TestDueno123!')
+    const client = await userSupabase('test-dueno@pos-test.local', TEST_DUENO.password)
     const { error } = await client.rpc('cerrar_corte', {
       p_corte_id: corteTestId,
       p_monto_contado: 45000,
@@ -200,7 +201,7 @@ test.describe('[CRÍTICO] Seguridad DB: RPC y API directa con token de empleado'
   test('[OK] dueño puede editar precio de producto vía API', async () => {
     if (!productoId) { test.skip(true, 'Sin producto'); return }
 
-    const client = await userSupabase('test-dueno@pos-test.local', 'TestDueno123!')
+    const client = await userSupabase('test-dueno@pos-test.local', TEST_DUENO.password)
     // Leer precio actual primero
     const admin = adminSupabase()
     const { data: prod } = await admin.from('productos').select('precio_venta').eq('id', productoId).single()
@@ -215,7 +216,7 @@ test.describe('[CRÍTICO] Seguridad DB: RPC y API directa con token de empleado'
   })
 
   test('[OK] get_miembros_negocio funciona para dueño', async () => {
-    const client = await userSupabase('test-dueno@pos-test.local', 'TestDueno123!')
+    const client = await userSupabase('test-dueno@pos-test.local', TEST_DUENO.password)
     const { data, error } = await client.rpc('get_miembros_negocio', { p_negocio_id: negocioId })
 
     expect(error).toBeNull()

@@ -32,10 +32,19 @@ export async function registrarEntrada() {
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(' ')
 
+    // Congelar la plaza asignada al momento de la entrada (histórico exacto)
+    const { data: miembro } = await supabase
+      .from('usuarios_negocio')
+      .select('local_id')
+      .eq('negocio_id', negocio.id)
+      .eq('user_id', user.id)
+      .maybeSingle()
+
     await supabase.from('registros_turno').insert({
       negocio_id: negocio.id,
       user_id: user.id,
       nombre,
+      local_id: miembro?.local_id ?? null,
     })
   }
 
