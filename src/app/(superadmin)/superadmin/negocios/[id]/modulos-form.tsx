@@ -23,6 +23,7 @@ export default function ModulosForm({
     const nuevo: ModulosConfig = {
       fiados: false, granel: false, turnos: false, exportacion: false,
       multi_plaza: false, clientes_frecuentes: false, proveedores: false, metas: false,
+      repartidores: false,
     }
     for (const m of paquete.modulos) nuevo[m] = true
     setValores(nuevo)

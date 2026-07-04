@@ -34,6 +34,7 @@ const OPERACIONES_DUENO: NavLink[] = [
   { href: '/cuadre', label: 'Cuadre', Icon: Scale },
   { href: '/gastos', label: 'Gastos', Icon: Receipt },
   { href: '/compras', label: 'Compras', Icon: ShoppingBag },
+  { href: '/reparto', label: 'Reparto', Icon: Truck },
 ]
 const CATALOGO_DUENO: NavLink[] = [
   { href: '/productos', label: 'Productos', Icon: Package },
@@ -223,6 +224,7 @@ export default function NavBar({
     if (l.href === '/clientes') return modulos.clientes_frecuentes
     if (l.href === '/fiados')   return modulos.fiados
     if (l.href === '/cuadre')   return modulos.granel
+    if (l.href === '/reparto')  return modulos.repartidores
     return true
   }) : null
   const catalogoLinks = isDueno ? CATALOGO_DUENO.filter((l) => {

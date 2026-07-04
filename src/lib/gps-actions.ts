@@ -12,3 +12,17 @@ export async function registrarGpsAction(lat: number, lon: number, precision?: n
     p_precision: Number.isFinite(precision) ? precision : null,
   })
 }
+
+/**
+ * Punto de rastro para el módulo Reparto/Flotilla (ruta del día).
+ * El servidor valida módulo activo, throttle y retención.
+ */
+export async function registrarRastroAction(lat: number, lon: number, precision?: number) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return
+  const supabase = await createClient()
+  await supabase.rpc('log_rastro', {
+    p_lat: lat,
+    p_lon: lon,
+    p_precision: Number.isFinite(precision) ? precision : null,
+  })
+}

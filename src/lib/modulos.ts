@@ -21,6 +21,7 @@ export const getModulos = cache(async (): Promise<ModulosConfig> => {
     clientes_frecuentes: raw.clientes_frecuentes ?? true,
     proveedores:         raw.proveedores         ?? true,
     metas:               raw.metas               ?? true,
+    repartidores:        raw.repartidores        ?? false,
   }
 })
 

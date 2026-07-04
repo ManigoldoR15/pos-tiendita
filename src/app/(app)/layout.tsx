@@ -77,7 +77,7 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <GpsTracker />
+      <GpsTracker rastreo={modulos.repartidores} />
       {banner?.banner_texto && (
         <div className="sticky top-0 z-50 bg-primary text-primary-foreground py-2 text-center text-sm font-semibold shadow-sm">
           {banner.emoji} {banner.banner_texto}

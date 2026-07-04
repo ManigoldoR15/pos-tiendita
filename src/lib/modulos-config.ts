@@ -9,6 +9,7 @@ export const MODULOS_META = {
   clientes_frecuentes: { label: 'Clientes frecuentes',  desc: 'Clientes, historial y precios especiales' },
   proveedores:         { label: 'Proveedores',          desc: 'Catálogo de proveedores' },
   metas:               { label: 'Metas',                desc: 'Metas de ventas y proyección' },
+  repartidores:        { label: 'Reparto / Flotilla',   desc: 'Mapa en vivo de empleados y repartidores con su ruta del día' },
 } as const
 
 export type ModuloKey = keyof typeof MODULOS_META
@@ -17,6 +18,7 @@ export type ModulosConfig = Record<ModuloKey, boolean>
 export const MODULOS_DEFAULT: ModulosConfig = {
   fiados: true, granel: true, turnos: true, exportacion: true,
   multi_plaza: true, clientes_frecuentes: true, proveedores: true, metas: true,
+  repartidores: false, // add-on de paga — se activa por negocio desde superadmin
 }
 
 export const PAQUETES: Record<string, { label: string; modulos: ModuloKey[] }> = {
