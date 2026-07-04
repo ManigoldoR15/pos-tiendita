@@ -194,6 +194,7 @@ export default function NavBar({
   stockBajo = 0,
   lotesAlerta = 0,
   notifNoLeidas = 0,
+  avisosNoLeidos = 0,
   rol,
   esSuperAdmin = false,
   modulos = MODULOS_DEFAULT,
@@ -202,6 +203,7 @@ export default function NavBar({
   stockBajo?: number
   lotesAlerta?: number
   notifNoLeidas?: number
+  avisosNoLeidos?: number
   rol?: RolNegocio | null
   esSuperAdmin?: boolean
   modulos?: ModulosConfig
@@ -247,7 +249,9 @@ export default function NavBar({
     ...(operacionesLinks ?? []),
     ...(catalogoLinks ?? []),
     ...(analisisLinks ?? []),
-    ...(isDueno ? [{ href: '/notificaciones', label: 'Notificaciones', Icon: Bell }] : []),
+    ...(isDueno
+      ? [{ href: '/notificaciones', label: 'Notificaciones', Icon: Bell }]
+      : [{ href: '/avisos', label: 'Avisos del jefe', Icon: Bell }]),
     ...(showConfig ? [{ href: '/configuracion', label: 'Configuración', Icon: Settings }] : []),
   ]
   const masLinks = allLinks.filter((l) => !bottomHrefs.has(l.href))
@@ -325,25 +329,23 @@ export default function NavBar({
             )}
             <ThemeToggle />
             {!isDueno && <AvisoEmpleado />}
-            {isDueno && (
-              <Link
-                href="/notificaciones"
-                title="Notificaciones"
-                className={cn(
-                  'relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors',
-                  pathname.startsWith('/notificaciones')
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                )}
-              >
-                <Bell className="h-4 w-4" />
-                {notifNoLeidas > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
-                    {notifNoLeidas > 9 ? '9+' : notifNoLeidas}
-                  </span>
-                )}
-              </Link>
-            )}
+            <Link
+              href={isDueno ? '/notificaciones' : '/avisos'}
+              title={isDueno ? 'Notificaciones' : 'Avisos del jefe'}
+              className={cn(
+                'relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors',
+                pathname.startsWith(isDueno ? '/notificaciones' : '/avisos')
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+              )}
+            >
+              <Bell className="h-4 w-4" />
+              {(isDueno ? notifNoLeidas : avisosNoLeidos) > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
+                  {(isDueno ? notifNoLeidas : avisosNoLeidos) > 9 ? '9+' : (isDueno ? notifNoLeidas : avisosNoLeidos)}
+                </span>
+              )}
+            </Link>
             {showConfig && (
               <Link
                 href="/configuracion"
@@ -378,19 +380,17 @@ export default function NavBar({
               </Link>
             )}
             {!isDueno && <AvisoEmpleado />}
-            {isDueno && (
-              <Link
-                href="/notificaciones"
-                className="relative flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground"
-              >
-                <Bell className="h-5 w-5" />
-                {notifNoLeidas > 0 && (
-                  <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
-                    {notifNoLeidas > 9 ? '9+' : notifNoLeidas}
-                  </span>
-                )}
-              </Link>
-            )}
+            <Link
+              href={isDueno ? '/notificaciones' : '/avisos'}
+              className="relative flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground"
+            >
+              <Bell className="h-5 w-5" />
+              {(isDueno ? notifNoLeidas : avisosNoLeidos) > 0 && (
+                <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
+                  {(isDueno ? notifNoLeidas : avisosNoLeidos) > 9 ? '9+' : (isDueno ? notifNoLeidas : avisosNoLeidos)}
+                </span>
+              )}
+            </Link>
             <ThemeToggle />
           </div>
         </div>

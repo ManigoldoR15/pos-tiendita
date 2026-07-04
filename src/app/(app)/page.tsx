@@ -152,14 +152,21 @@ export default async function DashboardPage({
       : null
 
     // Mensajes del jefe: broadcasts (destinatario_id null) + mensajes directos a este empleado
-    const { data: mensajesJefe } = await supabase
-      .from('notificaciones')
-      .select('id, titulo, mensaje, created_at, leido, destinatario_id')
-      .eq('negocio_id', negocio.id)
-      .eq('tipo', 'mensaje_jefe')
-      .or(`destinatario_id.is.null,destinatario_id.eq.${user?.id ?? 'none'}`)
-      .order('created_at', { ascending: false })
-      .limit(5)
+    const [{ data: mensajesJefe }, { data: lecturasJefe }] = await Promise.all([
+      supabase
+        .from('notificaciones')
+        .select('id, titulo, mensaje, created_at, destinatario_id')
+        .eq('negocio_id', negocio.id)
+        .eq('tipo', 'mensaje_jefe')
+        .order('created_at', { ascending: false })
+        .limit(5),
+      supabase
+        .from('notif_lecturas')
+        .select('notificacion_id')
+        .eq('user_id', user?.id ?? ''),
+    ])
+    // Leído por usuario (un broadcast lo leen varios empleados)
+    const avisosLeidos = new Set((lecturasJefe ?? []).map((l) => l.notificacion_id))
 
     return (
       <div className="space-y-5">
@@ -242,23 +249,23 @@ export default async function DashboardPage({
         {/* Mensajes del jefe */}
         {(mensajesJefe ?? []).length > 0 && (
           <div className="card-soft overflow-hidden">
-            <div className="flex items-center gap-2 border-b px-5 py-4">
+            <Link href="/avisos" className="flex items-center gap-2 border-b px-5 py-4 hover:bg-accent/40 transition-colors">
               <span className="text-lg">📣</span>
               <span className="text-sm font-semibold">Avisos del jefe</span>
               <span className="ml-auto text-xs text-muted-foreground">
-                {(mensajesJefe ?? []).filter((m) => !m.leido).length > 0
-                  ? `${(mensajesJefe ?? []).filter((m) => !m.leido).length} nuevo${(mensajesJefe ?? []).filter((m) => !m.leido).length > 1 ? 's' : ''}`
-                  : ''}
+                {(mensajesJefe ?? []).filter((m) => !avisosLeidos.has(m.id)).length > 0
+                  ? `${(mensajesJefe ?? []).filter((m) => !avisosLeidos.has(m.id)).length} nuevo${(mensajesJefe ?? []).filter((m) => !avisosLeidos.has(m.id)).length > 1 ? 's' : ''} · ver todos`
+                  : 'ver todos'}
               </span>
-            </div>
+            </Link>
             <div className="divide-y">
               {(mensajesJefe ?? []).map((m) => (
                 <div
                   key={m.id}
-                  className={`px-5 py-3 ${!m.leido ? 'bg-primary/[0.03]' : ''}`}
+                  className={`px-5 py-3 ${!avisosLeidos.has(m.id) ? 'bg-primary/[0.03]' : ''}`}
                 >
                   <div className="flex items-start gap-2">
-                    <p className={`flex-1 text-sm ${!m.leido ? 'font-semibold' : 'font-medium'}`}>
+                    <p className={`flex-1 text-sm ${!avisosLeidos.has(m.id) ? 'font-semibold' : 'font-medium'}`}>
                       {m.mensaje}
                     </p>
                     {m.destinatario_id && (

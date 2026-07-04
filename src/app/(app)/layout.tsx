@@ -53,6 +53,28 @@ export default async function AppLayout({
 
   const banner = temaActivo as { emoji: string; banner_texto: string | null } | null
 
+  // Avisos del jefe sin leer (empleados/admins): leído se controla por usuario
+  let avisosNoLeidos = 0
+  if (rol !== 'dueno') {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const [{ data: msgs }, { data: lecs }] = await Promise.all([
+        supabase
+          .from('notificaciones')
+          .select('id')
+          .eq('negocio_id', negocio.id)
+          .eq('tipo', 'mensaje_jefe')
+          .limit(100),
+        supabase
+          .from('notif_lecturas')
+          .select('notificacion_id')
+          .eq('user_id', user.id),
+      ])
+      const leidas = new Set((lecs ?? []).map((l) => l.notificacion_id))
+      avisosNoLeidos = (msgs ?? []).filter((m) => !leidas.has(m.id)).length
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <GpsTracker />
@@ -66,6 +88,7 @@ export default async function AppLayout({
         stockBajo={stockBajo ?? 0}
         lotesAlerta={lotesAlerta ?? 0}
         notifNoLeidas={notifNoLeidas ?? 0}
+        avisosNoLeidos={avisosNoLeidos}
         rol={rol}
         esSuperAdmin={superAdmin}
         modulos={modulos}

@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
 import { ThemeProvider } from '@/components/theme-provider'
 import { createServiceClient } from '@/lib/supabase/service'
+import { createClient } from '@/lib/supabase/server'
 import { unstable_noStore as noStore } from 'next/cache'
 import SeasonalDecor from '@/components/seasonal-decor'
 import './globals.css'
@@ -31,6 +32,11 @@ export default async function RootLayout({
   noStore() // el tema puede cambiar en cualquier momento — no cachear este layout
   const locale = await getLocale()
   const messages = await getMessages()
+
+  // Tema claro/oscuro por usuario: cada cuenta guarda el suyo en este navegador
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const themeKey = user ? `theme:${user.id}` : 'theme'
 
   // Load active seasonal theme (public table, no auth needed)
   const admin = createServiceClient()
@@ -69,12 +75,12 @@ export default async function RootLayout({
         {/* Anti-flash: apply saved theme before React hydrates */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem(${JSON.stringify(themeKey)});var d=t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d)}catch(e){}})()`,
           }}
         />
         <SeasonalDecor slug={temaSlug} />
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <ThemeProvider>
+          <ThemeProvider storageKey={themeKey}>
             {children}
           </ThemeProvider>
         </NextIntlClientProvider>

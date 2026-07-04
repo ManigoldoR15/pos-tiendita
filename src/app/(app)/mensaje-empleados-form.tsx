@@ -18,12 +18,18 @@ export default function MensajeEmpleadosForm({ empleados }: { empleados: Emplead
   const [destinatario, setDestinatario] = useState<string | null>(null) // null = todos
   const [custom, setCustom] = useState('')
   const [enviado, setEnviado] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   function enviar(msg: string) {
     if (!msg.trim()) return
+    setError(null)
     startTransition(async () => {
-      await mensajeAEmpleadosAction(msg, destinatario)
+      const res = await mensajeAEmpleadosAction(msg, destinatario)
+      if (res?.error) {
+        setError(`No se pudo enviar: ${res.error}`)
+        return
+      }
       setEnviado(true)
       setCustom('')
       setTimeout(() => setEnviado(false), 3000)
@@ -44,6 +50,9 @@ export default function MensajeEmpleadosForm({ empleados }: { empleados: Emplead
           <span className="ml-auto flex items-center gap-1 text-xs font-medium text-emerald-600">
             <Check className="h-3.5 w-3.5" /> Enviado a {destLabel}
           </span>
+        )}
+        {error && (
+          <span className="ml-auto text-xs font-medium text-destructive">{error}</span>
         )}
       </div>
 
