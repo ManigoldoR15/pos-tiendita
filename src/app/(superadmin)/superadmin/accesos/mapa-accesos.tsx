@@ -12,7 +12,7 @@ export type NegocioMapa = {
   lon: number
   es_demo: boolean
   suspendido: boolean
-  geo_fuente: 'direccion' | 'auto_ip' | null
+  geo_fuente: 'direccion' | 'auto_ip' | 'auto_gps' | null
 }
 
 export type UsuarioMapa = {
