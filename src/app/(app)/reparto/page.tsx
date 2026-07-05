@@ -1,13 +1,15 @@
 import { redirect } from 'next/navigation'
-import { Truck, Users, Route, Radio, Clock } from 'lucide-react'
+import { Truck, Users, Route, Radio, Clock, ShieldCheck, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { requireModulo } from '@/lib/modulos'
 import { getRolActual } from '@/lib/rol'
 import { hoyMX, mexicoDayRange, TZ } from '@/lib/fecha'
+import { formatMXN } from '@/lib/dinero'
 import { cn } from '@/lib/utils'
 import MapaReparto, { type RutaPersona } from './mapa-reparto'
 import AutoRefresh from './auto-refresh'
+import MandarAviso from './mandar-aviso'
 
 export const dynamic = 'force-dynamic'
 
@@ -83,7 +85,7 @@ export default async function RepartoPage() {
   const supabase = await createClient()
   const { start, end } = mexicoDayRange(hoyMX())
 
-  const [{ data: puntos }, { data: miembros }] = await Promise.all([
+  const [{ data: puntos }, { data: miembros }, { data: ventasHoy }] = await Promise.all([
     supabase
       .from('rastro_gps')
       .select('user_id, lat, lon, precision_m, creado_en')
@@ -93,7 +95,21 @@ export default async function RepartoPage() {
       .order('creado_en', { ascending: true })
       .limit(5000),
     supabase.rpc('get_miembros_negocio', { p_negocio_id: negocio.id }),
+    supabase
+      .from('ventas')
+      .select('vendedor_id, total')
+      .eq('negocio_id', negocio.id)
+      .eq('estado', 'completada')
+      .gte('created_at', start)
+      .lte('created_at', end),
   ])
+
+  // Lo cobrado hoy por cada persona (ventas hechas desde su rol)
+  const cobradoPor = new Map<string, number>()
+  for (const v of ventasHoy ?? []) {
+    if (!v.vendedor_id) continue
+    cobradoPor.set(v.vendedor_id, (cobradoPor.get(v.vendedor_id) ?? 0) + v.total)
+  }
 
   const emailDe = new Map(
     ((miembros as { user_id: string; email: string }[] | null) ?? []).map((m) => [m.user_id, m.email]),
@@ -119,6 +135,16 @@ export default async function RepartoPage() {
       const durMin = Math.round(
         (new Date(ultimo.creado_en).getTime() - new Date(primero.creado_en).getTime()) / 60000,
       )
+      // Movimiento en los últimos 15 min — para detectar "detenido"
+      const hace15 = Date.now() - 15 * 60000
+      const recientes = pts.filter((p) => new Date(p.creado_en).getTime() >= hace15)
+      let movKm = 0
+      for (let j = 1; j < recientes.length; j++) {
+        movKm += distKm(recientes[j - 1].lat, recientes[j - 1].lon, recientes[j].lat, recientes[j].lon)
+      }
+      const activo = Date.now() - new Date(ultimo.creado_en).getTime() < 10 * 60000
+      const estado: 'en_ruta' | 'detenido' | 'sin_senal' =
+        !activo ? 'sin_senal' : recientes.length >= 3 && movKm < 0.15 ? 'detenido' : 'en_ruta'
       return {
         userId: uid,
         nombre: emailDe.get(uid)?.split('@')[0] ?? 'desconocido',
@@ -132,7 +158,9 @@ export default async function RepartoPage() {
         horaInicio: hora(primero.creado_en),
         horaUltima: hora(ultimo.creado_en),
         haceTexto: haceTexto(ultimo.creado_en),
-        activo: Date.now() - new Date(ultimo.creado_en).getTime() < 10 * 60000,
+        activo,
+        estado,
+        cobrado: cobradoPor.get(uid) ?? 0,
         recorridoKm,
         duracionMin: durMin,
         numPuntos: pts.length,
@@ -143,6 +171,16 @@ export default async function RepartoPage() {
 
   const enRuta = rutas.filter((r) => r.activo).length
   const kmTotales = rutas.reduce((s, r) => s + r.recorridoKm, 0)
+
+  // Situaciones que requieren la atención del dueño
+  const atencion: string[] = []
+  for (const r of rutas) {
+    if (r.estado === 'detenido') {
+      atencion.push(`${r.nombre} lleva más de 15 min sin moverse — está por ${r.horaUltima}`)
+    } else if (r.estado === 'sin_senal') {
+      atencion.push(`${r.nombre} dejó de reportar ${r.haceTexto} (app cerrada o sin señal)`)
+    }
+  }
 
   return (
     <div className="mx-auto max-w-4xl space-y-5">
@@ -188,6 +226,35 @@ export default async function RepartoPage() {
         </div>
       </div>
 
+      {/* Semáforo del centro de control: qué requiere tu atención */}
+      {rutas.length > 0 &&
+        (atencion.length === 0 ? (
+          <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-3 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+            <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <div>
+              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Todo en orden</p>
+              <p className="text-xs text-emerald-700/80 dark:text-emerald-400/70">
+                Tu gente está reportando con normalidad. No hay nada que requiera tu atención.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/20">
+            <p className="flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-300">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              {atencion.length} situación{atencion.length > 1 ? 'es' : ''} que revisar
+            </p>
+            <ul className="mt-1.5 space-y-1">
+              {atencion.map((a) => (
+                <li key={a} className="flex items-start gap-1.5 text-xs text-amber-700/90 dark:text-amber-400/80">
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-500" />
+                  {a}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+
       {rutas.length === 0 ? (
         <div className="card-soft flex flex-col items-center gap-3 px-5 py-16 text-center">
           <Truck className="h-10 w-10 text-muted-foreground/30" />
@@ -219,29 +286,34 @@ export default async function RepartoPage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{r.nombre}</p>
                     <p className="text-xs text-muted-foreground">
-                      {r.activo ? 'Reportando en vivo' : `Último reporte ${r.haceTexto}`}
+                      {r.estado === 'en_ruta'
+                        ? 'Reportando en vivo'
+                        : r.estado === 'detenido'
+                          ? 'Sin moverse hace rato'
+                          : `Último reporte ${r.haceTexto}`}
                     </p>
                   </div>
+                  <MandarAviso userId={r.userId} nombre={r.nombre} />
                   <span
                     className={cn(
                       'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase',
-                      r.activo
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                        : 'bg-muted text-muted-foreground',
+                      r.estado === 'en_ruta' &&
+                        'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+                      r.estado === 'detenido' &&
+                        'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+                      r.estado === 'sin_senal' && 'bg-muted text-muted-foreground',
                     )}
                   >
-                    {r.activo && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />}
-                    {r.activo ? 'En ruta' : 'Detenido'}
+                    {r.estado === 'en_ruta' && (
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                    )}
+                    {r.estado === 'en_ruta' ? 'En ruta' : r.estado === 'detenido' ? 'Detenido' : 'Sin señal'}
                   </span>
                 </div>
                 <div className="mt-3 grid grid-cols-4 gap-2 text-center">
                   <div className="rounded-lg bg-muted/50 px-1 py-1.5">
                     <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Salió</p>
                     <p className="text-xs font-bold tabular-nums">{r.horaInicio}</p>
-                  </div>
-                  <div className="rounded-lg bg-muted/50 px-1 py-1.5">
-                    <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Último</p>
-                    <p className="text-xs font-bold tabular-nums">{r.horaUltima}</p>
                   </div>
                   <div className="rounded-lg bg-muted/50 px-1 py-1.5">
                     <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Tiempo</p>
@@ -251,6 +323,14 @@ export default async function RepartoPage() {
                     <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Recorrido</p>
                     <p className="text-xs font-bold tabular-nums">
                       {r.recorridoKm >= 0.1 ? `${r.recorridoKm.toFixed(1)} km` : '—'}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-emerald-50 px-1 py-1.5 dark:bg-emerald-950/30">
+                    <p className="text-[9px] uppercase tracking-wider text-emerald-700/70 dark:text-emerald-400/70">
+                      Cobrado
+                    </p>
+                    <p className="text-xs font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+                      {r.cobrado > 0 ? formatMXN(r.cobrado) : '—'}
                     </p>
                   </div>
                 </div>

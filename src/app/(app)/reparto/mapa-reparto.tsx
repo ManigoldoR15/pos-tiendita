@@ -19,6 +19,8 @@ export type RutaPersona = {
   horaUltima: string
   haceTexto: string
   activo: boolean
+  estado: 'en_ruta' | 'detenido' | 'sin_senal'
+  cobrado: number
   recorridoKm: number
   duracionMin: number
   numPuntos: number
