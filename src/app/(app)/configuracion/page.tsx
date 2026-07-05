@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
+import { getModulos } from '@/lib/modulos'
 import { hoyMX } from '@/lib/fecha'
 import FormNombre from './form-nombre'
 import FormMetodoPago from './form-metodo-pago'
@@ -23,6 +24,7 @@ export default async function ConfiguracionPage() {
   const supabase = await createClient()
   const rolActual = await getRolActual()
   if (rolActual !== 'dueno') redirect('/')
+  const modulos = await getModulos()
 
   const { data: metodos } = await supabase
     .from('metodos_pago')
@@ -208,14 +210,18 @@ export default async function ConfiguracionPage() {
                   </span>
                 ) : (
                   <>
-                    {tieneMultiplasPlazas && (
+                    {tieneMultiplasPlazas && m.rol !== 'repartidor' && (
                       <SelectorPlazaEmpleado
                         userId={m.user_id}
                         localIdActual={m.local_id}
                         plazas={plazas}
                       />
                     )}
-                    <SelectorRolEmpleado userId={m.user_id} rolActual={m.rol} />
+                    <SelectorRolEmpleado
+                      userId={m.user_id}
+                      rolActual={m.rol}
+                      moduloReparto={modulos.repartidores}
+                    />
 
                     <form action={eliminarEmpleadoAction}>
                       <input type="hidden" name="user_id" value={m.user_id} />
@@ -236,8 +242,8 @@ export default async function ConfiguracionPage() {
           </ul>
 
           <div className="space-y-1.5">
-            <p className="text-sm text-muted-foreground">Agregar empleado</p>
-            <FormEmpleado />
+            <p className="text-sm text-muted-foreground">Agregar al equipo</p>
+            <FormEmpleado moduloReparto={modulos.repartidores} />
           </div>
         </section>
       )}

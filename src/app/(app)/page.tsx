@@ -30,6 +30,7 @@ export default async function DashboardPage({
 
   const supabase = await createClient()
   const rol = await getRolActual()
+  if (rol === 'repartidor') redirect('/mi-carga')
   const isDuenoOrAdmin = !rol || rol === 'dueno'
 
   const hoy = hoyMX()

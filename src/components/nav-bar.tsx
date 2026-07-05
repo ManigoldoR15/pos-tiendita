@@ -7,7 +7,7 @@ import {
   Home, Package, Tag, ShoppingCart, Receipt, Wallet, ClipboardList,
   LogOut, Settings, Store, Truck, BarChart2, ChevronDown, X,
   CalendarCheck, HandCoins, Scale, Clock, Bell, FileText, ShoppingBag, ShieldCheck, Users, PieChart,
-  Grid2X2, MapPin,
+  Grid2X2, MapPin, PackageCheck,
 } from 'lucide-react'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -35,6 +35,7 @@ const OPERACIONES_DUENO: NavLink[] = [
   { href: '/gastos', label: 'Gastos', Icon: Receipt },
   { href: '/compras', label: 'Compras', Icon: ShoppingBag },
   { href: '/reparto', label: 'Reparto', Icon: Truck },
+  { href: '/reparto/entregas', label: 'Entregas a reparto', Icon: PackageCheck },
 ]
 const CATALOGO_DUENO: NavLink[] = [
   { href: '/productos', label: 'Productos', Icon: Package },
@@ -59,7 +60,17 @@ const DIRECT_EMPLEADO: NavLink[] = [
   { href: '/clientes', label: 'Clientes', Icon: Users },
   { href: '/fiados', label: 'Fiados', Icon: HandCoins },
   { href: '/productos', label: 'Productos', Icon: Package },
+  { href: '/reparto/entregas', label: 'Reparto', Icon: Truck },
   { href: '/turno', label: 'Entrada', Icon: Clock },
+]
+
+// Repartidor: solo su carga y su ruta — no opera la tienda
+const DIRECT_REPARTIDOR: NavLink[] = [
+  { href: '/mi-carga', label: 'Mi carga', Icon: Truck },
+]
+const BOTTOM_REPARTIDOR: NavLink[] = [
+  { href: '/mi-carga', label: 'Mi carga', Icon: Truck },
+  { href: '/avisos', label: 'Avisos', Icon: Bell },
 ]
 
 // Bottom nav tabs (5 each)
@@ -213,11 +224,15 @@ export default function NavBar({
   const [masOpen, setMasOpen] = useState(false)
 
   const isDueno = !rol || rol === 'dueno'
+  const isRepartidor = rol === 'repartidor'
 
-  const directLinks = isDueno ? DIRECT_DUENO : DIRECT_EMPLEADO.filter((l) => {
+  const directLinks = isRepartidor
+    ? DIRECT_REPARTIDOR
+    : isDueno ? DIRECT_DUENO : DIRECT_EMPLEADO.filter((l) => {
     if (l.href === '/clientes') return modulos.clientes_frecuentes
     if (l.href === '/fiados')   return modulos.fiados
     if (l.href === '/turno')    return modulos.turnos
+    if (l.href === '/reparto/entregas') return modulos.repartidores
     return true
   })
   const operacionesLinks = isDueno ? OPERACIONES_DUENO.filter((l) => {
@@ -225,6 +240,7 @@ export default function NavBar({
     if (l.href === '/fiados')   return modulos.fiados
     if (l.href === '/cuadre')   return modulos.granel
     if (l.href === '/reparto')  return modulos.repartidores
+    if (l.href === '/reparto/entregas') return modulos.repartidores
     return true
   }) : null
   const catalogoLinks = isDueno ? CATALOGO_DUENO.filter((l) => {
@@ -243,7 +259,7 @@ export default function NavBar({
     '/caducidad': lotesAlerta,
   }
 
-  const bottomTabs = isDueno ? BOTTOM_DUENO : BOTTOM_EMPLEADO
+  const bottomTabs = isRepartidor ? BOTTOM_REPARTIDOR : isDueno ? BOTTOM_DUENO : BOTTOM_EMPLEADO
   const bottomHrefs = new Set(bottomTabs.map((t) => t.href))
 
   const allLinks: NavLink[] = [

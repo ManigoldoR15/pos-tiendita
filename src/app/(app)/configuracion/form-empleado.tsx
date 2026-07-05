@@ -5,7 +5,7 @@ import { crearNuevoEmpleadoAction, agregarEmpleadoAction, type EmpleadoState } f
 import { Button } from '@/components/ui/button'
 import { UserPlus, Eye, EyeOff } from 'lucide-react'
 
-export default function FormEmpleado() {
+export default function FormEmpleado({ moduloReparto = false }: { moduloReparto?: boolean }) {
   const [modo, setModo] = useState<'crear' | 'existente'>('crear')
   const [rolNuevo, setRolNuevo] = useState('empleado')
   const [verPassword, setVerPassword] = useState(false)
@@ -98,12 +98,18 @@ export default function FormEmpleado() {
               className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="empleado">Empleado</option>
+              {moduloReparto && <option value="repartidor">Repartidor</option>}
             </select>
+            {rolNuevo === 'repartidor' && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                El repartidor solo ve la carga que le entregan y su ruta. No opera la tienda.
+              </p>
+            )}
           </div>
 
           <Button type="submit" disabled={pending} size="sm" className="w-full">
             <UserPlus className="h-4 w-4" />
-            {pending ? 'Creando…' : 'Crear empleado'}
+            {pending ? 'Creando…' : rolNuevo === 'repartidor' ? 'Crear repartidor' : 'Crear empleado'}
           </Button>
         </form>
       ) : (
