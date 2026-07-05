@@ -4,6 +4,16 @@ import { useEffect, useRef } from 'react'
 import 'leaflet/dist/leaflet.css'
 import type { Map as LeafletMap } from 'leaflet'
 
+export type Parada = {
+  orden: number
+  lat: number
+  lon: number
+  llegada: string // HH:MM
+  salida: string // HH:MM
+  duracionMin: number
+  enCurso: boolean // sigue ahí (es su posición actual)
+}
+
 export type RutaPersona = {
   userId: string
   nombre: string
@@ -24,6 +34,7 @@ export type RutaPersona = {
   recorridoKm: number
   duracionMin: number
   numPuntos: number
+  paradas: Parada[]
 }
 
 function escapeHtml(s: string): string {
@@ -71,6 +82,31 @@ export default function MapaReparto({ rutas }: { rutas: RutaPersona[] }) {
           .addTo(map)
           .bindTooltip(`Salida ${r.horaInicio}`, { direction: 'top' })
 
+        // Paradas: pin numerado con el tiempo que estuvo ahí. La parada en curso
+        // no se dibuja aquí porque la burbuja de posición actual ya la marca.
+        for (const p of r.paradas) {
+          if (p.enCurso) continue
+          const pin = L.divIcon({
+            className: '',
+            html: `<div style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${r.color};border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.35)"><span style="transform:rotate(45deg);color:#fff;font:700 11px system-ui">${p.orden}</span></div>`,
+            iconSize: [22, 22],
+            iconAnchor: [11, 22],
+          })
+          L.marker([p.lat, p.lon], { icon: pin, zIndexOffset: 50 })
+            .addTo(map)
+            .bindTooltip(
+              `<span style="font-weight:700">Parada ${p.orden}</span> · ${escapeHtml(r.nombre)}<br/>` +
+                `<span style="color:#64748b">Llegó ${escapeHtml(p.llegada)} · estuvo ${p.duracionMin} min</span>`,
+              { direction: 'top', offset: [0, -18] },
+            )
+            .bindPopup(
+              `<strong>Parada ${p.orden}</strong> — ${escapeHtml(r.nombre)}<br/>` +
+                `<span style="color:#64748b">Llegó ${escapeHtml(p.llegada)}, salió ${escapeHtml(p.salida)} · ${p.duracionMin} min ahí</span><br/>` +
+                `<a href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}" target="_blank" rel="noopener" style="font-weight:600">Ver en Google Maps ↗</a>`,
+            )
+          bounds.push([p.lat, p.lon])
+        }
+
         // Posición actual: burbuja con iniciales + etiqueta con nombre
         const icono = L.divIcon({
           className: '',
@@ -110,5 +146,5 @@ export default function MapaReparto({ rutas }: { rutas: RutaPersona[] }) {
     }
   }, [rutas])
 
-  return <div ref={contRef} className="h-[460px] w-full bg-muted" />
+  return <div ref={contRef} className="h-[440px] w-full bg-muted md:h-[560px]" />
 }

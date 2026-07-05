@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { Truck, Users, Route, Radio, Clock, ShieldCheck, AlertTriangle } from 'lucide-react'
+import { Truck, Users, Route, Radio, Clock, ShieldCheck, AlertTriangle, MapPin, Flag } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { requireModulo } from '@/lib/modulos'
@@ -7,7 +7,7 @@ import { getRolActual } from '@/lib/rol'
 import { hoyMX, mexicoDayRange, TZ } from '@/lib/fecha'
 import { formatMXN } from '@/lib/dinero'
 import { cn } from '@/lib/utils'
-import MapaReparto, { type RutaPersona } from './mapa-reparto'
+import MapaReparto, { type RutaPersona, type Parada } from './mapa-reparto'
 import AutoRefresh from './auto-refresh'
 import MandarAviso from './mandar-aviso'
 
@@ -40,6 +40,48 @@ function haceTexto(iso: string): string {
 function duracionTexto(min: number): string {
   if (min < 60) return `${min} min`
   return `${Math.floor(min / 60)} h ${min % 60} min`
+}
+
+// ─── Detección de paradas ────────────────────────────────────────────────────
+// Una "parada" es un grupo de puntos consecutivos que se mantuvieron dentro de
+// un radio chico (el camión estuvo quieto ahí) por al menos unos minutos. Es lo
+// que le deja ver al dueño desde su oficina "llegó a las 2:15, estuvo 12 min".
+const PARADA_RADIO_KM = 0.12 // ~120 m de tolerancia (cubre el jitter del GPS)
+const PARADA_MIN_MINUTOS = 4 // menos de esto es un semáforo/tráfico, no una parada
+
+type PuntoGps = { lat: number; lon: number; creado_en: string }
+
+function detectarParadas(pts: PuntoGps[]): Parada[] {
+  const paradas: Parada[] = []
+  const ahora = Date.now()
+  let i = 0
+  while (i < pts.length) {
+    const ancla = pts[i]
+    let j = i + 1
+    while (j < pts.length && distKm(ancla.lat, ancla.lon, pts[j].lat, pts[j].lon) <= PARADA_RADIO_KM) {
+      j++
+    }
+    const grupo = pts.slice(i, j)
+    const primero = grupo[0]
+    const ultimo = grupo[grupo.length - 1]
+    const durMin = Math.round(
+      (new Date(ultimo.creado_en).getTime() - new Date(primero.creado_en).getTime()) / 60000,
+    )
+    if (grupo.length >= 2 && durMin >= PARADA_MIN_MINUTOS) {
+      paradas.push({
+        orden: paradas.length + 1,
+        lat: grupo.reduce((s, p) => s + p.lat, 0) / grupo.length,
+        lon: grupo.reduce((s, p) => s + p.lon, 0) / grupo.length,
+        llegada: hora(primero.creado_en),
+        salida: hora(ultimo.creado_en),
+        duracionMin: durMin,
+        // Sigue en la parada si el último punto del grupo es de hace <10 min
+        enCurso: j >= pts.length && ahora - new Date(ultimo.creado_en).getTime() < 10 * 60000,
+      })
+    }
+    i = Math.max(j, i + 1)
+  }
+  return paradas
 }
 
 /**
@@ -145,6 +187,7 @@ export default async function RepartoPage() {
       const activo = Date.now() - new Date(ultimo.creado_en).getTime() < 10 * 60000
       const estado: 'en_ruta' | 'detenido' | 'sin_senal' =
         !activo ? 'sin_senal' : recientes.length >= 3 && movKm < 0.15 ? 'detenido' : 'en_ruta'
+      const paradas = detectarParadas(pts)
       return {
         userId: uid,
         nombre: emailDe.get(uid)?.split('@')[0] ?? 'desconocido',
@@ -164,6 +207,7 @@ export default async function RepartoPage() {
         recorridoKm,
         duracionMin: durMin,
         numPuntos: pts.length,
+        paradas,
       }
     }),
   )
@@ -171,6 +215,8 @@ export default async function RepartoPage() {
 
   const enRuta = rutas.filter((r) => r.activo).length
   const kmTotales = rutas.reduce((s, r) => s + r.recorridoKm, 0)
+  const paradasTotales = rutas.reduce((s, r) => s + r.paradas.length, 0)
+  const cobradoTotal = rutas.reduce((s, r) => s + r.cobrado, 0)
 
   // Situaciones que requieren la atención del dueño
   const atencion: string[] = []
@@ -182,8 +228,12 @@ export default async function RepartoPage() {
     }
   }
 
+  const hoyTexto = new Date().toLocaleDateString('es-MX', {
+    timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long',
+  })
+
   return (
-    <div className="mx-auto max-w-4xl space-y-5">
+    <div className="mx-auto max-w-6xl space-y-5">
       <AutoRefresh segundos={60} />
 
       {/* Header */}
@@ -192,8 +242,8 @@ export default async function RepartoPage() {
           <Truck className="h-5 w-5 text-primary" />
         </span>
         <div className="flex-1">
-          <h1 className="text-2xl font-black tracking-tight">Reparto</h1>
-          <p className="text-sm text-muted-foreground">Monitoreo de tu flotilla en tiempo real</p>
+          <h1 className="text-2xl font-black tracking-tight">Centro de reparto</h1>
+          <p className="text-sm capitalize text-muted-foreground">{hoyTexto}</p>
         </div>
         <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
           <span className="relative flex h-2 w-2">
@@ -205,7 +255,7 @@ export default async function RepartoPage() {
       </div>
 
       {/* KPIs de flotilla */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <div className="rounded-xl border bg-emerald-50/60 p-3 dark:bg-emerald-950/20">
           <p className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
             <Radio className="h-3 w-3" /> En ruta ahora
@@ -214,15 +264,21 @@ export default async function RepartoPage() {
         </div>
         <div className="rounded-xl border bg-card p-3">
           <p className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            <Users className="h-3 w-3" /> Con rastro hoy
-          </p>
-          <p className="text-2xl font-black tabular-nums">{rutas.length}</p>
-        </div>
-        <div className="rounded-xl border bg-card p-3">
-          <p className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
             <Route className="h-3 w-3" /> Km recorridos
           </p>
           <p className="text-2xl font-black tabular-nums">{kmTotales.toFixed(1)}</p>
+        </div>
+        <div className="rounded-xl border bg-card p-3">
+          <p className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <MapPin className="h-3 w-3" /> Paradas hoy
+          </p>
+          <p className="text-2xl font-black tabular-nums">{paradasTotales}</p>
+        </div>
+        <div className="rounded-xl border bg-card p-3">
+          <p className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <Users className="h-3 w-3" /> Cobrado en ruta
+          </p>
+          <p className="text-2xl font-black tabular-nums">{cobradoTotal > 0 ? formatMXN(cobradoTotal) : '—'}</p>
         </div>
       </div>
 
@@ -333,6 +389,63 @@ export default async function RepartoPage() {
                       {r.cobrado > 0 ? formatMXN(r.cobrado) : '—'}
                     </p>
                   </div>
+                </div>
+
+                {/* Bitácora de paradas del día */}
+                <div className="mt-3 border-t pt-3">
+                  <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <MapPin className="h-3 w-3" />
+                    {r.paradas.length > 0
+                      ? `${r.paradas.length} parada${r.paradas.length > 1 ? 's' : ''} hoy`
+                      : 'Sin paradas registradas'}
+                  </p>
+                  {r.paradas.length > 0 && (
+                    <ol className="relative space-y-2.5 pl-4">
+                      {/* línea vertical de la ruta */}
+                      <span
+                        className="absolute bottom-1 left-[5px] top-1 w-px"
+                        style={{ backgroundColor: r.color, opacity: 0.35 }}
+                      />
+                      {r.paradas.map((p) => (
+                        <li key={p.orden} className="relative">
+                          <span
+                            className="absolute -left-4 top-0.5 flex h-[11px] w-[11px] items-center justify-center rounded-full border-2 border-background"
+                            style={{ backgroundColor: p.enCurso ? r.color : 'transparent', outline: `2px solid ${r.color}`, outlineOffset: '-2px' }}
+                          />
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="text-xs font-semibold">
+                              Parada {p.orden}
+                              {p.enCurso && (
+                                <span className="ml-1.5 rounded bg-amber-100 px-1 py-px text-[9px] font-bold uppercase text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                  Ahí ahora
+                                </span>
+                              )}
+                            </span>
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="shrink-0 text-[11px] font-medium text-primary hover:underline"
+                            >
+                              Ver ↗
+                            </a>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground tabular-nums">
+                            Llegó {p.llegada} · {p.enCurso ? `${p.duracionMin} min ahí` : `estuvo ${duracionTexto(p.duracionMin)}`}
+                          </p>
+                        </li>
+                      ))}
+                      {/* posición final / regreso */}
+                      <li className="relative">
+                        <span className="absolute -left-4 top-0.5 flex h-[11px] w-[11px] items-center justify-center rounded-full border-2 border-background bg-foreground/70">
+                          <Flag className="h-2 w-2 text-background" />
+                        </span>
+                        <p className="text-[11px] text-muted-foreground">
+                          Último reporte {r.horaUltima} · {r.haceTexto}
+                        </p>
+                      </li>
+                    </ol>
+                  )}
                 </div>
               </div>
             ))}
