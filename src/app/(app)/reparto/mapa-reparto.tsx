@@ -8,14 +8,19 @@ export type RutaPersona = {
   userId: string
   nombre: string
   color: string
-  puntos: [number, number][]
+  /** Trazo ajustado a la vialidad (o crudo si el matching falló) */
+  linea: [number, number][]
+  inicioLat: number
+  inicioLon: number
   ultimaLat: number
   ultimaLon: number
   precisionM: number | null
-  ultimaVez: string
+  horaInicio: string
+  horaUltima: string
   haceTexto: string
   activo: boolean
   recorridoKm: number
+  duracionMin: number
   numPuntos: number
 }
 
@@ -42,38 +47,56 @@ export default function MapaReparto({ rutas }: { rutas: RutaPersona[] }) {
       const map = L.map(contRef.current, { center: [23.6, -102.5], zoom: 5, scrollWheelZoom: false })
       mapRef.current = map
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap',
+      // Tiles CARTO Voyager: limpios, tipo producto comercial
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
         maxZoom: 19,
       }).addTo(map)
 
       const bounds: [number, number][] = []
 
       for (const r of rutas) {
-        // Ruta recorrida
-        if (r.puntos.length > 1) {
-          L.polyline(r.puntos, { color: r.color, weight: 3.5, opacity: 0.75 }).addTo(map)
+        // Ruta: casing blanco debajo + línea de color encima (acabado pro)
+        if (r.linea.length > 1) {
+          L.polyline(r.linea, { color: '#ffffff', weight: 7, opacity: 0.9 }).addTo(map)
+          L.polyline(r.linea, { color: r.color, weight: 4, opacity: 0.95 }).addTo(map)
         }
-        // Posición actual: burbuja con iniciales
+
+        // Punto de salida
+        L.circleMarker([r.inicioLat, r.inicioLon], {
+          radius: 5, color: '#fff', weight: 2, fillColor: r.color, fillOpacity: 1,
+        })
+          .addTo(map)
+          .bindTooltip(`Salida ${r.horaInicio}`, { direction: 'top' })
+
+        // Posición actual: burbuja con iniciales + etiqueta con nombre
         const icono = L.divIcon({
           className: '',
-          html: `<div style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:${r.color};color:#fff;font:700 11px sans-serif;border:2.5px solid rgba(255,255,255,.95);box-shadow:0 2px 8px rgba(0,0,0,.35)${r.activo ? `;outline:3px solid ${r.color}44` : ';opacity:.55'}">${escapeHtml(r.nombre.substring(0, 2).toUpperCase())}</div>`,
-          iconSize: [30, 30],
-          iconAnchor: [15, 15],
+          html: `<div style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:${r.color};color:#fff;font:700 12px system-ui;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.35)${r.activo ? '' : ';opacity:.55'}">${escapeHtml(r.nombre.substring(0, 2).toUpperCase())}</div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
         })
-        L.marker([r.ultimaLat, r.ultimaLon], { icon: icono, zIndexOffset: 100 })
+        const marker = L.marker([r.ultimaLat, r.ultimaLon], { icon: icono, zIndexOffset: 100 })
           .addTo(map)
+          .bindTooltip(
+            `<span style="font-weight:700">${escapeHtml(r.nombre)}</span>${r.activo ? ' 🟢' : ''}`,
+            { permanent: true, direction: 'right', offset: [18, 0], opacity: 0.95 },
+          )
           .bindPopup(
-            `<strong>${escapeHtml(r.nombre)}</strong> ${r.activo ? '· en ruta' : ''}<br/>` +
-              `<span style="color:#64748b">${escapeHtml(r.haceTexto)}${r.precisionM ? ` · ±${Math.round(r.precisionM)} m` : ''}</span><br/>` +
-              `${r.recorridoKm >= 0.1 ? `${r.recorridoKm.toFixed(1)} km recorridos hoy<br/>` : ''}` +
+            `<strong>${escapeHtml(r.nombre)}</strong> ${r.activo ? '· en ruta' : '· detenido'}<br/>` +
+              `<span style="color:#64748b">Salió ${escapeHtml(r.horaInicio)} · último ${escapeHtml(r.horaUltima)} (${escapeHtml(r.haceTexto)})</span><br/>` +
+              `${r.recorridoKm >= 0.1 ? `${r.recorridoKm.toFixed(1)} km recorridos` : 'Sin movimiento'}` +
+              `${r.precisionM ? ` · GPS ±${Math.round(r.precisionM)} m` : ''}<br/>` +
               `<a href="https://www.google.com/maps/search/?api=1&query=${r.ultimaLat},${r.ultimaLon}" target="_blank" rel="noopener" style="font-weight:600">Ver en Google Maps ↗</a>`,
           )
-        for (const p of r.puntos) bounds.push(p)
+        void marker
+
+        for (const p of r.linea) bounds.push(p)
+        bounds.push([r.ultimaLat, r.ultimaLon])
       }
 
       if (bounds.length > 0) {
-        map.fitBounds(bounds as [number, number][], { padding: [40, 40], maxZoom: 15 })
+        map.fitBounds(bounds as [number, number][], { padding: [50, 50], maxZoom: 15 })
       }
     }
 
@@ -85,5 +108,5 @@ export default function MapaReparto({ rutas }: { rutas: RutaPersona[] }) {
     }
   }, [rutas])
 
-  return <div ref={contRef} className="h-[420px] w-full rounded-xl overflow-hidden bg-muted" />
+  return <div ref={contRef} className="h-[460px] w-full bg-muted" />
 }
