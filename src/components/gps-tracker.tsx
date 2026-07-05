@@ -5,7 +5,7 @@ import { MapPin } from 'lucide-react'
 import { registrarGpsAction, registrarRastroAction } from '@/lib/gps-actions'
 
 const CADA_MS = 30 * 60 * 1000 // reportar como mucho cada 30 min
-const CADA_RASTREO_MS = 3 * 60 * 1000 // modo flotilla: punto de ruta cada 3 min
+const CADA_RASTREO_MS = 90 * 1000 // modo flotilla: punto de ruta cada 90 s (trazo pegado a la calle)
 const REINTENTO_DENEGADO_MS = 7 * 24 * 60 * 60 * 1000 // si dijo "ahora no", no insistir en 7 días
 
 function obtenerYReportar(rastreo: boolean, alTerminar?: () => void) {

@@ -121,7 +121,7 @@ export default async function RepartoPage() {
             <p className="font-semibold">Sin rastro todavía hoy</p>
             <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
               Los puntos aparecen cuando tus empleados o repartidores traen la app abierta
-              con el permiso de ubicación aceptado. Se marca un punto cada 3 minutos.
+              con el permiso de ubicación aceptado. Se marca un punto cada minuto y medio.
             </p>
           </div>
         </div>
@@ -172,7 +172,7 @@ export default async function RepartoPage() {
 
           <p className="text-[11px] text-muted-foreground">
             La posición se reporta mientras la app esté abierta en el teléfono del empleado
-            (cada 3 minutos, con su permiso de ubicación). El rastro se conserva 30 días.
+            (un punto cada minuto y medio, con su permiso de ubicación). El rastro se conserva 30 días.
           </p>
         </>
       )}
