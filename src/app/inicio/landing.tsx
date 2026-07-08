@@ -1,7 +1,6 @@
 'use client'
 
 import { Fragment, useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import {
   Store,
@@ -172,20 +171,12 @@ export default function Landing() {
             <a href="#finanzas" className="transition-colors hover:text-foreground">Finanzas</a>
             <a href="#precios" className="transition-colors hover:text-foreground">Precios</a>
           </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:block"
-            >
-              Entrar
-            </Link>
-            <a
-              href="#contacto"
-              className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-[0_4px_14px_-4px_rgb(0_0_0/0.4)] transition-all hover:brightness-110"
-            >
-              Contáctanos
-            </a>
-          </div>
+          <a
+            href="#contacto"
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-[0_4px_14px_-4px_rgb(0_0_0/0.4)] transition-all hover:brightness-110"
+          >
+            Contáctanos
+          </a>
         </nav>
       </header>
 
@@ -624,9 +615,6 @@ export default function Landing() {
               {TELEFONO_DISPLAY}
             </a>
           </p>
-          <Link href="/login" className="transition-colors hover:text-foreground">
-            Entrar al sistema
-          </Link>
         </div>
       </footer>
     </div>
