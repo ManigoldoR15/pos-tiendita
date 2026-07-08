@@ -68,7 +68,7 @@ export async function actualizarSuscripcionAction(
   const ubicacion    = formData.get('ubicacion')?.toString().trim() || null
 
   if (!negocioId || !plan || !nombreNegocio) return { error: 'Datos incompletos.' }
-  if (!['prueba', 'mensual', 'anual'].includes(plan)) return { error: 'Plan inválido.' }
+  if (!['compra', 'prueba', 'mensual', 'anual'].includes(plan)) return { error: 'Plan inválido.' }
 
   const { error: updateError } = await supabase
     .from('negocios')

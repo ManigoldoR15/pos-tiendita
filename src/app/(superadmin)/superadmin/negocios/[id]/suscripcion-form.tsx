@@ -82,6 +82,7 @@ export default function SuscripcionForm({ negocio: n }: Props) {
           <div>
             <label className={labelCls}>Plan</label>
             <select name="plan" defaultValue={n.plan} className={selectCls}>
+              <option value="compra">Compra única</option>
               <option value="prueba">Prueba gratuita</option>
               <option value="mensual">Mensual</option>
               <option value="anual">Anual</option>

@@ -281,7 +281,7 @@ export default async function NegociosPage({
                   <td className="px-4 py-3.5 text-center">
                     <EstadoCuentaBadge estado={c.estado_suscripcion} />
                     <p className="mt-1 text-[10px] text-slate-500">
-                      {c.plan === 'prueba' ? 'Prueba' : c.plan === 'mensual' ? 'Mensual' : c.plan === 'anual' ? 'Anual' : '—'}
+                      {c.plan === 'compra' ? 'Compra única' : c.plan === 'prueba' ? 'Prueba' : c.plan === 'mensual' ? 'Mensual' : c.plan === 'anual' ? 'Anual' : '—'}
                       {c.suscripcion_fin && ` · vence ${fmtFechaCorta(c.suscripcion_fin)}`}
                     </p>
                   </td>

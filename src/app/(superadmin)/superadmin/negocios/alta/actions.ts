@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import type { ModulosConfig } from '@/lib/modulos-config'
 
 export type NuevoClienteState = { error: string } | null
 
@@ -24,15 +25,16 @@ export async function crearClienteAction(
   const nombreDueno = formData.get('nombre_dueno')?.toString().trim()
   const telefono    = formData.get('telefono_dueno')?.toString().trim() || null
   const ubicacion   = formData.get('ubicacion')?.toString().trim() || null
-  const plan        = formData.get('plan')?.toString() as 'prueba' | 'mensual' | 'anual'
+  const paqPos        = formData.get('paq_pos') === 'on'
+  const paqRastreador = formData.get('paq_rastreador') === 'on'
   const modoAcceso  = formData.get('modo_acceso')?.toString() ?? 'invitacion'
   const password    = formData.get('password')?.toString().trim() ?? ''
 
   if (!nombre || !emailDueno || !nombreDueno) {
     return { error: 'Nombre del negocio, email y nombre del dueño son obligatorios.' }
   }
-  if (!['prueba', 'mensual', 'anual'].includes(plan)) {
-    return { error: 'Plan inválido.' }
+  if (!paqPos && !paqRastreador) {
+    return { error: 'Elige al menos un paquete comprado.' }
   }
   if (modoAcceso === 'password' && password.length < 6) {
     return { error: 'La contraseña debe tener al menos 6 caracteres.' }
@@ -70,7 +72,23 @@ export async function crearClienteAction(
     userId = invite.user.id
   }
 
-  // Crear el negocio (service role bypasea RLS)
+  // Módulos según los paquetes comprados:
+  //   POS completo → módulos base del punto de venta
+  //   Rastreador   → módulo repartidores (si no lo compró, la sección no aparece)
+  const modulos: ModulosConfig = {
+    fiados:              paqPos,
+    granel:              paqPos,
+    turnos:              paqPos,
+    exportacion:         paqPos,
+    multi_plaza:         paqPos,
+    clientes_frecuentes: paqPos,
+    proveedores:         paqPos,
+    metas:               paqPos,
+    repartidores:        paqRastreador,
+  }
+
+  // Crear el negocio (service role bypasea RLS).
+  // plan 'compra' = pago único; suscripcion_inicio guarda la fecha de compra.
   const hoy = new Date().toISOString().split('T')[0]
   const { data: negocio, error: negocioError } = await service
     .from('negocios')
@@ -81,8 +99,9 @@ export async function crearClienteAction(
       nombre_dueno:  nombreDueno,
       telefono_dueno: telefono,
       ubicacion,
-      plan,
-      suscripcion_inicio: plan !== 'prueba' ? hoy : null,
+      plan: 'compra',
+      suscripcion_inicio: hoy,
+      modulos_habilitados: modulos,
     })
     .select('id')
     .single()

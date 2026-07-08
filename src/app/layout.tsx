@@ -42,23 +42,28 @@ export default async function RootLayout({
   const admin = createServiceClient()
   const { data: tema } = await admin
     .from('temas_estacionales')
-    .select('slug, css_vars')
+    .select('slug, css_vars, css_vars_dark')
     .eq('activo', true)
     .neq('slug', 'default')
     .maybeSingle()
 
   const temaSlug = tema?.slug ?? null
   const cssVars = tema?.css_vars as Record<string, string> | null
+  const cssVarsDark = tema?.css_vars_dark as Record<string, string> | null
   // Sanitize CSS property names and values before injecting into <style>.
   // Only allow characters valid in CSS custom property declarations.
   // This prevents XSS even if the superadmin account is compromised.
   const safeCSSToken = (s: string) => s.replace(/[^a-zA-Z0-9#%.,\- _()/:]/g, '')
-  const temaStyle = cssVars && Object.keys(cssVars).length > 0
-    ? Object.entries(cssVars)
-        .filter(([k]) => k.startsWith('--'))
-        .map(([k, v]) => `${safeCSSToken(k)}:${safeCSSToken(v)}`)
-        .join(';')
-    : null
+  const buildVars = (vars: Record<string, string> | null) =>
+    vars && Object.keys(vars).length > 0
+      ? Object.entries(vars)
+          .filter(([k]) => k.startsWith('--'))
+          .map(([k, v]) => `${safeCSSToken(k)}:${safeCSSToken(v)}`)
+          .join(';')
+      : null
+  const temaStyle = buildVars(cssVars)
+  // Temas viejos sin paleta oscura: usar la clara en ambos modos
+  const temaStyleDark = buildVars(cssVarsDark) ?? temaStyle
 
   return (
     <html
@@ -68,7 +73,7 @@ export default async function RootLayout({
     >
       <head>
         {temaStyle && (
-          <style dangerouslySetInnerHTML={{ __html: `:root{${temaStyle}}html.dark{${temaStyle}}` }} />
+          <style dangerouslySetInnerHTML={{ __html: `:root{${temaStyle}}html.dark{${temaStyleDark}}` }} />
         )}
       </head>
       <body className="min-h-full flex flex-col">
