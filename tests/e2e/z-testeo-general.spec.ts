@@ -15,6 +15,9 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env.local') })
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
+// Contextos creados a mano (browser.newContext) no heredan baseURL del config
+const BASE = process.env.BASE_URL ?? 'http://localhost:3000'
+
 const SS_DIR = path.join(__dirname, '../../test-screenshots')
 
 async function screenshot(page: Page, name: string) {
@@ -423,7 +426,7 @@ test.describe('10. Superadmin — panel unificado (fusión admin-sistema)', () =
     // Login como superadmin en browser context
     saContext = await browser.newContext()
     const saPage = await saContext.newPage()
-    await saPage.goto('http://localhost:3000/login')
+    await saPage.goto(`${BASE}/login`)
     await saPage.fill('input[name="email"]', SA_TEST_EMAIL)
     await saPage.fill('input[name="contrasena"]', SA_TEST_PASS)
     await saPage.click('button[type="submit"]')
@@ -452,7 +455,7 @@ test.describe('10. Superadmin — panel unificado (fusión admin-sistema)', () =
     if (!saContext) { test.skip(); return }
     const page = await saContext.newPage()
     // /admin-sistema redirige al panel unificado
-    await page.goto('http://localhost:3000/admin-sistema')
+    await page.goto(`${BASE}/admin-sistema`)
     await page.waitForLoadState('networkidle')
     await screenshot(page, '10-admin-sistema')
 
@@ -473,7 +476,7 @@ test.describe('10. Superadmin — panel unificado (fusión admin-sistema)', () =
   test('Tabla unificada muestra columnas: Negocio, Dueño/Contacto, Cuenta, Actividad, Health', async () => {
     if (!saContext) { test.skip(); return }
     const page = await saContext.newPage()
-    await page.goto('http://localhost:3000/superadmin/negocios')
+    await page.goto(`${BASE}/superadmin/negocios`)
     await page.waitForLoadState('networkidle')
 
     // Los headers de la tabla son <th> — evitar match con <option> del select
@@ -489,7 +492,7 @@ test.describe('10. Superadmin — panel unificado (fusión admin-sistema)', () =
   test('Filtro por cuenta "activo" actualiza la URL', async () => {
     if (!saContext) { test.skip(); return }
     const page = await saContext.newPage()
-    await page.goto('http://localhost:3000/superadmin/negocios')
+    await page.goto(`${BASE}/superadmin/negocios`)
     await page.waitForLoadState('networkidle')
 
     await page.selectOption('select[name="cuenta"]', 'activo')
@@ -504,7 +507,7 @@ test.describe('10. Superadmin — panel unificado (fusión admin-sistema)', () =
   test('Búsqueda por texto actualiza la URL con parámetro q', async () => {
     if (!saContext) { test.skip(); return }
     const page = await saContext.newPage()
-    await page.goto('http://localhost:3000/admin-sistema')
+    await page.goto(`${BASE}/admin-sistema`)
     await page.waitForLoadState('networkidle')
 
     await page.fill('input[name="q"]', 'tiendita')
@@ -519,7 +522,7 @@ test.describe('10. Superadmin — panel unificado (fusión admin-sistema)', () =
   test('"Dar de alta cliente" navega al formulario de alta', async () => {
     if (!saContext) { test.skip(); return }
     const page = await saContext.newPage()
-    await page.goto('http://localhost:3000/superadmin/negocios')
+    await page.goto(`${BASE}/superadmin/negocios`)
     await page.waitForLoadState('networkidle')
 
     await Promise.all([
@@ -532,7 +535,10 @@ test.describe('10. Superadmin — panel unificado (fusión admin-sistema)', () =
     await expect(page.getByRole('heading', { name: /nuevo cliente/i })).toBeVisible()
     await expect(page.locator('input[name="nombre"]')).toBeVisible()
     await expect(page.locator('input[name="email_dueno"]')).toBeVisible()
-    await expect(page.locator('select[name="plan"]').first()).toBeVisible()
+    // Paquetes de compra única (reemplazaron al plan de suscripción)
+    await expect(page.getByText('Paquetes comprados', { exact: true })).toBeVisible()
+    await expect(page.locator('input[name="paq_pos"]')).toBeAttached()
+    await expect(page.locator('input[name="paq_rastreador"]')).toBeAttached()
 
     await page.close()
   })
@@ -540,7 +546,7 @@ test.describe('10. Superadmin — panel unificado (fusión admin-sistema)', () =
   test('Click en "Gestionar" de un negocio abre la ficha única con formulario editable', async () => {
     if (!saContext) { test.skip(); return }
     const page = await saContext.newPage()
-    await page.goto('http://localhost:3000/superadmin/negocios')
+    await page.goto(`${BASE}/superadmin/negocios`)
     await page.waitForLoadState('networkidle')
 
     const gestionarLink = page.getByRole('link', { name: /gestionar/i }).first()
@@ -562,7 +568,7 @@ test.describe('10. Superadmin — panel unificado (fusión admin-sistema)', () =
   test('/admin-sistema/negocios redirige al panel unificado', async () => {
     if (!saContext) { test.skip(); return }
     const page = await saContext.newPage()
-    await page.goto('http://localhost:3000/admin-sistema/negocios')
+    await page.goto(`${BASE}/admin-sistema/negocios`)
     await page.waitForLoadState('networkidle')
     await screenshot(page, '10f-admin-negocios-redirect')
 

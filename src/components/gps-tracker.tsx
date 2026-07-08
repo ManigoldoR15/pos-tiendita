@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { MapPin } from 'lucide-react'
 import { registrarGpsAction, registrarRastroAction } from '@/lib/gps-actions'
 
@@ -39,6 +40,11 @@ function obtenerYReportar(rastreo: boolean, alTerminar?: () => void) {
 export default function GpsTracker({ rastreo = false }: { rastreo?: boolean }) {
   const [mostrarTarjeta, setMostrarTarjeta] = useState(false)
   const intervaloRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pathname = usePathname()
+  // En el POS la tarjeta flotante tapa el botón Cobrar — ahí nunca se muestra.
+  // El permiso se pide en cualquier otra pantalla; si ya está concedido, el
+  // reporte silencioso funciona igual en todas.
+  const enPOS = pathname?.startsWith('/pos') ?? false
 
   // Modo flotilla: punto de ruta inmediato + cada 3 min mientras la app esté abierta
   function iniciarRastreo() {
@@ -62,7 +68,7 @@ export default function GpsTracker({ rastreo = false }: { rastreo?: boolean }) {
     }
 
     if (!('permissions' in navigator)) {
-      setMostrarTarjeta(true)
+      if (!enPOS) setMostrarTarjeta(true)
       return
     }
     navigator.permissions
@@ -72,11 +78,11 @@ export default function GpsTracker({ rastreo = false }: { rastreo?: boolean }) {
           if (rastreo) iniciarRastreo()
           else obtenerYReportar(false) // silencioso, sin avisos
         } else if (estado.state === 'prompt') {
-          setMostrarTarjeta(true)
+          if (!enPOS) setMostrarTarjeta(true)
         }
         // 'denied': el navegador lo tiene bloqueado — no molestar
       })
-      .catch(() => setMostrarTarjeta(true))
+      .catch(() => { if (!enPOS) setMostrarTarjeta(true) })
 
     return () => {
       if (intervaloRef.current) {
@@ -85,9 +91,9 @@ export default function GpsTracker({ rastreo = false }: { rastreo?: boolean }) {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rastreo])
+  }, [rastreo, enPOS])
 
-  if (!mostrarTarjeta) return null
+  if (!mostrarTarjeta || enPOS) return null
 
   function aceptar() {
     setMostrarTarjeta(false)
