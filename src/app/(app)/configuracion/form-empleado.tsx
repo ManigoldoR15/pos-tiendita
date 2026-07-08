@@ -5,6 +5,53 @@ import { crearNuevoEmpleadoAction, agregarEmpleadoAction, type EmpleadoState } f
 import { Button } from '@/components/ui/button'
 import { UserPlus, Eye, EyeOff } from 'lucide-react'
 
+// Datos generales de la persona (opcionales) — para el historial de personal.
+// No pedimos CURP/RFC ni datos legales, solo quién es la persona.
+function DatosGenerales() {
+  return (
+    <div className="rounded-lg border border-dashed p-3 space-y-3">
+      <p className="text-xs font-medium text-muted-foreground">
+        Datos de la persona <span className="font-normal">(opcional)</span>
+      </p>
+      <div>
+        <label className="mb-1 block text-xs text-muted-foreground">Nombre completo</label>
+        <input
+          type="text"
+          name="nombre_completo"
+          placeholder="Ej. María López García"
+          className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+      <div className="flex gap-2">
+        <div className="w-24">
+          <label className="mb-1 block text-xs text-muted-foreground">Edad</label>
+          <input
+            type="number"
+            name="edad"
+            min={14}
+            max={100}
+            placeholder="Años"
+            className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="mb-1 block text-xs text-muted-foreground">Sexo</label>
+          <select
+            name="sexo"
+            defaultValue=""
+            className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">Sin especificar</option>
+            <option value="hombre">Hombre</option>
+            <option value="mujer">Mujer</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function FormEmpleado({ moduloReparto = false }: { moduloReparto?: boolean }) {
   const [modo, setModo] = useState<'crear' | 'existente'>('crear')
   const [rolNuevo, setRolNuevo] = useState('empleado')
@@ -107,6 +154,8 @@ export default function FormEmpleado({ moduloReparto = false }: { moduloReparto?
             )}
           </div>
 
+          <DatosGenerales />
+
           <Button type="submit" disabled={pending} size="sm" className="w-full">
             <UserPlus className="h-4 w-4" />
             {pending ? 'Creando…' : rolNuevo === 'repartidor' ? 'Crear repartidor' : 'Crear empleado'}
@@ -138,6 +187,8 @@ export default function FormEmpleado({ moduloReparto = false }: { moduloReparto?
           <p className="text-xs text-muted-foreground">
             El usuario debe tener cuenta existente en la aplicación.
           </p>
+
+          <DatosGenerales />
         </form>
       )}
     </div>

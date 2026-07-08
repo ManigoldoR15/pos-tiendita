@@ -8,6 +8,25 @@ import { getRolActual } from '@/lib/rol'
 
 export type EmpleadoState = { error?: string; ok?: boolean; mensaje?: string } | null
 
+// Datos generales del empleado (nombre, edad, sexo) — opcionales, para el
+// historial de personal del dueño. Se leen de un FormData compartido por ambos
+// flujos (crear cuenta / agregar existente).
+function leerDatosGenerales(formData: FormData): { nombre: string | null; edad: number | null; sexo: string | null } {
+  const nombre = ((formData.get('nombre_completo') as string) ?? '').trim() || null
+
+  const edadRaw = ((formData.get('edad') as string) ?? '').trim()
+  let edad: number | null = null
+  if (edadRaw) {
+    const n = parseInt(edadRaw, 10)
+    if (!Number.isNaN(n) && n >= 14 && n <= 100) edad = n
+  }
+
+  const sexoRaw = ((formData.get('sexo') as string) ?? '').trim()
+  const sexo = ['hombre', 'mujer', 'otro'].includes(sexoRaw) ? sexoRaw : null
+
+  return { nombre, edad, sexo }
+}
+
 export async function crearNuevoEmpleadoAction(
   _prev: EmpleadoState,
   formData: FormData,
@@ -21,6 +40,7 @@ export async function crearNuevoEmpleadoAction(
   const email = (formData.get('email') as string)?.trim().toLowerCase()
   const password = (formData.get('password') as string)?.trim()
   const rolNuevo = (formData.get('rol') as string) ?? 'empleado'
+  const datos = leerDatosGenerales(formData)
 
   if (!email) return { error: 'Ingresa un correo electrónico.' }
   if (!password || password.length < 6) return { error: 'La contraseña debe tener al menos 6 caracteres.' }
@@ -51,7 +71,14 @@ export async function crearNuevoEmpleadoAction(
 
     const { error: insErr } = await supabase
       .from('usuarios_negocio')
-      .insert({ negocio_id: negocio.id, user_id: userId, rol: rolNuevo })
+      .insert({
+        negocio_id: negocio.id,
+        user_id: userId,
+        rol: rolNuevo,
+        nombre_completo: datos.nombre,
+        edad: datos.edad,
+        sexo: datos.sexo,
+      })
 
     if (insErr) return { error: 'No se pudo agregar el empleado.' }
     revalidatePath('/configuracion')
@@ -73,7 +100,14 @@ export async function crearNuevoEmpleadoAction(
 
   const { error: insErr } = await supabase
     .from('usuarios_negocio')
-    .insert({ negocio_id: negocio.id, user_id: newUser.user.id, rol: rolNuevo })
+    .insert({
+      negocio_id: negocio.id,
+      user_id: newUser.user.id,
+      rol: rolNuevo,
+      nombre_completo: datos.nombre,
+      edad: datos.edad,
+      sexo: datos.sexo,
+    })
 
   if (insErr) {
     await admin.auth.admin.deleteUser(newUser.user.id)
@@ -120,14 +154,53 @@ export async function agregarEmpleadoAction(
 
   if (existe) return { error: 'Este usuario ya es miembro del negocio.' }
 
+  const datos = leerDatosGenerales(formData)
+
   const { error } = await supabase
     .from('usuarios_negocio')
-    .insert({ negocio_id: negocio.id, user_id: userId, rol: 'empleado' })
+    .insert({
+      negocio_id: negocio.id,
+      user_id: userId,
+      rol: 'empleado',
+      nombre_completo: datos.nombre,
+      edad: datos.edad,
+      sexo: datos.sexo,
+    })
 
   if (error) return { error: 'No se pudo agregar el empleado.' }
 
   revalidatePath('/configuracion')
   return { ok: true }
+}
+
+export async function editarDatosEmpleadoAction(
+  _prev: EmpleadoState,
+  formData: FormData,
+): Promise<EmpleadoState> {
+  const rol = await getRolActual()
+  if (rol !== 'dueno') return { error: 'Solo el dueño puede editar los datos del personal.' }
+
+  const negocio = await getNegocioActual()
+  if (!negocio) return { error: 'Sin negocio activo.' }
+
+  const userId = (formData.get('user_id') as string)?.trim()
+  if (!userId) return { error: 'Empleado no válido.' }
+
+  const datos = leerDatosGenerales(formData)
+
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('actualizar_datos_empleado', {
+    p_negocio_id: negocio.id,
+    p_user_id: userId,
+    p_nombre: datos.nombre,
+    p_edad: datos.edad,
+    p_sexo: datos.sexo,
+  })
+
+  if (error) return { error: 'No se pudieron guardar los datos.' }
+
+  revalidatePath('/configuracion')
+  return { ok: true, mensaje: 'Datos guardados.' }
 }
 
 export async function cambiarRolEmpleadoAction(formData: FormData): Promise<void> {
