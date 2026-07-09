@@ -1,3 +1,4 @@
+import { requireModulo } from '@/lib/modulos'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Settings, Info } from 'lucide-react'
@@ -19,6 +20,7 @@ export default async function CaducidadPage({
 }: {
   searchParams: Promise<{ estado?: string }>
 }) {
+  await requireModulo('caducidad')
   const { estado: filtroEstado } = await searchParams
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')

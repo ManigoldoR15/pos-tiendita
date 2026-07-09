@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, AlertTriangle, Eye, EyeOff, Store, Truck, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { crearClienteAction } from './actions'
+import { TIPOS_NEGOCIO } from '@/lib/tipos-negocio'
 
 const inputCls = 'w-full h-10 rounded-lg border border-slate-700 bg-slate-800 px-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-violet-500'
 const selectCls = 'w-full h-10 rounded-lg border border-slate-700 bg-slate-800 px-3 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-violet-500'
@@ -112,6 +113,18 @@ export default function NuevoClientePage() {
                 placeholder="Tiendita La Esperanza"
                 className={inputCls}
               />
+            </div>
+            <div>
+              <label className={labelCls}>Giro del negocio *</label>
+              <select name="tipo_negocio" defaultValue="tiendita" className={selectCls}>
+                {Object.entries(TIPOS_NEGOCIO).map(([slug, t]) => (
+                  <option key={slug} value={slug}>{t.emoji} {t.label}</option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-[11px] text-slate-500">
+                Preconfigura el sistema: ropa activa tallas/colores y oculta caducidades;
+                los giros de comida quedan como siempre.
+              </p>
             </div>
             <div>
               <label className={labelCls}>Ubicación</label>

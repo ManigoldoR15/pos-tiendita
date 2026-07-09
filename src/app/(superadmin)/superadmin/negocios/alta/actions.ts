@@ -5,6 +5,9 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import type { ModulosConfig } from '@/lib/modulos-config'
+import { MODULOS_DEFAULT } from '@/lib/modulos-config'
+import { PLANTILLAS_GIRO, CATEGORIAS_GASTO_ESTANDAR, METODOS_PAGO_ESTANDAR } from '@/lib/giros'
+import { TIPOS_NEGOCIO } from '@/lib/tipos-negocio'
 
 export type NuevoClienteState = { error: string } | null
 
@@ -25,6 +28,7 @@ export async function crearClienteAction(
   const nombreDueno = formData.get('nombre_dueno')?.toString().trim()
   const telefono    = formData.get('telefono_dueno')?.toString().trim() || null
   const ubicacion   = formData.get('ubicacion')?.toString().trim() || null
+  const tipoNegocio = formData.get('tipo_negocio')?.toString() || 'tiendita'
   const paqPos        = formData.get('paq_pos') === 'on'
   const paqRastreador = formData.get('paq_rastreador') === 'on'
   const modoAcceso  = formData.get('modo_acceso')?.toString() ?? 'invitacion'
@@ -35,6 +39,9 @@ export async function crearClienteAction(
   }
   if (!paqPos && !paqRastreador) {
     return { error: 'Elige al menos un paquete comprado.' }
+  }
+  if (!(tipoNegocio in TIPOS_NEGOCIO)) {
+    return { error: 'Giro de negocio inválido.' }
   }
   if (modoAcceso === 'password' && password.length < 6) {
     return { error: 'La contraseña debe tener al menos 6 caracteres.' }
@@ -72,9 +79,11 @@ export async function crearClienteAction(
     userId = invite.user.id
   }
 
-  // Módulos según los paquetes comprados:
+  // Módulos según los paquetes comprados y el giro:
   //   POS completo → módulos base del punto de venta
   //   Rastreador   → módulo repartidores (si no lo compró, la sección no aparece)
+  //   Giro         → enciende/apaga lo que aplica (ropa: variantes sí, caducidad no)
+  const plantilla = PLANTILLAS_GIRO[tipoNegocio]
   const modulos: ModulosConfig = {
     fiados:              paqPos,
     granel:              paqPos,
@@ -84,9 +93,15 @@ export async function crearClienteAction(
     clientes_frecuentes: paqPos,
     proveedores:         paqPos,
     metas:               paqPos,
+    caducidad:           paqPos,
     repartidores:        paqRastreador,
-    variantes:           false, // se activa por giro (ropa) o desde Módulos
+    variantes:           false,
   }
+  if (plantilla && paqPos) {
+    for (const m of plantilla.modulosOn) modulos[m] = true
+    for (const m of plantilla.modulosOff) modulos[m] = false
+  }
+  void MODULOS_DEFAULT
 
   // Crear el negocio (service role bypasea RLS).
   // plan 'compra' = pago único; suscripcion_inicio guarda la fecha de compra.
@@ -100,6 +115,7 @@ export async function crearClienteAction(
       nombre_dueno:  nombreDueno,
       telefono_dueno: telefono,
       ubicacion,
+      tipo_negocio: tipoNegocio,
       plan: 'compra',
       suscripcion_inicio: hoy,
       modulos_habilitados: modulos,
@@ -117,6 +133,20 @@ export async function crearClienteAction(
     .insert({ negocio_id: negocio.id, user_id: userId, rol: 'dueno' })
 
   if (rolError) return { error: 'No se pudo vincular al dueño con el negocio. Intenta de nuevo.' }
+
+  // ── Siembra inicial (antes solo la hacía crear_negocio() del flujo self-serve) ──
+  await service.from('metodos_pago').insert(
+    METODOS_PAGO_ESTANDAR.map((nombre) => ({ negocio_id: negocio.id, nombre })),
+  )
+  const gastos = [...CATEGORIAS_GASTO_ESTANDAR, ...(plantilla?.categoriasGastoExtra ?? [])]
+  await service.from('categorias_gasto').insert(
+    gastos.map((nombre, i) => ({ negocio_id: negocio.id, nombre, orden: i + 1 })),
+  )
+  if (plantilla && plantilla.categoriasProducto.length > 0) {
+    await service.from('categorias_producto').insert(
+      plantilla.categoriasProducto.map((nombre) => ({ negocio_id: negocio.id, nombre })),
+    )
+  }
 
   revalidatePath('/superadmin/negocios')
   revalidatePath('/superadmin')

@@ -250,6 +250,7 @@ export default function NavBar({
   const analisisLinks = isDueno ? ANALISIS_DUENO.filter((l) => {
     if (l.href === '/turnos')  return modulos.turnos
     if (l.href === '/plazas')  return modulos.multi_plaza
+    if (l.href === '/caducidad') return modulos.caducidad
     return true
   }) : null
   const showConfig = isDueno

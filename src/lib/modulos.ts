@@ -23,6 +23,7 @@ export const getModulos = cache(async (): Promise<ModulosConfig> => {
     metas:               raw.metas               ?? true,
     repartidores:        raw.repartidores        ?? false,
     variantes:           raw.variantes           ?? false,
+    caducidad:           raw.caducidad           ?? true,
   }
 })
 

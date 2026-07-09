@@ -12,6 +12,7 @@ export const TIPOS_NEGOCIO = {
   tortilleria: { label: 'Tortillería', emoji: '🫓' },
   panaderia:   { label: 'Panadería',   emoji: '🥐' },
   verduleria:  { label: 'Verdulería',  emoji: '🥬' },
+  ropa:        { label: 'Ropa y calzado', emoji: '👕' },
   otro:        { label: 'Otro',        emoji: '🏬' },
 } as const
 
