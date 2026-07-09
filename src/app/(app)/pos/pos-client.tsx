@@ -15,6 +15,14 @@ import { esGranel, formatCantidad, stepCantidad, minCantidad } from '@/lib/unida
 import { EstatusCliente } from '@/components/estatus-cliente'
 import MuestreoForm from './muestreo-form'
 
+export type Variante = {
+  id: string
+  valor1: string
+  valor2: string | null
+  existencias: number
+  codigo_barras: string | null
+}
+
 export type Producto = {
   id: string
   nombre: string
@@ -24,6 +32,10 @@ export type Producto = {
   categoria_id: string | null
   codigo_barras: string | null
   unidad_medida: string
+  tiene_variantes: boolean
+  atributo1: string | null
+  atributo2: string | null
+  variantes: Variante[]
 }
 
 type PrecioEspecial = { tipo: 'porcentaje' | 'monto_fijo'; valor: number }
@@ -40,7 +52,12 @@ export type MetodoPago = { id: string; nombre: string }
 export type ListaPrecio = { id: string; nombre: string; items: Record<string, number> }
 
 type ItemCarrito = {
+  /** productoId + '|' + varianteId — identidad única de la línea */
+  lineaId: string
   productoId: string
+  varianteId: string | null
+  varianteTexto: string | null
+  maxStock: number
   nombre: string
   precio: number
   cantidad: number
@@ -93,6 +110,9 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
       }),
     )
   }
+
+  // Variantes: popup de talla/color al tocar producto
+  const [variantePendiente, setVariantePendiente] = useState<Producto | null>(null)
 
   // Granel: popup de cantidad al tocar producto
   const [granelPendiente, setGranelPendiente] = useState<Producto | null>(null)
@@ -162,26 +182,35 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
 
   function agregarProducto(producto: Producto) {
     if (producto.existencias <= 0) return
+    if (producto.tiene_variantes) {
+      setVariantePendiente(producto)
+      return
+    }
     if (esGranel(producto.unidad_medida)) {
       setGranelPendiente(producto)
       setGranelCantidad('')
       return
     }
+    const lineaId = `${producto.id}|`
     setCarrito((prev) => {
-      const existe = prev.find((i) => i.productoId === producto.id)
+      const existe = prev.find((i) => i.lineaId === lineaId)
       if (existe) {
         if (existe.cantidad >= producto.existencias) {
           mostrarAlertaStock(`Solo quedan ${formatCantidad(Number(producto.existencias), producto.unidad_medida)} de ${producto.nombre}`)
           return prev
         }
         return prev.map((i) =>
-          i.productoId === producto.id ? { ...i, cantidad: i.cantidad + 1 } : i,
+          i.lineaId === lineaId ? { ...i, cantidad: i.cantidad + 1 } : i,
         )
       }
       return [
         ...prev,
         {
+          lineaId,
           productoId: producto.id,
+          varianteId: null,
+          varianteTexto: null,
+          maxStock: Number(producto.existencias),
           nombre: producto.nombre,
           precio: getPrecioEfectivo(producto),
           cantidad: 1,
@@ -192,21 +221,58 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
     })
   }
 
+  function agregarVariante(producto: Producto, v: Variante) {
+    if (v.existencias <= 0) return
+    const lineaId = `${producto.id}|${v.id}`
+    const texto = v.valor2 ? `${v.valor1} / ${v.valor2}` : v.valor1
+    setCarrito((prev) => {
+      const existe = prev.find((i) => i.lineaId === lineaId)
+      if (existe) {
+        if (existe.cantidad >= v.existencias) {
+          mostrarAlertaStock(`Solo quedan ${v.existencias} de ${producto.nombre} (${texto})`)
+          return prev
+        }
+        return prev.map((i) => (i.lineaId === lineaId ? { ...i, cantidad: i.cantidad + 1 } : i))
+      }
+      return [
+        ...prev,
+        {
+          lineaId,
+          productoId: producto.id,
+          varianteId: v.id,
+          varianteTexto: texto,
+          maxStock: Number(v.existencias),
+          nombre: producto.nombre,
+          precio: getPrecioEfectivo(producto),
+          cantidad: 1,
+          fiado: false,
+          unidad: producto.unidad_medida,
+        },
+      ]
+    })
+    setVariantePendiente(null)
+  }
+
   function confirmarGranel() {
     if (!granelPendiente) return
     const cantidad = parseFloat(granelCantidad)
     if (isNaN(cantidad) || cantidad <= 0) return
+    const lineaGranel = `${granelPendiente.id}|`
     setCarrito((prev) => {
-      const existe = prev.find((i) => i.productoId === granelPendiente.id)
+      const existe = prev.find((i) => i.lineaId === lineaGranel)
       if (existe) {
         return prev.map((i) =>
-          i.productoId === granelPendiente.id ? { ...i, cantidad: i.cantidad + cantidad } : i,
+          i.lineaId === lineaGranel ? { ...i, cantidad: i.cantidad + cantidad } : i,
         )
       }
       return [
         ...prev,
         {
+          lineaId: lineaGranel,
           productoId: granelPendiente.id,
+          varianteId: null,
+          varianteTexto: null,
+          maxStock: Number(granelPendiente.existencias),
           nombre: granelPendiente.nombre,
           precio: getPrecioEfectivo(granelPendiente),
           cantidad,
@@ -219,9 +285,9 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
     setGranelCantidad('')
   }
 
-  function toggleFiadoItem(productoId: string) {
+  function toggleFiadoItem(lineaId: string) {
     setCarrito((prev) =>
-      prev.map((i) => (i.productoId === productoId ? { ...i, fiado: !i.fiado } : i)),
+      prev.map((i) => (i.lineaId === lineaId ? { ...i, fiado: !i.fiado } : i)),
     )
   }
 
@@ -232,33 +298,28 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
     })
   }
 
-  function cambiarCantidad(productoId: string, delta: number) {
+  function cambiarCantidad(lineaId: string, delta: number) {
     setCarrito((prev) => {
-      const item = prev.find((i) => i.productoId === productoId)
+      const item = prev.find((i) => i.lineaId === lineaId)
       if (!item) return prev
       const nueva = item.cantidad + delta
-      if (nueva <= 0) return prev.filter((i) => i.productoId !== productoId)
-      if (delta > 0) {
-        const prod = productos.find((p) => p.id === productoId)
-        if (prod && nueva > prod.existencias) {
-          mostrarAlertaStock(`Solo quedan ${formatCantidad(Number(prod.existencias), prod.unidad_medida)} de ${prod.nombre}`)
-          return prev.map((i) => (i.productoId === productoId ? { ...i, cantidad: prod.existencias } : i))
-        }
+      if (nueva <= 0) return prev.filter((i) => i.lineaId !== lineaId)
+      if (delta > 0 && nueva > item.maxStock) {
+        mostrarAlertaStock(`Solo quedan ${formatCantidad(item.maxStock, item.unidad)} de ${item.nombre}${item.varianteTexto ? ` (${item.varianteTexto})` : ''}`)
+        return prev.map((i) => (i.lineaId === lineaId ? { ...i, cantidad: item.maxStock } : i))
       }
-      return prev.map((i) => (i.productoId === productoId ? { ...i, cantidad: nueva } : i))
+      return prev.map((i) => (i.lineaId === lineaId ? { ...i, cantidad: nueva } : i))
     })
   }
 
-  function setCantidadDirecta(productoId: string, valor: number) {
+  function setCantidadDirecta(lineaId: string, valor: number) {
     setCarrito((prev) => {
-      const item = prev.find((i) => i.productoId === productoId)
+      const item = prev.find((i) => i.lineaId === lineaId)
       if (!item) return prev
-      const prod = productos.find((p) => p.id === productoId)
-      const maxStock = prod ? Number(prod.existencias) : Infinity
       const nueva = esGranel(item.unidad)
-        ? Math.min(maxStock, Math.max(minCantidad(item.unidad), valor || minCantidad(item.unidad)))
-        : Math.min(maxStock, Math.max(1, Math.floor(valor) || 1))
-      return prev.map((i) => (i.productoId === productoId ? { ...i, cantidad: nueva } : i))
+        ? Math.min(item.maxStock, Math.max(minCantidad(item.unidad), valor || minCantidad(item.unidad)))
+        : Math.min(item.maxStock, Math.max(1, Math.floor(valor) || 1))
+      return prev.map((i) => (i.lineaId === lineaId ? { ...i, cantidad: nueva } : i))
     })
   }
 
@@ -279,6 +340,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
         return { ...item, precioBase, precioEsp, ahorro, margen }
       })
       .filter(Boolean) as {
+        lineaId: string
         productoId: string
         nombre: string
         cantidad: number
@@ -373,7 +435,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
 
     setProcesando(true)
     const result = await registrarVentaAction({
-      items: carrito.map((i) => ({ producto_id: i.productoId, cantidad: i.cantidad, es_fiado: i.fiado })),
+      items: carrito.map((i) => ({ producto_id: i.productoId, variante_id: i.varianteId, cantidad: i.cantidad, es_fiado: i.fiado })),
       metodo_pago_id: metodoPagoId,
       pago_recibido: esEfectivo && pagoRecibido.trim() ? pagoEnCentavos : null,
       descuento: descuentoCentavos,
@@ -385,7 +447,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
       setErrorVenta(result.error)
     } else {
       setUltimaVenta({
-        items: carrito.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, fiado: i.fiado, unidad: i.unidad })),
+        items: carrito.map((i) => ({ nombre: i.varianteTexto ? `${i.nombre} (${i.varianteTexto})` : i.nombre, cantidad: i.cantidad, precio: i.precio, fiado: i.fiado, unidad: i.unidad })),
         total: effectiveTotal,
         metodoPagoNombre,
         cambio: esEfectivo && effectiveCambio !== null && effectiveCambio > 0 ? effectiveCambio : null,
@@ -577,7 +639,10 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
               {productosFiltrados.map((producto) => {
                 const sinStock = producto.existencias <= 0
-                const enCarrito = carrito.find((i) => i.productoId === producto.id)
+                const cantidadEnCarrito = carrito
+                  .filter((i) => i.productoId === producto.id)
+                  .reduce((s, i) => s + i.cantidad, 0)
+                const enCarrito = cantidadEnCarrito > 0
                 const categoria = categorias.find((c) => c.id === producto.categoria_id)
                 const colorCat = getColorCategoria(categoria?.color)
                 return (
@@ -598,7 +663,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                     )}
                     {enCarrito && (
                       <span className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-sm">
-                        {enCarrito.cantidad}
+                        {cantidadEnCarrito}
                       </span>
                     )}
                     {colorCat && (
@@ -664,10 +729,13 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
           <>
             <div className="divide-y divide-border/50 md:flex-1 md:overflow-y-auto">
               {carrito.map((item) => (
-                <div key={item.productoId} className="space-y-1.5 px-4 py-3">
+                <div key={item.lineaId} className="space-y-1.5 px-4 py-3">
                   <div className="flex items-center gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium leading-tight">{item.nombre}</p>
+                      {item.varianteTexto && (
+                        <p className="text-xs font-semibold text-primary">{item.varianteTexto}</p>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         {formatMXN(item.precio)}/{item.unidad}
                       </p>
@@ -676,7 +744,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                       {!esGranel(item.unidad) ? (
                         <>
                           <button
-                            onClick={() => cambiarCantidad(item.productoId, -1)}
+                            onClick={() => cambiarCantidad(item.lineaId, -1)}
                             className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background hover:bg-muted active:scale-95 transition-all"
                           >
                             <Minus className="h-3.5 w-3.5" />
@@ -686,12 +754,12 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                             min="1"
                             step="1"
                             value={item.cantidad}
-                            onChange={(e) => setCantidadDirecta(item.productoId, parseInt(e.target.value, 10))}
+                            onChange={(e) => setCantidadDirecta(item.lineaId, parseInt(e.target.value, 10))}
                             onFocus={(e) => e.target.select()}
                             className="w-12 rounded-md border bg-background py-1 text-center text-sm font-bold outline-none focus:ring-2 focus:ring-ring"
                           />
                           <button
-                            onClick={() => cambiarCantidad(item.productoId, 1)}
+                            onClick={() => cambiarCantidad(item.lineaId, 1)}
                             className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background hover:bg-muted active:scale-95 transition-all"
                           >
                             <Plus className="h-3.5 w-3.5" />
@@ -704,7 +772,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                             min={minCantidad(item.unidad)}
                             step={stepCantidad(item.unidad)}
                             value={item.cantidad}
-                            onChange={(e) => setCantidadDirecta(item.productoId, parseFloat(e.target.value))}
+                            onChange={(e) => setCantidadDirecta(item.lineaId, parseFloat(e.target.value))}
                             onFocus={(e) => e.target.select()}
                             className="w-16 rounded-md border bg-background py-1 text-center text-sm font-bold outline-none focus:ring-2 focus:ring-ring"
                           />
@@ -720,7 +788,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                     <input
                       type="checkbox"
                       checked={item.fiado}
-                      onChange={() => toggleFiadoItem(item.productoId)}
+                      onChange={() => toggleFiadoItem(item.lineaId)}
                       className="h-4 w-4 rounded accent-primary"
                     />
                     Fiar este producto
@@ -755,6 +823,57 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
       </div>
 
       {/* ── Modal granel: captura de peso/volumen ── */}
+      {/* Selector de variante (talla/color) */}
+      {variantePendiente && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setVariantePendiente(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-card p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-lg font-bold">{variantePendiente.nombre}</p>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Elige {variantePendiente.atributo1?.toLowerCase() || 'variante'}
+              {variantePendiente.atributo2 ? ` y ${variantePendiente.atributo2.toLowerCase()}` : ''}
+            </p>
+            <div className="grid max-h-80 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
+              {variantePendiente.variantes.map((v) => {
+                const agotada = v.existencias <= 0
+                return (
+                  <button
+                    key={v.id}
+                    onClick={() => agregarVariante(variantePendiente, v)}
+                    disabled={agotada}
+                    className={cn(
+                      'rounded-xl border border-border p-3 text-center transition-all',
+                      agotada
+                        ? 'cursor-not-allowed opacity-40'
+                        : 'hover:border-primary hover:bg-primary/5 active:scale-95',
+                    )}
+                  >
+                    <p className="text-base font-bold leading-tight">
+                      {v.valor1}
+                      {v.valor2 ? ` / ${v.valor2}` : ''}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {agotada ? 'Agotado' : `${v.existencias} disp.`}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+            <button
+              onClick={() => setVariantePendiente(null)}
+              className="mt-4 w-full rounded-xl border border-border py-2.5 text-sm font-medium hover:bg-muted"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
       {granelPendiente && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-xs space-y-4 rounded-2xl bg-background p-6 shadow-2xl">
@@ -935,7 +1054,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                     Precios especiales para {clienteSeleccionado?.nombre}
                   </p>
                   {itemsConEspecial.map((item) => (
-                    <div key={item.productoId} className="space-y-0.5">
+                    <div key={item.lineaId} className="space-y-0.5">
                       <p className="text-xs font-medium truncate">{item.nombre}</p>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
                         <span className="text-muted-foreground line-through">{formatMXN(item.precioBase)}</span>

@@ -84,6 +84,8 @@ async function resolverCategoria(
   return { categoria_id: data.id }
 }
 
+type VarianteCapturada = { valor1: string; valor2: string | null; cantidad: number }
+
 export async function crearProductoAction(
   _prev: ProductoState,
   formData: FormData,
@@ -91,20 +93,51 @@ export async function crearProductoAction(
   const resultado = validarFormProducto(formData)
   if ('error' in resultado) return resultado
 
-  const tipo_caducidad = formData.get('tipo_caducidad') as string
-  if (tipo_caducidad !== 'envasado' && tipo_caducidad !== 'fresco') {
+  // ── Variantes (talla/color) — sustituyen al lote inicial manual ────────────
+  const conVariantes = formData.get('con_variantes') === 'on'
+  let variantes: VarianteCapturada[] = []
+  let atributo1: string | null = null
+  let atributo2: string | null = null
+  if (conVariantes) {
+    atributo1 = (formData.get('atributo1') as string)?.trim() || null
+    atributo2 = (formData.get('atributo2') as string)?.trim() || null
+    if (!atributo1) return { error: 'Escribe el nombre del atributo (p. ej. Talla)' }
+    try {
+      variantes = JSON.parse((formData.get('variantes_json') as string) || '[]')
+    } catch {
+      return { error: 'No se pudo leer las variantes' }
+    }
+    variantes = variantes.filter((v) => v.valor1?.trim())
+    if (variantes.length === 0) {
+      return { error: 'Agrega al menos una variante' }
+    }
+    const combos = new Set(variantes.map((v) => `${v.valor1.trim().toLowerCase()}|${(v.valor2 ?? '').trim().toLowerCase()}`))
+    if (combos.size !== variantes.length) {
+      return { error: 'Hay variantes repetidas' }
+    }
+    if (variantes.some((v) => v.cantidad < 0 || !Number.isFinite(v.cantidad))) {
+      return { error: 'Cantidad inválida en una variante' }
+    }
+  }
+
+  let tipo_caducidad = formData.get('tipo_caducidad') as string
+  if (conVariantes) {
+    tipo_caducidad = 'envasado' // ropa y similares: sin manejo de caducidad
+  } else if (tipo_caducidad !== 'envasado' && tipo_caducidad !== 'fresco') {
     return { error: 'Selecciona el tipo de manejo del producto' }
   }
 
   let lotes: LoteCapturado[] = []
-  try {
-    lotes = JSON.parse((formData.get('lotes_json') as string) || '[]')
-  } catch {
-    return { error: 'No se pudo leer la información del lote inicial' }
-  }
-  lotes = lotes.filter((l) => l.cantidad > 0)
-  if (lotes.length === 0) {
-    return { error: 'Agrega al menos un lote con cantidad mayor a 0' }
+  if (!conVariantes) {
+    try {
+      lotes = JSON.parse((formData.get('lotes_json') as string) || '[]')
+    } catch {
+      return { error: 'No se pudo leer la información del lote inicial' }
+    }
+    lotes = lotes.filter((l) => l.cantidad > 0)
+    if (lotes.length === 0) {
+      return { error: 'Agrega al menos un lote con cantidad mayor a 0' }
+    }
   }
 
   const negocio = await getNegocioActual()
@@ -123,31 +156,84 @@ export async function crearProductoAction(
       negocio_id: negocio.id,
       tipo_caducidad,
       existencias: 0,
+      tiene_variantes: conVariantes,
+      atributo1: conVariantes ? atributo1 : null,
+      atributo2: conVariantes ? atributo2 : null,
     })
     .select('id')
     .single()
 
   if (error || !producto) return { error: 'No se pudo guardar el producto. Intenta de nuevo.' }
 
-  const { error: errorLotes } = await supabase.from('lotes_producto').insert(
-    lotes.map((l) => ({
-      negocio_id: negocio.id,
-      producto_id: producto.id,
-      cantidad: l.cantidad,
-      cantidad_actual: l.cantidad,
-      cantidad_bruta: l.cantidad_bruta ?? null,
-      fecha_recepcion: l.fecha_recepcion,
-      hora_recepcion: l.hora_recepcion,
-      ubicacion: l.ubicacion,
-      fecha_caducidad: l.fecha_caducidad,
-      notas: l.notas,
-      notas_merma: l.notas_merma ?? null,
-    })),
-  )
+  if (conVariantes) {
+    // Crear variantes; su existencia inicial entra como un lote por variante
+    const { data: varsCreadas, error: errorVars } = await supabase
+      .from('variantes_producto')
+      .insert(
+        variantes.map((v) => ({
+          negocio_id: negocio.id,
+          producto_id: producto.id,
+          valor1: v.valor1.trim(),
+          valor2: v.valor2?.trim() || null,
+        })),
+      )
+      .select('id, valor1, valor2')
 
-  if (errorLotes) {
-    await supabase.from('productos').delete().eq('id', producto.id)
-    return { error: 'No se pudo registrar el lote inicial. Intenta de nuevo.' }
+    if (errorVars || !varsCreadas) {
+      await supabase.from('productos').delete().eq('id', producto.id)
+      return { error: 'No se pudieron crear las variantes. Intenta de nuevo.' }
+    }
+
+    const hoyMx = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
+    const lotesVariantes = varsCreadas
+      .map((vc) => {
+        const cap = variantes.find(
+          (v) => v.valor1.trim() === vc.valor1 && (v.valor2?.trim() || null) === vc.valor2,
+        )
+        return { variante_id: vc.id, cantidad: cap?.cantidad ?? 0 }
+      })
+      .filter((l) => l.cantidad > 0)
+
+    if (lotesVariantes.length > 0) {
+      const { error: errorLotesVar } = await supabase.from('lotes_producto').insert(
+        lotesVariantes.map((l) => ({
+          negocio_id: negocio.id,
+          producto_id: producto.id,
+          variante_id: l.variante_id,
+          cantidad: l.cantidad,
+          cantidad_actual: l.cantidad,
+          fecha_recepcion: hoyMx,
+          ubicacion: 'ambiente',
+          fecha_caducidad: null,
+          notas: 'Existencia inicial de la variante',
+        })),
+      )
+      if (errorLotesVar) {
+        await supabase.from('productos').delete().eq('id', producto.id)
+        return { error: 'No se pudo registrar la existencia inicial de las variantes.' }
+      }
+    }
+  } else {
+    const { error: errorLotes } = await supabase.from('lotes_producto').insert(
+      lotes.map((l) => ({
+        negocio_id: negocio.id,
+        producto_id: producto.id,
+        cantidad: l.cantidad,
+        cantidad_actual: l.cantidad,
+        cantidad_bruta: l.cantidad_bruta ?? null,
+        fecha_recepcion: l.fecha_recepcion,
+        hora_recepcion: l.hora_recepcion,
+        ubicacion: l.ubicacion,
+        fecha_caducidad: l.fecha_caducidad,
+        notas: l.notas,
+        notas_merma: l.notas_merma ?? null,
+      })),
+    )
+
+    if (errorLotes) {
+      await supabase.from('productos').delete().eq('id', producto.id)
+      return { error: 'No se pudo registrar el lote inicial. Intenta de nuevo.' }
+    }
   }
 
   revalidatePath('/productos')

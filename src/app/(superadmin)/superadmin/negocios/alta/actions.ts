@@ -85,6 +85,7 @@ export async function crearClienteAction(
     proveedores:         paqPos,
     metas:               paqPos,
     repartidores:        paqRastreador,
+    variantes:           false, // se activa por giro (ropa) o desde Módulos
   }
 
   // Crear el negocio (service role bypasea RLS).

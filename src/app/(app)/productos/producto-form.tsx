@@ -17,12 +17,18 @@ type CategoriaPerecedero = {
   dias_ambiente: number | null
 }
 
+type VarianteFila = { valor1: string; valor2: string; cantidad: string }
+
 type ProductoFormProps = {
   action: (prev: ProductoState, formData: FormData) => Promise<ProductoState>
   categorias: Categoria[]
   categoriasPerecedero?: CategoriaPerecedero[]
   hoy?: string
   titulo: string
+  /** true si el negocio tiene el módulo de variantes (giros tipo ropa) */
+  moduloVariantes?: boolean
+  /** variantes existentes, solo para mostrar al editar */
+  variantesActuales?: { valor1: string; valor2: string | null; existencias: number }[]
   inicial?: {
     id?: string
     nombre?: string
@@ -34,6 +40,9 @@ type ProductoFormProps = {
     activo?: boolean
     unidad_medida?: string
     tara?: number | null
+    tiene_variantes?: boolean
+    atributo1?: string | null
+    atributo2?: string | null
   }
 }
 
@@ -43,12 +52,27 @@ export default function ProductoForm({
   categoriasPerecedero = [],
   hoy = '',
   titulo,
+  moduloVariantes = false,
+  variantesActuales = [],
   inicial = {},
 }: ProductoFormProps) {
   const [state, formAction, pending] = useActionState(action, null)
   const [tipoCaducidad, setTipoCaducidad] = useState<'envasado' | 'fresco'>('envasado')
   const [unidadMedida, setUnidadMedida] = useState(inicial.unidad_medida ?? 'pieza')
+  const [conVariantes, setConVariantes] = useState(inicial.tiene_variantes ?? false)
+  const [atributo1, setAtributo1] = useState(inicial.atributo1 ?? 'Talla')
+  const [atributo2, setAtributo2] = useState(inicial.atributo2 ?? 'Color')
+  const [usaAtributo2, setUsaAtributo2] = useState(
+    inicial.id ? Boolean(inicial.atributo2) : true,
+  )
+  const [filas, setFilas] = useState<VarianteFila[]>([
+    { valor1: '', valor2: '', cantidad: '' },
+  ])
   const esNuevo = !inicial.id
+
+  function setFila(i: number, campo: keyof VarianteFila, valor: string) {
+    setFilas((f) => f.map((row, idx) => (idx === i ? { ...row, [campo]: valor } : row)))
+  }
 
   return (
     <div className="mx-auto max-w-lg">
@@ -192,8 +216,151 @@ export default function ProductoForm({
           />
         </div>
 
+        {/* Variantes (talla/color) — solo con el módulo activo */}
+        {moduloVariantes && esNuevo && (
+          <div className="flex flex-col gap-3 rounded-xl border border-input p-4">
+            <label className="flex cursor-pointer items-center gap-3">
+              <input
+                name="con_variantes"
+                type="checkbox"
+                checked={conVariantes}
+                onChange={(e) => setConVariantes(e.target.checked)}
+                className="h-5 w-5 rounded border-input accent-primary"
+              />
+              <span className="text-sm font-medium">
+                Este producto tiene variantes (tallas, colores…)
+              </span>
+            </label>
+
+            {conVariantes && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Atributo 1 *</label>
+                    <input
+                      name="atributo1"
+                      value={atributo1}
+                      onChange={(e) => setAtributo1(e.target.value)}
+                      placeholder="Talla"
+                      className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={usaAtributo2}
+                        onChange={(e) => setUsaAtributo2(e.target.checked)}
+                        className="h-3.5 w-3.5 accent-primary"
+                      />
+                      Atributo 2 (opcional)
+                    </label>
+                    <input
+                      name="atributo2"
+                      value={usaAtributo2 ? atributo2 : ''}
+                      onChange={(e) => setAtributo2(e.target.value)}
+                      disabled={!usaAtributo2}
+                      placeholder="Color"
+                      className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-40"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <div className="grid grid-cols-[1fr_1fr_5.5rem_2rem] items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <span>{atributo1 || 'Atributo 1'}</span>
+                    <span>{usaAtributo2 ? atributo2 || 'Atributo 2' : ''}</span>
+                    <span>Cantidad</span>
+                    <span />
+                  </div>
+                  {filas.map((fila, i) => (
+                    <div key={i} className="grid grid-cols-[1fr_1fr_5.5rem_2rem] items-center gap-2">
+                      <input
+                        value={fila.valor1}
+                        onChange={(e) => setFila(i, 'valor1', e.target.value)}
+                        placeholder="M"
+                        className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <input
+                        value={fila.valor2}
+                        onChange={(e) => setFila(i, 'valor2', e.target.value)}
+                        disabled={!usaAtributo2}
+                        placeholder="Rojo"
+                        className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-40"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={fila.cantidad}
+                        onChange={(e) => setFila(i, 'cantidad', e.target.value)}
+                        placeholder="0"
+                        className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFilas((f) => f.filter((_, idx) => idx !== i))}
+                        disabled={filas.length === 1}
+                        className="text-lg text-muted-foreground hover:text-destructive disabled:opacity-30"
+                        aria-label="Quitar variante"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setFilas((f) => [...f, { valor1: '', valor2: '', cantidad: '' }])}
+                    className="self-start rounded-lg border border-dashed border-input px-3 py-1.5 text-sm text-muted-foreground hover:border-primary hover:text-primary"
+                  >
+                    + Agregar variante
+                  </button>
+                </div>
+
+                <input
+                  type="hidden"
+                  name="variantes_json"
+                  value={JSON.stringify(
+                    filas
+                      .filter((f) => f.valor1.trim())
+                      .map((f) => ({
+                        valor1: f.valor1.trim(),
+                        valor2: usaAtributo2 ? f.valor2.trim() || null : null,
+                        cantidad: Number(f.cantidad) || 0,
+                      })),
+                  )}
+                />
+                <p className="text-xs text-muted-foreground">
+                  El inventario se lleva por variante. La cantidad es la existencia inicial de cada una.
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Variantes existentes (al editar): solo lectura */}
+        {!esNuevo && inicial.tiene_variantes && (
+          <div className="flex flex-col gap-2 rounded-xl border border-input p-4">
+            <p className="text-sm font-medium">
+              Variantes ({inicial.atributo1}
+              {inicial.atributo2 ? ` / ${inicial.atributo2}` : ''})
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {variantesActuales.map((v, i) => (
+                <span key={i} className="rounded-full bg-secondary px-3 py-1 text-xs">
+                  {v.valor1}
+                  {v.valor2 ? ` / ${v.valor2}` : ''} · {v.existencias}
+                </span>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Para agregar existencias a una variante usa &quot;Agregar lote&quot; desde la lista de productos.
+            </p>
+          </div>
+        )}
+
         {/* Existencias / lotes */}
-        {esNuevo ? (
+        {conVariantes && esNuevo ? null : esNuevo ? (
           <>
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium">

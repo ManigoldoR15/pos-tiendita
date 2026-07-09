@@ -13,6 +13,8 @@ import { esGranel, formatCantidad, stepCantidad, minCantidad } from '@/lib/unida
 
 type Item = {
   productoId: string
+  varianteId: string | null
+  varianteTexto: string | null
   nombre: string
   precio: number
   cantidad: number
@@ -114,12 +116,57 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
   })
 
   const agregarPorBarcode = useCallback((codigo: string) => {
+    // 1) Código de una variante (talla/color) — se agrega esa variante directo
+    for (const p of productos) {
+      const v = p.variantes?.find(
+        (vv) => vv.codigo_barras && vv.codigo_barras.trim() === codigo.trim(),
+      )
+      if (v) {
+        if (v.existencias <= 0) {
+          setScanError(`Sin stock: ${p.nombre} (${v.valor1}${v.valor2 ? ` / ${v.valor2}` : ''})`)
+          setTimeout(() => setScanError(''), 2500)
+          return
+        }
+        const texto = v.valor2 ? `${v.valor1} / ${v.valor2}` : v.valor1
+        setScanError('')
+        setTicket((prev) => {
+          const idx = prev.findIndex((i) => i.varianteId === v.id)
+          if (idx >= 0) {
+            const next = [...prev]
+            if (next[idx].cantidad >= v.existencias) {
+              setScanError(`Sin stock suficiente para ${p.nombre} (${texto})`)
+              setTimeout(() => setScanError(''), 2500)
+              return prev
+            }
+            next[idx] = { ...next[idx], cantidad: next[idx].cantidad + 1 }
+            return next
+          }
+          return [...prev, {
+            productoId: p.id,
+            varianteId: v.id,
+            varianteTexto: texto,
+            nombre: p.nombre,
+            precio: p.precio_venta,
+            cantidad: 1,
+            fiado: false,
+            unidad: p.unidad_medida,
+          }]
+        })
+        return
+      }
+    }
+
     const prod = productos.find(
       (p) => p.codigo_barras && p.codigo_barras.trim() === codigo.trim() && p.existencias > 0,
     )
     if (!prod) {
       setScanError(`Código no encontrado: ${codigo}`)
       setTimeout(() => setScanError(''), 2500)
+      return
+    }
+    if (prod.tiene_variantes) {
+      setScanError(`${prod.nombre} tiene tallas/colores: escanea el código de la variante o usa el modo táctil`)
+      setTimeout(() => setScanError(''), 3500)
       return
     }
     setScanError('')
@@ -144,6 +191,8 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
       }
       return [...prev, {
         productoId: prod.id,
+        varianteId: null,
+        varianteTexto: null,
         nombre: prod.nombre,
         precio: prod.precio_venta,
         cantidad: 1,
@@ -166,6 +215,8 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
       }
       return [...prev, {
         productoId: granelPendiente.id,
+        varianteId: null,
+        varianteTexto: null,
         nombre: granelPendiente.nombre,
         precio: granelPendiente.precio_venta,
         cantidad,
@@ -283,7 +334,7 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
     setProcesando(true)
 
     const res = await registrarVentaAction({
-      items: ticket.map((i) => ({ producto_id: i.productoId, cantidad: i.cantidad, es_fiado: i.fiado })),
+      items: ticket.map((i) => ({ producto_id: i.productoId, variante_id: i.varianteId, cantidad: i.cantidad, es_fiado: i.fiado })),
       metodo_pago_id: metodoPagoId,
       pago_recibido: pagoNum > 0 ? pagoNum : null,
       descuento: 0,
@@ -297,7 +348,7 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
     }
 
     setUltimaVenta({
-      items: ticket.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, fiado: i.fiado, unidad: i.unidad })),
+      items: ticket.map((i) => ({ nombre: i.varianteTexto ? `${i.nombre} (${i.varianteTexto})` : i.nombre, cantidad: i.cantidad, precio: i.precio, fiado: i.fiado, unidad: i.unidad })),
       total,
       metodoPagoNombre,
       cambio: cambio !== null && cambio > 0 ? cambio : null,

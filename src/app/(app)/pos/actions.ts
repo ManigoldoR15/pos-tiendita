@@ -6,7 +6,7 @@ import { getRolActual } from '@/lib/rol'
 import { notificar } from '@/lib/notificaciones'
 import { formatMXN } from '@/lib/dinero'
 
-type ItemVenta = { producto_id: string; cantidad: number; es_fiado?: boolean }
+type ItemVenta = { producto_id: string; variante_id?: string | null; cantidad: number; es_fiado?: boolean }
 
 export type ClienteSugerido = {
   id: string
