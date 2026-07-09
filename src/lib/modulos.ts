@@ -24,6 +24,7 @@ export const getModulos = cache(async (): Promise<ModulosConfig> => {
     repartidores:        raw.repartidores        ?? false,
     variantes:           raw.variantes           ?? false,
     caducidad:           raw.caducidad           ?? true,
+    apartados:           raw.apartados           ?? false,
   }
 })
 

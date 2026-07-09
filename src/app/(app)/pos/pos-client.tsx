@@ -8,7 +8,7 @@ import { formatMXN, textoCentavos } from '@/lib/dinero'
 import { cn } from '@/lib/utils'
 import { getColorCategoria } from '@/lib/colores-categoria'
 import TicketImprimible, { imprimirTicket, type DatosTicket } from '@/components/ticket-imprimible'
-import { registrarVentaAction, buscarClientesAction, crearClienteAction, getPreciosEspecialesPOSAction } from './actions'
+import { registrarVentaAction, buscarClientesAction, crearClienteAction, getPreciosEspecialesPOSAction, crearApartadoAction } from './actions'
 import type { ClienteSugerido } from './actions'
 import PosMostrador from './pos-mostrador'
 import { esGranel, formatCantidad, stepCantidad, minCantidad } from '@/lib/unidades'
@@ -66,6 +66,7 @@ type ItemCarrito = {
 }
 
 type Props = {
+  moduloApartados?: boolean
   productos: Producto[]
   categorias: Categoria[]
   metodosPago: MetodoPago[]
@@ -74,7 +75,7 @@ type Props = {
   muestreoPeriodoId: string | null
 }
 
-export default function PosClient({ productos, categorias, metodosPago, negocioNombre, listas, muestreoPeriodoId }: Props) {
+export default function PosClient({ productos, categorias, metodosPago, negocioNombre, listas, muestreoPeriodoId, moduloApartados = false }: Props) {
   const [modo, setModo] = useState<'tactil' | 'mostrador'>('tactil')
   const [carrito, setCarrito] = useState<ItemCarrito[]>([])
   const [busqueda, setBusqueda] = useState('')
@@ -87,6 +88,9 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
   const [procesando, setProcesando] = useState(false)
   const [errorVenta, setErrorVenta] = useState<string | null>(null)
   const [ventaExitosa, setVentaExitosa] = useState(false)
+  const [modoApartado, setModoApartado] = useState(false)
+  const [exitoApartado, setExitoApartado] = useState(false)
+  const [fechaLimite, setFechaLimite] = useState('')
   const [ultimaVenta, setUltimaVenta] = useState<DatosTicket | null>(null)
   const [ultimaVentaId, setUltimaVentaId] = useState<string | null>(null)
   const [muestreoFormVisible, setMuestreoFormVisible] = useState(false)
@@ -379,7 +383,9 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
   const effectiveMontoPagar = Math.max(0, effectiveTotal - effectiveFiado)
   const effectiveCambio = pagoRecibido.trim() ? pagoEnCentavos - effectiveMontoPagar : null
 
-  function abrirCobro() {
+  function abrirCobro(esApartado = false) {
+    setModoApartado(esApartado)
+    setFechaLimite('')
     setErrorVenta(null)
     setPagoRecibido('')
     setDescuentoValor('')
@@ -420,6 +426,33 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
 
   async function confirmarVenta() {
     setErrorVenta(null)
+
+    if (modoApartado) {
+      if (!clienteSeleccionado) {
+        setErrorVenta('Un apartado necesita cliente: búscalo o créalo aquí.')
+        return
+      }
+      setProcesando(true)
+      const result = await crearApartadoAction({
+        cliente_id: clienteSeleccionado.id,
+        items: carrito.map((i) => ({ producto_id: i.productoId, variante_id: i.varianteId, cantidad: i.cantidad })),
+        anticipo: pagoRecibido.trim() ? pagoEnCentavos : 0,
+        metodo_pago_id: metodoPagoId,
+        fecha_limite: fechaLimite || null,
+      })
+      setProcesando(false)
+      if ('error' in result) {
+        setErrorVenta(result.error)
+      } else {
+        setCarrito([])
+        setModalAbierto(false)
+        setPagoRecibido('')
+        setClienteSeleccionado(null)
+        setExitoApartado(true)
+        setTimeout(() => setExitoApartado(false), 8000)
+      }
+      return
+    }
 
     const hayFiadoEfectivo = carrito.some((i) => i.fiado)
     if (hayFiadoEfectivo && !clienteSeleccionado) {
@@ -470,6 +503,18 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
         setTimeout(() => setVentaExitosa(false), 8000)
       }
     }
+  }
+
+  if (exitoApartado) {
+    return (
+      <div className="flex h-96 flex-col items-center justify-center gap-4">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+          <CheckCircle className="h-12 w-12 text-primary" />
+        </div>
+        <p className="text-2xl font-bold">¡Apartado registrado!</p>
+        <p className="text-muted-foreground">La mercancía quedó reservada. Consulta los saldos en Apartados.</p>
+      </div>
+    )
   }
 
   if (ventaExitosa) {
@@ -803,11 +848,20 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                 <span className="text-3xl font-black tracking-tight text-primary">{formatMXN(total)}</span>
               </div>
               <Button
-                onClick={abrirCobro}
+                onClick={() => abrirCobro()}
                 className="w-full h-14 text-lg font-bold shadow-[0_4px_16px_-2px_rgb(0_0_0/0.18)] hover:shadow-[0_6px_20px_-2px_rgb(0_0_0/0.22)] transition-shadow"
               >
                 Cobrar {formatMXN(total)}
               </Button>
+              {moduloApartados && (
+                <Button
+                  variant="outline"
+                  onClick={() => abrirCobro(true)}
+                  className="w-full h-11 font-semibold"
+                >
+                  Apartar con anticipo
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -923,7 +977,21 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
       {modalAbierto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-sm space-y-6 overflow-y-auto rounded-3xl bg-background p-7 shadow-2xl" style={{ maxHeight: 'calc(100svh - 2rem)' }}>
-            <h2 className="text-2xl font-black tracking-tight">Cobrar venta</h2>
+            <h2 className="text-2xl font-black tracking-tight">{modoApartado ? 'Apartar con anticipo' : 'Cobrar venta'}</h2>
+            {modoApartado && (
+              <div className="mt-3 flex flex-col gap-1.5">
+                <label className="text-sm font-medium">Fecha límite (opcional)</label>
+                <input
+                  type="date"
+                  value={fechaLimite}
+                  onChange={(e) => setFechaLimite(e.target.value)}
+                  className="rounded-lg border border-input bg-background px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-ring"
+                />
+                <p className="text-xs text-muted-foreground">
+                  El pago recibido se registra como anticipo; el resto queda como saldo por abonar.
+                </p>
+              </div>
+            )}
 
             {/* Totales */}
             <div className="space-y-1.5 border-b pb-4">
@@ -1273,10 +1341,10 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
               </Button>
               <Button
                 onClick={confirmarVenta}
-                disabled={procesando || (effectiveCambio !== null && effectiveCambio < 0)}
+                disabled={procesando || (!modoApartado && effectiveCambio !== null && effectiveCambio < 0)}
                 className="flex-1 h-12 text-base font-bold"
               >
-                {procesando ? 'Guardando...' : 'Confirmar'}
+                {procesando ? 'Guardando...' : modoApartado ? 'Apartar' : 'Confirmar'}
               </Button>
             </div>
           </div>

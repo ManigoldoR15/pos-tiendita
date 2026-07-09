@@ -2,9 +2,11 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import PosClient from './pos-client'
+import { getModulos } from '@/lib/modulos'
 import { getMuestreoActivoAction } from '@/app/(app)/muestreo/actions'
 
 export default async function PosPage() {
+  const modulos = await getModulos()
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
 
@@ -54,6 +56,7 @@ export default async function PosPage() {
       negocioNombre={negocio.nombre}
       listas={listas}
       muestreoPeriodoId={muestreoActivo?.id ?? null}
+      moduloApartados={modulos.apartados}
     />
   )
 }

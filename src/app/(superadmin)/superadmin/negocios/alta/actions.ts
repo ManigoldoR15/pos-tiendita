@@ -94,6 +94,7 @@ export async function crearClienteAction(
     proveedores:         paqPos,
     metas:               paqPos,
     caducidad:           paqPos,
+    apartados:           false,
     repartidores:        paqRastreador,
     variantes:           false,
   }

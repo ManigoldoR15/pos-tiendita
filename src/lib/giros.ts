@@ -19,7 +19,7 @@ export const PLANTILLAS_GIRO: Partial<Record<string, PlantillaGiro>> = {
   ropa: {
     categoriasProducto: ['Playeras', 'Pantalones', 'Vestidos', 'Chamarras', 'Calzado', 'Accesorios'],
     categoriasGastoExtra: ['Tela e insumos', 'Hilos y mercería', 'Maquila'],
-    modulosOn: ['variantes'],
+    modulosOn: ['variantes', 'apartados'],
     modulosOff: ['caducidad', 'granel'],
   },
   farmacia: {

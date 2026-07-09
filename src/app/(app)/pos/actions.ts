@@ -8,6 +8,28 @@ import { formatMXN } from '@/lib/dinero'
 
 type ItemVenta = { producto_id: string; variante_id?: string | null; cantidad: number; es_fiado?: boolean }
 
+export async function crearApartadoAction(params: {
+  cliente_id: string
+  items: { producto_id: string; variante_id?: string | null; cantidad: number }[]
+  anticipo: number
+  metodo_pago_id: string | null
+  fecha_limite: string | null
+}): Promise<{ apartado_id: string } | { error: string }> {
+  const negocio = await getNegocioActual()
+  if (!negocio) return { error: 'No hay negocio activo' }
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('crear_apartado', {
+    p_negocio_id: negocio.id,
+    p_cliente_id: params.cliente_id,
+    p_items: params.items,
+    p_anticipo: params.anticipo,
+    p_metodo_pago_id: params.metodo_pago_id,
+    p_fecha_limite: params.fecha_limite,
+  })
+  if (error) return { error: error.message }
+  return { apartado_id: data as string }
+}
+
 export type ClienteSugerido = {
   id: string
   nombre: string

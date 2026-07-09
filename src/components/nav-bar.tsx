@@ -31,6 +31,7 @@ const OPERACIONES_DUENO: NavLink[] = [
   { href: '/ventas', label: 'Ventas', Icon: ClipboardList },
   { href: '/clientes', label: 'Clientes', Icon: Users },
   { href: '/fiados', label: 'Fiados', Icon: HandCoins },
+  { href: '/apartados', label: 'Apartados', Icon: HandCoins },
   { href: '/cuadre', label: 'Cuadre', Icon: Scale },
   { href: '/gastos', label: 'Gastos', Icon: Receipt },
   { href: '/compras', label: 'Compras', Icon: ShoppingBag },
@@ -239,6 +240,7 @@ export default function NavBar({
     if (l.href === '/clientes') return modulos.clientes_frecuentes
     if (l.href === '/fiados')   return modulos.fiados
     if (l.href === '/cuadre')   return modulos.granel
+    if (l.href === '/apartados') return modulos.apartados
     if (l.href === '/reparto')  return modulos.repartidores
     if (l.href === '/reparto/entregas') return modulos.repartidores
     return true

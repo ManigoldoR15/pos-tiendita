@@ -12,6 +12,7 @@ export const MODULOS_META = {
   repartidores:        { label: 'Reparto / Flotilla',   desc: 'Mapa en vivo de empleados y repartidores con su ruta del día' },
   variantes:           { label: 'Variantes (talla/color)', desc: 'Productos con tallas, colores u otras variantes — para ropa, calzado, etc.' },
   caducidad:           { label: 'Caducidad y lotes',    desc: 'Alertas de productos por caducar — se apaga en giros sin perecederos (ropa, etc.)' },
+  apartados:           { label: 'Apartados',            desc: 'Separar productos con anticipo y abonos hasta liquidar — típico en ropa' },
 } as const
 
 export type ModuloKey = keyof typeof MODULOS_META
@@ -23,6 +24,7 @@ export const MODULOS_DEFAULT: ModulosConfig = {
   repartidores: false, // add-on de paga — se activa por negocio desde superadmin
   variantes: false, // para giros tipo ropa — se activa por negocio
   caducidad: true,  // encendido salvo giros sin perecederos (ropa, ferretería…)
+  apartados: false, // típico de ropa — se activa por giro o desde superadmin
 }
 
 export const PAQUETES: Record<string, { label: string; modulos: ModuloKey[] }> = {

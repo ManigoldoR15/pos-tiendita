@@ -1,0 +1,25 @@
+-- =============================================================================
+-- 065_apartados.sql — Módulo de apartados (layaway)
+--
+-- APLICADA VIA MCP apply_migration (fuente de verdad: supabase_migrations).
+-- Resumen del contenido aplicado:
+--   Tablas: apartados (negocio, cliente+nombre snapshot, total, estado
+--     activo/liquidado/cancelado, fecha_limite, notas), apartado_items
+--     (producto/variante + snapshots, cantidad, precios), apartado_lotes
+--     (de qué lote salió cada pieza, para restaurar al cancelar),
+--     apartado_abonos (monto, método, quién). RLS por es_miembro_del_negocio
+--     (hijas vía EXISTS al padre).
+--   Funciones SECURITY DEFINER (validan membresía):
+--     crear_apartado(negocio, cliente, items jsonb, anticipo, metodo, fecha
+--       límite, notas): valida stock (por variante si aplica), consume lotes
+--       FEFO registrando apartado_lotes, calcula total, registra anticipo
+--       como abono; si anticipo >= total, liquida.
+--     abonar_apartado(apartado, monto, metodo): abono; al cubrir el total
+--       marca liquidado + cerrado_en.
+--     cancelar_apartado(apartado): devuelve las piezas a sus lotes originales
+--       y marca cancelado.
+--   GRANT EXECUTE a authenticated en las tres.
+--
+-- Para regenerar el SQL exacto: SELECT pg_get_functiondef(oid) FROM pg_proc
+-- WHERE proname IN ('crear_apartado','abonar_apartado','cancelar_apartado');
+-- =============================================================================
