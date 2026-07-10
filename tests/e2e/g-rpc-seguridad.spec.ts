@@ -156,8 +156,6 @@ test.describe('[CRÍTICO] Seguridad DB: RPC y API directa con token de empleado'
     // Cerrar el corte de prueba primero (si está abierto) para poder intentar abrir uno
     // No modificamos el estado real — solo verificamos que el INSERT falla para empleado
     const client = await userSupabase('test-empleado@pos-test.local', TEST_EMPLEADO.password)
-    // Use a fake negocioId for the INSERT attempt to avoid unique constraint conflicts
-    const fakeNegocioId = '00000000-0000-0000-0000-000000000001'
     const { error } = await client
       .from('cortes_caja')
       .insert({ negocio_id: negocioId, abierto_por: '00000000-0000-0000-0000-000000000001', monto_inicial: 0 })
