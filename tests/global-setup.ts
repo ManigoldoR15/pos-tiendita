@@ -7,9 +7,10 @@ import ws from 'ws'
 
 dotenv.config({ path: path.resolve(__dirname, '../.env.local') })
 
-export const TEST_DUENO    = { email: 'test-dueno@pos-test.local',    password: 'Ts!K9sEkq7WbU2PT38V' }
-export const TEST_EMPLEADO = { email: 'test-empleado@pos-test.local', password: 'Ts!N1go_VKjSRLF8A25' }
-export const TEST_ADMIN    = { email: 'test-admin@pos-test.local',    password: 'Ts!PkKQjiqHOH2GPoFJ' }
+export const TEST_DUENO      = { email: 'test-dueno@pos-test.local',      password: 'Ts!K9sEkq7WbU2PT38V' }
+export const TEST_EMPLEADO   = { email: 'test-empleado@pos-test.local',   password: 'Ts!N1go_VKjSRLF8A25' }
+export const TEST_ADMIN      = { email: 'test-admin@pos-test.local',      password: 'Ts!PkKQjiqHOH2GPoFJ' }
+export const TEST_REPARTIDOR = { email: 'test-repartidor@pos-test.local', password: 'Ts!Rp4rT_x93KdQe51' }
 export const TEST_BARCODE  = 'TEST-7501234567890'
 
 const STORAGE_DIR = path.join(__dirname, '.auth')
@@ -38,9 +39,10 @@ export default async function globalSetup() {
     return data.user.id
   }
 
-  const duenoId    = await ensureUser(TEST_DUENO.email,    TEST_DUENO.password)
-  const empleadoId = await ensureUser(TEST_EMPLEADO.email, TEST_EMPLEADO.password)
-  const adminId    = await ensureUser(TEST_ADMIN.email,    TEST_ADMIN.password)
+  const duenoId      = await ensureUser(TEST_DUENO.email,      TEST_DUENO.password)
+  const empleadoId   = await ensureUser(TEST_EMPLEADO.email,   TEST_EMPLEADO.password)
+  const adminId      = await ensureUser(TEST_ADMIN.email,      TEST_ADMIN.password)
+  const repartidorId = await ensureUser(TEST_REPARTIDOR.email, TEST_REPARTIDOR.password)
 
   // ── 2. Ensure dueño has a negocio ────────────────────────────────────────
   const { data: negocioExistente } = await admin
@@ -80,6 +82,22 @@ export default async function globalSetup() {
 
   await ensureMember(empleadoId, 'empleado')
   await ensureMember(adminId, 'administrador')
+  await ensureMember(repartidorId, 'repartidor')
+
+  // ── 3b. Ensure paid add-on modules are ON in the test store ──────────────
+  const { data: negocioRow } = await admin
+    .from('negocios').select('modulos_habilitados').eq('id', negocioId).single()
+  await admin
+    .from('negocios')
+    .update({
+      modulos_habilitados: {
+        ...(negocioRow?.modulos_habilitados ?? {}),
+        repartidores: true,
+        variantes: true,
+        apartados: true,
+      },
+    })
+    .eq('id', negocioId)
 
   // ── 4. Ensure products exist ─────────────────────────────────────────────
   const { data: existingProds } = await admin
@@ -163,16 +181,17 @@ export default async function globalSetup() {
     await ctx.close()
   }
 
-  await saveAuth(TEST_DUENO.email,    TEST_DUENO.password,    'dueno.json')
-  await saveAuth(TEST_EMPLEADO.email, TEST_EMPLEADO.password, 'empleado.json')
-  await saveAuth(TEST_ADMIN.email,    TEST_ADMIN.password,    'admin.json')
+  await saveAuth(TEST_DUENO.email,      TEST_DUENO.password,      'dueno.json')
+  await saveAuth(TEST_EMPLEADO.email,   TEST_EMPLEADO.password,   'empleado.json')
+  await saveAuth(TEST_ADMIN.email,      TEST_ADMIN.password,      'admin.json')
+  await saveAuth(TEST_REPARTIDOR.email, TEST_REPARTIDOR.password, 'repartidor.json')
 
   await browser.close()
 
   // ── 6. Save fixture data ─────────────────────────────────────────────────
   fs.writeFileSync(
     path.join(STORAGE_DIR, 'fixture.json'),
-    JSON.stringify({ negocioId, duenoId, empleadoId, adminId }),
+    JSON.stringify({ negocioId, duenoId, empleadoId, adminId, repartidorId }),
   )
 
   console.log(`[setup] negocioId=${negocioId}, dueño=${duenoId}`)
