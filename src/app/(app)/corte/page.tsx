@@ -25,6 +25,10 @@ export default async function CortePage() {
     .eq('estado', 'abierto')
     .maybeSingle()
 
+  // El embed locales(nombre, color) llega sin tipo generado
+  const localCorte = (corteAbierto as { locales?: { nombre: string; color: string | null } | null } | null)
+    ?.locales ?? null
+
   // Último corte cerrado (para mostrar resumen)
   const { data: ultimoCerrado } = await supabase
     .from('cortes_caja')
@@ -90,10 +94,10 @@ export default async function CortePage() {
           <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 dark:border-green-800/40 dark:bg-green-950/20">
             <div className="h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" />
             <span className="text-sm font-semibold text-green-700 dark:text-green-400">Caja abierta</span>
-            {(corteAbierto as any).locales?.nombre && (
+            {localCorte?.nombre && (
               <span className="flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/40 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">
-                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: (corteAbierto as any).locales?.color ?? '#10b981' }} />
-                {(corteAbierto as any).locales.nombre}
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: localCorte.color ?? '#10b981' }} />
+                {localCorte.nombre}
               </span>
             )}
             <span className="ml-auto text-xs text-green-600 dark:text-green-500">{fmtFecha(corteAbierto.fecha_apertura)}</span>

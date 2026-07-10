@@ -75,7 +75,7 @@ export default async function ClientesPage({
           ) : (
             <>
               <p className="text-muted-foreground">Sin clientes registrados.</p>
-              <p className="text-sm text-muted-foreground">Usa el botón "Nuevo" o créalos desde el POS al cobrar.</p>
+              <p className="text-sm text-muted-foreground">Usa el botón &ldquo;Nuevo&rdquo; o créalos desde el POS al cobrar.</p>
             </>
           )}
         </div>

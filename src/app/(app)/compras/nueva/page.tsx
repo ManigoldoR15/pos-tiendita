@@ -149,7 +149,7 @@ export default async function NuevaCompraPage() {
           </div>
           <div className="border-t px-5 py-3">
             <p className="text-xs text-muted-foreground">
-              La columna "Pedir" se calcula con la velocidad de venta de los últimos 30 días × {DIAS_COBERTURA} días de cobertura.
+              La columna &ldquo;Pedir&rdquo; se calcula con la velocidad de venta de los últimos 30 días × {DIAS_COBERTURA} días de cobertura.
             </p>
           </div>
         </div>

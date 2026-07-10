@@ -175,7 +175,7 @@ export default async function NegocioDetallePage({
       {/* Módulos habilitados */}
       <ModulosForm
         negocioId={n.id}
-        modulosActuales={{ ...MODULOS_DEFAULT, ...((n as any).modulos_habilitados as Partial<ModulosConfig> ?? {}) }}
+        modulosActuales={{ ...MODULOS_DEFAULT, ...((n as { modulos_habilitados?: Partial<ModulosConfig> | null }).modulos_habilitados ?? {}) }}
       />
 
       {/* Licencias */}

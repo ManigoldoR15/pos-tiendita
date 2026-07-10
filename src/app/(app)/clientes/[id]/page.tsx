@@ -77,7 +77,7 @@ export default async function ClienteHubPage({
 
   // Fiados
   const notaIds = (notas ?? []).map((n) => n.venta_id)
-  let itemsPorNota: Map<string, { nombre: string; cantidad: number; precio_unitario: number }[]> = new Map()
+  const itemsPorNota: Map<string, { nombre: string; cantidad: number; precio_unitario: number }[]> = new Map()
 
   if (notaIds.length > 0) {
     const { data: items } = await supabase

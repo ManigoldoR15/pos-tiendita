@@ -90,7 +90,6 @@ export default function GpsTracker({ rastreo = false }: { rastreo?: boolean }) {
         intervaloRef.current = null
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rastreo, enPOS])
 
   if (!mostrarTarjeta || enPOS) return null

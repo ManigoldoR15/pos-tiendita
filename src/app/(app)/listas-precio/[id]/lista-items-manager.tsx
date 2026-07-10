@@ -96,7 +96,7 @@ export default function ListaItemsManager({
       {/* Buscador */}
       <div className="card-soft p-5">
         <p className="mb-3 text-sm font-semibold">
-          Agregar producto a "{listaNombre}"
+          Agregar producto a &ldquo;{listaNombre}&rdquo;
         </p>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
