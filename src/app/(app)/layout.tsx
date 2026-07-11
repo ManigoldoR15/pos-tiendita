@@ -7,6 +7,7 @@ import GpsTracker from '@/components/gps-tracker'
 import { getRolActual } from '@/lib/rol'
 import { isSuperAdmin } from '@/lib/superadmin'
 import { getModulos } from '@/lib/modulos'
+import { accesoBloqueadoPorPago } from '@/lib/suscripcion'
 
 export default async function AppLayout({
   children,
@@ -16,6 +17,8 @@ export default async function AppLayout({
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
   if (negocio.suspendido) redirect('/cuenta-suspendida')
+  // Suscripción vencida sin pago (con gracia ya agotada): a la pantalla de pago.
+  if (accesoBloqueadoPorPago(negocio)) redirect('/suscripcion')
 
   const supabase = await createClient()
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })

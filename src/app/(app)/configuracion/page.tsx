@@ -16,7 +16,8 @@ import SelectorRolEmpleado from './selector-rol-empleado'
 import SelectorPlazaEmpleado from './selector-plaza-empleado'
 import EditarDatosEmpleado from './editar-datos-empleado'
 import { Button } from '@/components/ui/button'
-import { Trash2, MapPin, ChevronRight } from 'lucide-react'
+import { Trash2, MapPin, ChevronRight, CreditCard } from 'lucide-react'
+import { estadoSuscripcion, ETIQUETA_ESTADO } from '@/lib/suscripcion'
 
 const SEXO_LABEL: Record<string, string> = { hombre: 'Hombre', mujer: 'Mujer', otro: 'Otro' }
 
@@ -94,6 +95,18 @@ export default async function ConfiguracionPage() {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <h1 className="text-2xl font-black tracking-tight">Configuración</h1>
+
+      {/* — Suscripción ———————————————————————— */}
+      <Link href="/suscripcion" className="card-soft flex items-center gap-3 p-5 transition-colors hover:bg-accent/50">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <CreditCard className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold">Suscripción</p>
+          <p className="text-xs text-muted-foreground">{ETIQUETA_ESTADO[estadoSuscripcion(negocio)].label}</p>
+        </div>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </Link>
 
       {/* — Negocio ———————————————————————— */}
       <section className="card-soft p-5 space-y-4">
