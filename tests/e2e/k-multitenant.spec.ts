@@ -26,6 +26,9 @@ test.describe('[CRÍTICO] Aislamiento entre negocios (multi-tenant)', () => {
   let victimaCorteId: string | null = null
   let atacanteNegocioId: string
   let atacanteMetodoId: string | null = null
+  // Un solo cliente autenticado del atacante para toda la suite: reautenticar
+  // en cada test dispara el rate-limit de Supabase Auth.
+  let atk: Awaited<ReturnType<typeof userSupabase>>
 
   test.beforeAll(async () => {
     const fixture = JSON.parse(fs.readFileSync(FIXTURE, 'utf-8'))
@@ -56,10 +59,10 @@ test.describe('[CRÍTICO] Aislamiento entre negocios (multi-tenant)', () => {
     }
     const { data: negExistente } = await admin
       .from('negocios').select('id').eq('owner_id', atacanteId).maybeSingle()
+    atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     if (negExistente) {
       atacanteNegocioId = negExistente.id
     } else {
-      const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
       const { data, error } = await atk.rpc('crear_negocio', { p_nombre: 'Negocio Atacante E2E' })
       if (error) throw new Error(`No se pudo crear negocio atacante: ${error.message}`)
       atacanteNegocioId = data as string
@@ -72,31 +75,26 @@ test.describe('[CRÍTICO] Aislamiento entre negocios (multi-tenant)', () => {
   // ── LECTURA vía PostgREST: RLS debe devolver 0 filas ───────────────────────
 
   test('no puede LEER productos de otro negocio', async () => {
-    const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     const { data } = await atk.from('productos').select('id').eq('negocio_id', victimaNegocioId)
     expect(data ?? []).toHaveLength(0)
   })
 
   test('no puede LEER ventas de otro negocio', async () => {
-    const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     const { data } = await atk.from('ventas').select('id').eq('negocio_id', victimaNegocioId)
     expect(data ?? []).toHaveLength(0)
   })
 
   test('no puede LEER clientes de otro negocio', async () => {
-    const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     const { data } = await atk.from('clientes').select('id, nombre, telefono').eq('negocio_id', victimaNegocioId)
     expect(data ?? []).toHaveLength(0)
   })
 
   test('no puede LEER cortes de caja de otro negocio', async () => {
-    const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     const { data } = await atk.from('cortes_caja').select('id, monto_esperado').eq('negocio_id', victimaNegocioId)
     expect(data ?? []).toHaveLength(0)
   })
 
   test('no puede LEER la fila del negocio ajeno', async () => {
-    const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     const { data } = await atk.from('negocios').select('id, nombre').eq('id', victimaNegocioId)
     expect(data ?? []).toHaveLength(0)
   })
@@ -108,7 +106,6 @@ test.describe('[CRÍTICO] Aislamiento entre negocios (multi-tenant)', () => {
     const { data: before } = await admin.from('productos').select('precio_venta').eq('id', victimaProductoId).single()
     const original = before!.precio_venta
 
-    const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     await atk.from('productos').update({ precio_venta: 1 }).eq('id', victimaProductoId)
 
     const { data: after } = await admin.from('productos').select('precio_venta').eq('id', victimaProductoId).single()
@@ -116,7 +113,6 @@ test.describe('[CRÍTICO] Aislamiento entre negocios (multi-tenant)', () => {
   })
 
   test('no puede INSERTAR un producto en el negocio ajeno', async () => {
-    const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     const { error } = await atk
       .from('productos')
       .insert({ negocio_id: victimaNegocioId, nombre: 'Producto pirata', precio_venta: 1, precio_costo: 0, existencias: 0, activo: true })
@@ -132,7 +128,6 @@ test.describe('[CRÍTICO] Aislamiento entre negocios (multi-tenant)', () => {
     const { count: antes } = await admin
       .from('productos').select('id', { count: 'exact', head: true }).eq('negocio_id', victimaNegocioId)
 
-    const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     await atk.from('productos').delete().eq('negocio_id', victimaNegocioId)
 
     const { count: despues } = await admin
@@ -143,7 +138,6 @@ test.describe('[CRÍTICO] Aislamiento entre negocios (multi-tenant)', () => {
   // ── RPC: la firma pide negocio_id, pero la función valida membresía ─────────
 
   test('registrar_venta rechaza vender en el negocio ajeno', async () => {
-    const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     const { error } = await atk.rpc('registrar_venta', {
       p_negocio_id: victimaNegocioId,
       p_items: [{ producto_id: victimaProductoId, cantidad: 1 }],
@@ -159,7 +153,6 @@ test.describe('[CRÍTICO] Aislamiento entre negocios (multi-tenant)', () => {
 
   test('crear_apartado rechaza apartar en el negocio ajeno', async () => {
     test.skip(!victimaClienteId, 'La víctima no tiene clientes')
-    const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     const { error } = await atk.rpc('crear_apartado', {
       p_negocio_id: victimaNegocioId,
       p_cliente_id: victimaClienteId,
@@ -171,20 +164,17 @@ test.describe('[CRÍTICO] Aislamiento entre negocios (multi-tenant)', () => {
 
   test('cerrar_corte rechaza cerrar el corte ajeno', async () => {
     test.skip(!victimaCorteId, 'La víctima no tiene cortes')
-    const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     const { error } = await atk.rpc('cerrar_corte', { p_corte_id: victimaCorteId, p_monto_contado: 0 })
     expect(error).not.toBeNull()
   })
 
   test('get_stock_por_plaza rechaza el negocio ajeno', async () => {
-    const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     const { error } = await atk.rpc('get_stock_por_plaza', { p_negocio_id: victimaNegocioId })
     expect(error, 'Solo dueño/admin del negocio puede ver su stock por plaza').not.toBeNull()
   })
 
   test('get_turno_detalle no filtra el corte ajeno', async () => {
     test.skip(!victimaCorteId, 'La víctima no tiene cortes')
-    const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     const { data, error } = await atk.rpc('get_turno_detalle', { p_corte_id: victimaCorteId })
     // O rechaza con error, o devuelve vacío — nunca datos del corte ajeno
     if (!error) expect(data ?? []).toHaveLength(0)
@@ -193,13 +183,11 @@ test.describe('[CRÍTICO] Aislamiento entre negocios (multi-tenant)', () => {
   // ── SUPERADMIN: un dueño normal no debe poder invocar las RPC de plataforma ─
 
   test('[CRÍTICO] un dueño normal NO puede invocar sa_lista_negocios', async () => {
-    const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     const { error } = await atk.rpc('sa_lista_negocios')
     expect(error, 'Solo un superadmin puede listar todos los negocios').not.toBeNull()
   })
 
   test('[CRÍTICO] un dueño normal NO puede invocar actualizar_modulos_negocio (activar módulos de paga gratis)', async () => {
-    const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     const { error } = await atk.rpc('actualizar_modulos_negocio', {
       p_negocio_id: atacanteNegocioId,
       p_modulos: { repartidores: true, variantes: true, apartados: true },
@@ -221,7 +209,6 @@ test.describe('[CRÍTICO] Aislamiento entre negocios (multi-tenant)', () => {
       .from('clientes').insert({ negocio_id: atacanteNegocioId, nombre: 'Cli atk', activo: true })
       .select('id').single()
 
-    const atk = await userSupabase(ATACANTE.email, ATACANTE.password)
     const { error } = await atk.rpc('crear_apartado', {
       p_negocio_id: atacanteNegocioId,
       p_cliente_id: cliPropio!.id,
@@ -233,5 +220,55 @@ test.describe('[CRÍTICO] Aislamiento entre negocios (multi-tenant)', () => {
 
     await admin.from('productos').update({ activo: false }).eq('id', prodPropio!.id)
     await admin.from('clientes').update({ activo: false }).eq('id', cliPropio!.id)
+  })
+
+  // ── Escalación de privilegios vía UPDATE directo a la fila del negocio ──────
+  // El dueño ES owner de su negocio (RLS le deja editar su fila), pero NO debe
+  // poder tocar los campos administrativos: módulos de paga, plan, suscripción,
+  // límites. Un trigger los congela (mig. 069).
+
+  test('[CRÍTICO] el dueño NO puede activarse módulos de paga por UPDATE directo', async () => {
+    await atk.from('negocios')
+      .update({ modulos_habilitados: { apartados: true, repartidores: true, variantes: true } })
+      .eq('id', atacanteNegocioId)
+
+    const admin = adminSupabase()
+    const { data } = await admin.from('negocios').select('modulos_habilitados').eq('id', atacanteNegocioId).single()
+    const mods = (data!.modulos_habilitados ?? {}) as Record<string, boolean>
+    expect(mods.apartados, 'no debe poder prender apartados gratis').not.toBe(true)
+    expect(mods.repartidores).not.toBe(true)
+  })
+
+  test('[CRÍTICO] el dueño NO puede darse plan mensual ni extender la suscripción', async () => {
+    await atk.from('negocios')
+      .update({ plan: 'mensual', suscripcion_fin: '2099-01-01', suspendido: false })
+      .eq('id', atacanteNegocioId)
+
+    const admin = adminSupabase()
+    const { data } = await admin.from('negocios').select('plan, suscripcion_fin').eq('id', atacanteNegocioId).single()
+    expect(data!.plan, 'no debe poder ponerse plan pagado').not.toBe('mensual')
+    expect(data!.suscripcion_fin, 'no debe poder extender la suscripción').not.toBe('2099-01-01')
+  })
+
+  test('[CRÍTICO] el dueño NO puede escribir los campos de Stripe', async () => {
+    await atk.from('negocios')
+      .update({ stripe_status: 'active', stripe_customer_id: 'cus_falso' })
+      .eq('id', atacanteNegocioId)
+
+    const admin = adminSupabase()
+    const { data } = await admin.from('negocios').select('stripe_status, stripe_customer_id').eq('id', atacanteNegocioId).single()
+    expect(data!.stripe_status, 'no debe poder simular pago activo').not.toBe('active')
+    expect(data!.stripe_customer_id).not.toBe('cus_falso')
+  })
+
+  test('[OK] el dueño SÍ puede editar el nombre de su negocio', async () => {
+    const nuevo = `Negocio Atacante E2E ${Date.now()}`
+    await atk.from('negocios').update({ nombre: nuevo }).eq('id', atacanteNegocioId)
+
+    const admin = adminSupabase()
+    const { data } = await admin.from('negocios').select('nombre').eq('id', atacanteNegocioId).single()
+    expect(data!.nombre, 'la edición legítima del perfil debe seguir funcionando').toBe(nuevo)
+    // Restaurar el nombre canónico que usa el beforeAll
+    await admin.from('negocios').update({ nombre: 'Negocio Atacante E2E' }).eq('id', atacanteNegocioId)
   })
 })

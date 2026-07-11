@@ -7,6 +7,8 @@ export type Negocio = {
   suspendido: boolean
   rfc: string | null
   modulos_habilitados: Record<string, boolean> | null
+  stripe_status: string | null
+  suscripcion_fin: string | null
 }
 
 export const getNegocioActual = cache(async function (): Promise<Negocio | null> {
@@ -25,7 +27,7 @@ export const getNegocioActual = cache(async function (): Promise<Negocio | null>
   // membresía más antigua. Coincide con la preferencia que ya usa log_rastro.
   const { data } = await supabase
     .from('usuarios_negocio')
-    .select('negocios(id, nombre, suspendido, rfc, modulos_habilitados)')
+    .select('negocios(id, nombre, suspendido, rfc, modulos_habilitados, stripe_status, suscripcion_fin)')
     .eq('user_id', user.id)
     .order('rol', { ascending: true })
     .order('created_at', { ascending: true })
