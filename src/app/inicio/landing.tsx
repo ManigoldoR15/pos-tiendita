@@ -23,6 +23,13 @@ import {
   MessageCircle,
   Check,
   Truck,
+  Shirt,
+  Pill,
+  Hammer,
+  PencilRuler,
+  SlidersHorizontal,
+  BarChart3,
+  Printer,
 } from 'lucide-react'
 
 const TELEFONO_DISPLAY = '775 102 4002'
@@ -170,6 +177,7 @@ export default function Landing() {
             <a href="#funciones" className="transition-colors hover:text-foreground">Punto de venta</a>
             <a href="#rastreo" className="transition-colors hover:text-foreground">Rastreo</a>
             <a href="#finanzas" className="transition-colors hover:text-foreground">Finanzas</a>
+            <a href="#adapta" className="transition-colors hover:text-foreground">Se adapta a ti</a>
             <a href="#precios" className="transition-colors hover:text-foreground">Precios</a>
           </div>
           <div className="flex items-center gap-3">
@@ -308,8 +316,9 @@ export default function Landing() {
           </Reveal>
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <Funcion icon={Barcode} titulo="Ventas en segundos" delay={0}>
-              Escanea el código de barras o toca el producto en pantalla. Si te
-              pagan con $500, el sistema te dice cuánto cambio dar.
+              Escanea el código de barras o toca el producto en pantalla. Vende
+              por pieza o a granel, y si te pagan con $500 el sistema te dice
+              cuánto cambio dar.
             </Funcion>
             <Funcion icon={Package} titulo="Inventario al día" delay={80}>
               Cada venta descuenta existencias automáticamente. Con alertas de
@@ -449,32 +458,88 @@ export default function Landing() {
             </h2>
             <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
               Deja de hacer cuentas en servilletas. El sistema te dice cuánto
-              ganaste de verdad — hoy, esta semana o este mes.
+              ganaste de verdad — hoy, esta semana o este mes — y te saca
+              reportes de todo con un botón.
             </p>
           </Reveal>
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            <Funcion icon={TrendingUp} titulo="Utilidad real del día" delay={0}>
-              Ventas menos gastos, al instante. Filtra por hoy, semana, mes o el
+          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <Funcion icon={TrendingUp} titulo="Tu ganancia real, al instante" delay={0}>
+              El tablero resta gastos y costo de la mercancía a tus ventas:
+              sabes cuánto te queda de verdad. Filtra por hoy, semana, mes o el
               rango que quieras.
+            </Funcion>
+            <Funcion icon={BarChart3} titulo="Tus productos estrella" delay={80}>
+              Ve qué se vende más — por piezas y por dinero — para surtir lo
+              que sí deja y dejar de invertir en lo que no se mueve.
+            </Funcion>
+            <Funcion icon={Printer} titulo="Reportes de todo" delay={160}>
+              Ventas, gastos, inventario, cortes de caja y estados de cuenta de
+              fiados. Los imprimes o los guardas en PDF cuando quieras.
+            </Funcion>
+            <Funcion icon={FileSpreadsheet} titulo="Exporta a Excel" delay={0}>
+              Tus ventas, gastos y movimientos se descargan en Excel, listos
+              para tu contador o para revisarlos tú con calma.
             </Funcion>
             <Funcion icon={Receipt} titulo="Gastos por categoría" delay={80}>
               Luz, renta, gasolina, sueldos, mercancía... y separa los gastos
-              personales de los del negocio.
+              personales de los del negocio, para no engañarte con los números.
             </Funcion>
-            <Funcion icon={FileSpreadsheet} titulo="Reportes descargables" delay={160}>
-              Ventas, movimientos y cortes en Excel, listos para tu contador o
-              para ti.
-            </Funcion>
-            <Funcion icon={ShieldCheck} titulo="Roles y permisos" delay={240}>
+            <Funcion icon={ShieldCheck} titulo="Roles y permisos" delay={160}>
               Cada empleado ve solo lo que le toca. Tú ves todo, desde donde
-              estés.
+              estés — en tu celular o computadora.
+            </Funcion>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── SE ADAPTA A TU NEGOCIO ─── */}
+      <section id="adapta" className="scroll-mt-20 bg-secondary/50 px-4 py-20 sm:px-6 sm:py-28 dark:bg-secondary/30">
+        <div className="mx-auto max-w-6xl">
+          <Reveal>
+            <p className="eyebrow mb-3 text-primary">Hecho a tu medida</p>
+            <h2 className="max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl">
+              Se adapta a tu negocio, no al revés
+            </h2>
+            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
+              Nos dices a qué te dedicas y el sistema se configura solo:
+              categorías, gastos y funciones según tu giro. Está pensado para
+              el negocio de a pie — cobras sin pedirle datos a nadie, sin
+              trámites y sin complicarte.
+            </p>
+          </Reveal>
+          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <Funcion icon={Store} titulo="Abarrotes y tienditas" delay={0}>
+              Venta por pieza o a granel, control de caducidades para que nada
+              se te eche a perder, y los fiados de la libreta ahora en el
+              sistema.
+            </Funcion>
+            <Funcion icon={Shirt} titulo="Ropa y calzado" delay={80}>
+              Cada prenda con sus tallas y colores, y apartados con anticipo y
+              fecha límite — el sistema reserva la prenda y lleva los abonos.
+            </Funcion>
+            <Funcion icon={Pill} titulo="Farmacias" delay={160}>
+              Categorías listas para empezar y control de caducidades por lote:
+              lo que caduca primero, sale primero.
+            </Funcion>
+            <Funcion icon={Hammer} titulo="Ferreterías" delay={0}>
+              Productos con variantes de medida o tamaño, y venta suelta por
+              kilo o metro para tornillería y material.
+            </Funcion>
+            <Funcion icon={PencilRuler} titulo="Papelerías" delay={80}>
+              Categorías precargadas y solo las funciones que usas — sin
+              pantallas de más que nada más estorban.
+            </Funcion>
+            <Funcion icon={SlidersHorizontal} titulo="¿Otro giro?" delay={160}>
+              Las funciones se prenden y se apagan según lo que necesites:
+              caducidades, granel, tallas, apartados, reparto. Tu sistema, a tu
+              modo.
             </Funcion>
           </div>
         </div>
       </section>
 
       {/* ─── PRECIOS ─── */}
-      <section id="precios" className="scroll-mt-20 bg-secondary/50 px-4 py-20 sm:px-6 sm:py-28 dark:bg-secondary/30">
+      <section id="precios" className="scroll-mt-20 px-4 py-20 sm:px-6 sm:py-28">
         <div className="mx-auto max-w-6xl">
           <Reveal className="text-center">
             <p className="eyebrow mb-3 text-primary">Precios</p>
