@@ -547,8 +547,8 @@ export default function Landing() {
               Precios claros, sin sorpresas
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-muted-foreground">
-              Dos formas de pagar y tres versiones del sistema. El rastreo de
-              repartidores es un complemento que crece con tu flotilla.
+              Dos formas de pagar el sistema completo — y el rastreo de
+              repartidores como complemento que crece con tu flotilla.
             </p>
           </Reveal>
 
@@ -566,22 +566,19 @@ export default function Landing() {
                   solo mantiene tus datos seguros y respaldados en la nube, con
                   soporte incluido.
                 </p>
-                <div className="mt-4 flex-1 divide-y divide-border">
-                  {[
-                    { version: 'Básica', unico: '$3,500', mes: '$100' },
-                    { version: 'Negocio', unico: '$8,000', mes: '$150' },
-                    { version: 'Completa', unico: '$15,000', mes: '$150' },
-                  ].map((t) => (
-                    <div key={t.version} className="flex items-center justify-between gap-3 py-3.5">
-                      <span className="font-semibold">{t.version}</span>
-                      <span className="text-right">
-                        <span className="text-2xl font-bold tracking-tight">{t.unico}</span>
-                        <span className="block text-xs text-muted-foreground">
-                          pago único + {t.mes}/mes de nube
-                        </span>
-                      </span>
-                    </div>
-                  ))}
+                <div className="mt-5 flex-1">
+                  <p className="text-sm font-semibold">Versión Completa</p>
+                  <p className="mt-1">
+                    <span className="text-4xl font-bold tracking-tight">$15,000</span>
+                    <span className="ml-1.5 text-sm text-muted-foreground">MXN · pago único</span>
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    + $150/mes por el resguardo de tus datos en la nube
+                  </p>
+                  <p className="mt-5 rounded-xl bg-secondary px-4 py-3 text-xs text-muted-foreground">
+                    Versiones <span className="font-semibold text-foreground">Básica</span> y{' '}
+                    <span className="font-semibold text-foreground">Negocio</span> — próximamente
+                  </p>
                 </div>
               </div>
             </Reveal>
@@ -597,22 +594,19 @@ export default function Landing() {
                   Sin pago único ni desembolso inicial: pagas mes a mes, con la
                   nube, los respaldos y el soporte ya incluidos.
                 </p>
-                <div className="mt-4 flex-1 divide-y divide-border">
-                  {[
-                    { version: 'Básica', mes: '$250' },
-                    { version: 'Negocio', mes: '$500' },
-                    { version: 'Completa', mes: '$800' },
-                  ].map((t) => (
-                    <div key={t.version} className="flex items-center justify-between gap-3 py-3.5">
-                      <span className="font-semibold">{t.version}</span>
-                      <span className="text-right">
-                        <span className="text-2xl font-bold tracking-tight">{t.mes}</span>
-                        <span className="block text-xs text-muted-foreground">
-                          al mes, todo incluido
-                        </span>
-                      </span>
-                    </div>
-                  ))}
+                <div className="mt-5 flex-1">
+                  <p className="text-sm font-semibold">Versión Completa</p>
+                  <p className="mt-1">
+                    <span className="text-4xl font-bold tracking-tight">$800</span>
+                    <span className="ml-1.5 text-sm text-muted-foreground">MXN · al mes</span>
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Todo incluido: nube, respaldos y soporte
+                  </p>
+                  <p className="mt-5 rounded-xl bg-secondary px-4 py-3 text-xs text-muted-foreground">
+                    Versiones <span className="font-semibold text-foreground">Básica</span> y{' '}
+                    <span className="font-semibold text-foreground">Negocio</span> — próximamente
+                  </p>
                 </div>
               </div>
             </Reveal>
