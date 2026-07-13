@@ -731,9 +731,14 @@ export default function Landing() {
               {TELEFONO_DISPLAY}
             </a>
           </p>
-          <Link href="/login" className="transition-colors hover:text-foreground">
-            Entrar al sistema
-          </Link>
+          <div className="flex items-center gap-5">
+            <Link href="/privacidad" className="transition-colors hover:text-foreground">
+              Aviso de privacidad
+            </Link>
+            <Link href="/login" className="transition-colors hover:text-foreground">
+              Entrar al sistema
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

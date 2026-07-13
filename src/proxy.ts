@@ -3,7 +3,7 @@ import { updateSession } from '@/lib/supabase/middleware'
 import { createServiceClient } from '@/lib/supabase/service'
 
 // Rutas que no requieren autenticación — usuarios autenticados también pueden acceder
-const RUTAS_SIEMPRE_PUBLICAS = ['/cuenta-suspendida', '/inicio']
+const RUTAS_SIEMPRE_PUBLICAS = ['/cuenta-suspendida', '/inicio', '/privacidad']
 
 // Rutas de auth: sin sesión pueden acceder, con sesión se redirigen a /
 const RUTAS_AUTH = ['/login', '/registro']
