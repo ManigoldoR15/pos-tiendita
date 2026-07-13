@@ -241,7 +241,7 @@ export default function Landing() {
             </Reveal>
             <Reveal delay={800}>
               <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-                {['Pago único por sistema', 'Funciona en celular y computadora', 'Soporte directo'].map((t) => (
+                {['De contado o por mensualidad', 'Funciona en celular y computadora', 'Soporte directo'].map((t) => (
                   <span key={t} className="flex items-center gap-1.5">
                     <Check className="h-4 w-4 text-primary" />
                     {t}
@@ -547,98 +547,146 @@ export default function Landing() {
               Precios claros, sin sorpresas
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-muted-foreground">
-              Pagas una vez por el sistema y es tuyo. Solo el rastreo lleva un
-              mantenimiento mensual por repartidor.
+              Dos formas de pagar y tres versiones del sistema. El rastreo de
+              repartidores es un complemento que crece con tu flotilla.
             </p>
           </Reveal>
 
-          <div className="mx-auto mt-12 grid max-w-4xl gap-6 lg:grid-cols-3">
-            {/* POS */}
+          {/* Modalidades A y B */}
+          <div className="mx-auto mt-12 grid max-w-4xl gap-6 lg:grid-cols-2">
             <Reveal delay={0} className="h-full">
               <div className="card-soft flex h-full flex-col p-7">
                 <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <Store className="h-5.5 w-5.5" />
                 </div>
-                <h3 className="text-lg font-bold">Punto de venta</h3>
-                <p className="mt-3">
-                  <span className="text-4xl font-bold tracking-tight">$15,000</span>
-                  <span className="ml-1.5 text-sm text-muted-foreground">MXN · pago único</span>
+                <p className="eyebrow text-primary">Modalidad A</p>
+                <h3 className="mt-1 text-lg font-bold">Pago único + nube</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Pagas una sola vez y el sistema es tuyo. La mensualidad baja
+                  solo mantiene tus datos seguros y respaldados en la nube, con
+                  soporte incluido.
                 </p>
-                <ul className="mt-6 flex-1 space-y-2.5 text-sm text-muted-foreground">
+                <div className="mt-4 flex-1 divide-y divide-border">
                   {[
-                    'Ventas con pantalla táctil y código de barras',
-                    'Inventario, caducidades y compras',
-                    'Clientes, fiados y listas de precio',
-                    'Corte de caja y turnos',
-                    'Finanzas y reportes en Excel',
+                    { version: 'Básica', unico: '$3,500', mes: '$100' },
+                    { version: 'Negocio', unico: '$8,000', mes: '$150' },
+                    { version: 'Completa', unico: '$15,000', mes: '$150' },
                   ].map((t) => (
-                    <li key={t} className="flex gap-2">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                      {t}
-                    </li>
+                    <div key={t.version} className="flex items-center justify-between gap-3 py-3.5">
+                      <span className="font-semibold">{t.version}</span>
+                      <span className="text-right">
+                        <span className="text-2xl font-bold tracking-tight">{t.unico}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          pago único + {t.mes}/mes de nube
+                        </span>
+                      </span>
+                    </div>
                   ))}
-                </ul>
-              </div>
-            </Reveal>
-
-            {/* Rastreador */}
-            <Reveal delay={120} className="h-full">
-              <div className="card-soft relative flex h-full flex-col p-7 ring-2 ring-primary">
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground shadow-md">
-                  Para negocios con reparto
-                </span>
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Truck className="h-5.5 w-5.5" />
                 </div>
-                <h3 className="text-lg font-bold">Rastreador de flotilla</h3>
-                <p className="mt-3">
-                  <span className="text-4xl font-bold tracking-tight">$30,000</span>
-                  <span className="ml-1.5 text-sm text-muted-foreground">MXN · pago único</span>
-                </p>
-                <ul className="mt-6 flex-1 space-y-2.5 text-sm text-muted-foreground">
-                  {[
-                    'Mapa en tiempo real de todos tus repartidores',
-                    'Rutas que siguen las calles de verdad',
-                    'Bitácora de paradas con hora y lugar',
-                    'Entrega de carga con confirmación',
-                    'Alertas y avisos directos a tu gente',
-                  ].map((t) => (
-                    <li key={t} className="flex gap-2">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                      {t}
-                    </li>
-                  ))}
-                </ul>
               </div>
             </Reveal>
 
-            {/* Mantenimiento */}
-            <Reveal delay={240} className="h-full">
+            <Reveal delay={120} className="h-full">
               <div className="card-soft flex h-full flex-col p-7">
                 <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <ShieldCheck className="h-5.5 w-5.5" />
+                  <Clock className="h-5.5 w-5.5" />
                 </div>
-                <h3 className="text-lg font-bold">Mantenimiento del rastreo</h3>
-                <p className="mt-3">
-                  <span className="text-4xl font-bold tracking-tight">$100</span>
-                  <span className="ml-1.5 text-sm text-muted-foreground">MXN · por repartidor al mes</span>
+                <p className="eyebrow text-primary">Modalidad B</p>
+                <h3 className="mt-1 text-lg font-bold">Suscripción mensual</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Sin pago único ni desembolso inicial: pagas mes a mes, con la
+                  nube, los respaldos y el soporte ya incluidos.
                 </p>
-                <ul className="mt-6 flex-1 space-y-2.5 text-sm text-muted-foreground">
+                <div className="mt-4 flex-1 divide-y divide-border">
                   {[
-                    'Servidores y mapas funcionando 24/7',
-                    'Respaldo de tu información',
-                    'Actualizaciones del sistema',
-                    'Soporte directo con nosotros',
+                    { version: 'Básica', mes: '$250' },
+                    { version: 'Negocio', mes: '$500' },
+                    { version: 'Completa', mes: '$800' },
                   ].map((t) => (
-                    <li key={t} className="flex gap-2">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                      {t}
-                    </li>
+                    <div key={t.version} className="flex items-center justify-between gap-3 py-3.5">
+                      <span className="font-semibold">{t.version}</span>
+                      <span className="text-right">
+                        <span className="text-2xl font-bold tracking-tight">{t.mes}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          al mes, todo incluido
+                        </span>
+                      </span>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             </Reveal>
           </div>
+
+          {/* Rastreo de repartidores — complemento */}
+          <Reveal delay={200}>
+            <div className="card-soft relative mx-auto mt-8 max-w-4xl p-7 ring-2 ring-primary">
+              <span className="absolute -top-3 left-6 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground shadow-md">
+                Complemento · Para negocios con reparto
+              </span>
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Truck className="h-5.5 w-5.5" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold">Rastreo de repartidores</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    No es un precio fijo: pagas por unidad rastreada, así el
+                    costo crece solo si tu flotilla crece.
+                  </p>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div className="rounded-xl bg-secondary p-4">
+                      <p className="text-xs font-medium text-muted-foreground">Activación del módulo</p>
+                      <p className="mt-1 text-2xl font-bold tracking-tight">
+                        $2,500
+                        <span className="ml-1 text-sm font-semibold text-muted-foreground">pago único</span>
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-secondary p-4">
+                      <p className="text-xs font-medium text-muted-foreground">Por repartidor rastreado</p>
+                      <p className="mt-1 text-2xl font-bold tracking-tight">
+                        $120
+                        <span className="ml-1 text-sm font-semibold text-muted-foreground">al mes cada uno</span>
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    Ejemplo: un negocio con 5 repartidores paga $2,500 de
+                    activación + $600/mes ($120 × 5).
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* Cierre + contacto */}
+          <Reveal delay={280} className="mx-auto mt-10 max-w-3xl text-center">
+            <p className="leading-relaxed text-muted-foreground">
+              Elige lo que más te convenga: paga una sola vez y una mensualidad
+              baja por mantener tus datos seguros en la nube, o paga todo por
+              mensualidad sin desembolso inicial. El rastreo de repartidores se
+              cotiza según cuántos vehículos necesites monitorear. Contáctanos
+              para armar el plan a tu medida.
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
+              <a
+                href={WHATSAPP}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3.5 font-semibold text-primary-foreground shadow-[0_8px_24px_-8px_rgb(0_0_0/0.5)] transition-all hover:-translate-y-0.5 hover:brightness-110"
+              >
+                <MessageCircle className="h-5 w-5" />
+                Arma tu plan por WhatsApp
+              </a>
+              <a
+                href={TELEFONO_TEL}
+                className="flex items-center gap-2 rounded-xl border border-border bg-card px-6 py-3.5 font-semibold transition-all hover:-translate-y-0.5 hover:border-primary/40"
+              >
+                <Phone className="h-5 w-5" />
+                {TELEFONO_DISPLAY}
+              </a>
+            </div>
+          </Reveal>
         </div>
       </section>
 
