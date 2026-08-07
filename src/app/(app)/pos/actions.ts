@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
+import { getLocalIdUsuario } from '@/lib/plaza'
 import { notificar } from '@/lib/notificaciones'
 import { formatMXN } from '@/lib/dinero'
 
@@ -53,18 +54,11 @@ export async function registrarVentaAction(params: {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Determinar plaza del empleado (NULL si no tiene asignación — negocios sin
-  // multi-plaza o dueños que venden desde cualquier ubicación)
-  let localId: string | null = null
-  if (user) {
-    const { data: miembro } = await supabase
-      .from('usuarios_negocio')
-      .select('local_id')
-      .eq('negocio_id', negocio.id)
-      .eq('user_id', user.id)
-      .maybeSingle()
-    localId = miembro?.local_id ?? null
-  }
+  // Plaza del empleado (NULL si no tiene asignación — negocios sin multi-plaza o
+  // dueños que venden desde cualquier ubicación). Es el mismo helper que usa
+  // /pos para decidir qué stock mostrar: si divergieran, la pantalla enseñaría
+  // existencias que el cobro rechaza.
+  const localId = await getLocalIdUsuario()
 
   const { data, error } = await supabase.rpc('registrar_venta', {
     p_negocio_id: negocio.id,

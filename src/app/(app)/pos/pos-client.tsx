@@ -71,11 +71,13 @@ type Props = {
   categorias: Categoria[]
   metodosPago: MetodoPago[]
   negocioNombre: string
+  /** Plaza del vendedor; null cuando vende sin plaza (el caso normal) */
+  plazaNombre?: string | null
   listas: ListaPrecio[]
   muestreoPeriodoId: string | null
 }
 
-export default function PosClient({ productos, categorias, metodosPago, negocioNombre, listas, muestreoPeriodoId, moduloApartados = false }: Props) {
+export default function PosClient({ productos, categorias, metodosPago, negocioNombre, plazaNombre = null, listas, muestreoPeriodoId, moduloApartados = false }: Props) {
   const [modo, setModo] = useState<'tactil' | 'mostrador'>('tactil')
   const [carrito, setCarrito] = useState<ItemCarrito[]>([])
   const [busqueda, setBusqueda] = useState('')
@@ -621,6 +623,17 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
             </div>
           )}
         </div>
+
+        {/* Plaza del vendedor: el stock mostrado es solo el de esta plaza */}
+        {plazaNombre && (
+          <div className="mb-3 flex shrink-0 items-center gap-1.5 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            <Monitor className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              Vendiendo en <span className="font-semibold text-foreground">{plazaNombre}</span> — el
+              stock que ves es el de esta plaza
+            </span>
+          </div>
+        )}
 
         {/* Búsqueda */}
         <div className="relative mb-3 shrink-0">

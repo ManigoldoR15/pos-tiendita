@@ -51,6 +51,45 @@ export default async function ProductosPage({
   const productosFiltrados = productos ?? []
   const totalPaginas = Math.ceil((totalProductos ?? 0) / PAGE_SIZE)
 
+  // Desglose por plaza: solo tiene sentido con dos o más plazas. En un negocio
+  // de una sola plaza no se consulta nada ni cambia la vista.
+  const { data: plazas } = await supabase
+    .from('locales')
+    .select('id, nombre, color')
+    .eq('negocio_id', negocio!.id)
+    .eq('activo', true)
+    .order('created_at')
+
+  const hayVariasPlazas = (plazas ?? []).length >= 2
+  const stockPorPlaza = new Map<string, { nombre: string; color: string; cantidad: number }[]>()
+
+  if (hayVariasPlazas && productosFiltrados.length > 0) {
+    const { data: lotes } = await supabase
+      .from('lotes_producto')
+      .select('producto_id, local_id, cantidad_actual')
+      .eq('negocio_id', negocio!.id)
+      .eq('activo', true)
+      .gt('cantidad_actual', 0)
+      .in('producto_id', productosFiltrados.map((p) => p.id))
+
+    const nombreDe = new Map((plazas ?? []).map((p) => [p.id, p]))
+    for (const lote of lotes ?? []) {
+      const plaza = lote.local_id ? nombreDe.get(lote.local_id) : null
+      const etiqueta = plaza
+        ? { nombre: plaza.nombre, color: plaza.color }
+        : { nombre: 'General', color: '#94a3b8' }
+
+      const actual = stockPorPlaza.get(lote.producto_id) ?? []
+      const existente = actual.find((x) => x.nombre === etiqueta.nombre)
+      if (existente) {
+        existente.cantidad += Number(lote.cantidad_actual)
+      } else {
+        actual.push({ ...etiqueta, cantidad: Number(lote.cantidad_actual) })
+      }
+      stockPorPlaza.set(lote.producto_id, actual)
+    }
+  }
+
   // Build pagination URL helper
   function paginaUrl(p: number) {
     const params = new URLSearchParams()
@@ -219,6 +258,22 @@ export default async function ProductosPage({
                     ? 'Agotado'
                     : `Stock: ${producto.existencias}`}
                 </p>
+
+                {/* Reparto entre plazas (solo si el negocio tiene varias) */}
+                {hayVariasPlazas && (stockPorPlaza.get(producto.id)?.length ?? 0) > 0 && (
+                  <div className="mb-3 -mt-2 flex flex-wrap gap-1">
+                    {stockPorPlaza.get(producto.id)!.map((s) => (
+                      <span
+                        key={s.nombre}
+                        className="inline-flex items-center gap-1 rounded-full bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                        title={`${s.cantidad} en ${s.nombre}`}
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: s.color }} />
+                        {s.nombre} {s.cantidad}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {/* Acciones */}
                 <div className="flex gap-1">
