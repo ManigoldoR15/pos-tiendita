@@ -20,14 +20,18 @@ export type Linea = {
 export default function TransferirForm({
   lugares,
   lineas,
+  destinoInicial = '',
 }: {
   lugares: Lugar[]
   lineas: Linea[]
+  /** plaza destino al llegar desde /plazas/[id]: abre el formulario ya apuntado ahí */
+  destinoInicial?: string
 }) {
   const [state, action, pending] = useActionState(transferirStockAction, null)
-  const [abierto, setAbierto] = useState(false)
+  const [abierto, setAbierto] = useState(Boolean(destinoInicial))
   const [lineaKey, setLineaKey] = useState('')
   const [desde, setDesde] = useState('')
+  const [hacia, setHacia] = useState(destinoInicial)
 
   useEffect(() => {
     if (state?.ok) {
@@ -41,6 +45,9 @@ export default function TransferirForm({
   const origenes = linea ? lugares.filter((lu) => (linea.stock[lu.id] ?? 0) > 0) : []
   const disponible = linea ? (linea.stock[desde] ?? 0) : 0
   const destinos = lugares.filter((lu) => lu.id !== desde)
+  // El destino no puede ser el mismo que el origen: si se cruzan, gana el origen
+  // recién elegido y el destino se vacía para que el dueño lo vuelva a decidir.
+  const haciaEfectivo = hacia === desde ? '' : hacia
 
   if (!abierto) {
     return (
@@ -121,6 +128,8 @@ export default function TransferirForm({
             name="hacia"
             required
             disabled={!linea}
+            value={haciaEfectivo}
+            onChange={(e) => setHacia(e.target.value)}
             className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
           >
             {destinos.map((lu) => (

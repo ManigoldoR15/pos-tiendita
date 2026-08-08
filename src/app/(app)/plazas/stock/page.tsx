@@ -36,7 +36,12 @@ function fechaHora(iso: string) {
   })
 }
 
-export default async function StockPlazaPage() {
+export default async function StockPlazaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ hacia?: string }>
+}) {
+  const { hacia: destinoPedido } = await searchParams
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
 
@@ -116,7 +121,11 @@ export default async function StockPlazaPage() {
         </div>
       </div>
 
-      <TransferirForm lugares={lugares} lineas={todasLasLineas} />
+      <TransferirForm
+        lugares={lugares}
+        lineas={todasLasLineas}
+        destinoInicial={lugares.some((l) => l.id === destinoPedido) ? destinoPedido! : ''}
+      />
 
       {todasLasLineas.length === 0 && (
         <div className="rounded-xl border-2 border-dashed border-border p-8 text-center space-y-3">

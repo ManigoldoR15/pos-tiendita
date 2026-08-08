@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import {
-  ArrowLeft, Users, Package, PackagePlus, ShoppingCart, Receipt, Clock, MapPin,
+  ArrowLeft, ArrowRightLeft, Users, Package, PackagePlus, ShoppingCart, Receipt, Clock, MapPin,
   TrendingUp, ChevronRight, CircleDollarSign,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
@@ -296,11 +296,23 @@ export default async function PlazaDetallePage({
           </Link>
         </div>
         {stock.length === 0 ? (
-          <p className="px-5 py-6 text-sm text-muted-foreground">
-            Sin stock asignado. <strong>Producto nuevo</strong> da de alta mercancía que
-            no está en tu catálogo; <strong>Agregar stock</strong> registra la llegada de
-            algo que ya existe. También puedes mover lo que tengas en el general.
-          </p>
+          <div className="space-y-3 px-5 py-6">
+            <p className="text-sm text-muted-foreground">
+              Sin stock asignado. Mientras esta plaza esté vacía, un empleado asignado
+              aquí verá todo agotado y no podrá cobrar.
+            </p>
+            <Link
+              href={`/plazas/stock?hacia=${plaza.id}`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 px-3 py-2 text-xs font-bold text-primary transition hover:bg-primary/5"
+            >
+              <ArrowRightLeft className="h-3.5 w-3.5" />
+              Traer mercancía del general
+            </Link>
+            <p className="text-xs text-muted-foreground">
+              O usa <strong>Producto nuevo</strong> para dar de alta algo que no está en tu
+              catálogo, y <strong>Agregar stock</strong> para registrar la llegada de algo que ya existe.
+            </p>
+          </div>
         ) : (
           <div className="divide-y">
             {stock.slice(0, 8).map((s) => (

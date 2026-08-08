@@ -29,6 +29,8 @@ export type Producto = {
   precio_venta: number
   precio_costo: number | null
   existencias: number
+  /** con plaza asignada: cuánto hay de este producto fuera de la plaza */
+  existenciasFuera?: number
   categoria_id: string | null
   codigo_barras: string | null
   unidad_medida: string
@@ -73,11 +75,15 @@ type Props = {
   negocioNombre: string
   /** Plaza del vendedor; null cuando vende sin plaza (el caso normal) */
   plazaNombre?: string | null
+  /** la plaza del vendedor no tiene nada de nada */
+  plazaVacia?: boolean
+  /** cuántos productos tienen mercancía fuera de la plaza */
+  productosFuera?: number
   listas: ListaPrecio[]
   muestreoPeriodoId: string | null
 }
 
-export default function PosClient({ productos, categorias, metodosPago, negocioNombre, plazaNombre = null, listas, muestreoPeriodoId, moduloApartados = false }: Props) {
+export default function PosClient({ productos, categorias, metodosPago, negocioNombre, plazaNombre = null, plazaVacia = false, productosFuera = 0, listas, muestreoPeriodoId, moduloApartados = false }: Props) {
   const [modo, setModo] = useState<'tactil' | 'mostrador'>('tactil')
   const [carrito, setCarrito] = useState<ItemCarrito[]>([])
   const [busqueda, setBusqueda] = useState('')
@@ -624,8 +630,19 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
           )}
         </div>
 
-        {/* Plaza del vendedor: el stock mostrado es solo el de esta plaza */}
-        {plazaNombre && (
+        {/* Plaza del vendedor: el stock mostrado es solo el de esta plaza.
+            Si la plaza está vacía hay que decirlo fuerte: si no, el vendedor ve
+            todo agotado y cree que el sistema se descompuso. */}
+        {plazaNombre && (plazaVacia && productosFuera > 0 ? (
+          <div className="mb-3 flex shrink-0 items-start gap-2 rounded-lg border border-orange-300 bg-orange-50 px-3 py-2.5 text-xs text-orange-900 dark:border-orange-800/50 dark:bg-orange-950/25 dark:text-orange-200">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <span className="font-bold">{plazaNombre} no tiene mercancía asignada.</span>{' '}
+              Hay {productosFuera} producto{productosFuera !== 1 ? 's' : ''} con existencias en otro
+              lado. El sistema está bien: falta que el dueño mueva el inventario a esta plaza.
+            </span>
+          </div>
+        ) : (
           <div className="mb-3 flex shrink-0 items-center gap-1.5 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
             <Monitor className="h-3.5 w-3.5 shrink-0" />
             <span>
@@ -633,7 +650,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
               stock que ves es el de esta plaza
             </span>
           </div>
-        )}
+        ))}
 
         {/* Búsqueda */}
         <div className="relative mb-3 shrink-0">
@@ -742,7 +759,18 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                       <p className="text-xs text-muted-foreground">/ {producto.unidad_medida}</p>
                     )}
                     {sinStock ? (
-                      <p className="mt-1.5 text-xs font-medium text-destructive">Agotado</p>
+                      // "Agotado aquí" cuando la mercancía existe pero está en
+                      // otra plaza: el vendedor sabe que no es un error del sistema.
+                      (producto.existenciasFuera ?? 0) > 0 ? (
+                        <>
+                          <p className="mt-1.5 text-xs font-medium text-destructive">Agotado aquí</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {formatCantidad(Number(producto.existenciasFuera), producto.unidad_medida)} en otra plaza
+                          </p>
+                        </>
+                      ) : (
+                        <p className="mt-1.5 text-xs font-medium text-destructive">Agotado</p>
+                      )
                     ) : producto.existencias <= STOCK_MINIMO ? (
                       <p className="mt-1.5 flex items-center gap-0.5 text-xs font-medium text-orange-500">
                         <AlertTriangle className="h-3 w-3" />

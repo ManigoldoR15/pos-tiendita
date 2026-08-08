@@ -60,6 +60,7 @@ export default async function ConfiguracionPage() {
   let metaActual: number | null = null
   let plazas: Local[] = []
   let maxPlazas = 1
+  let plazasConStock: string[] = []
 
   if (rolActual === 'dueno') {
     const hoy = hoyMX()
@@ -88,6 +89,20 @@ export default async function ConfiguracionPage() {
     metaActual = metaData?.meta_ventas ?? null
     plazas = (localesData as Local[]) ?? []
     maxPlazas = (negocioExt as { max_plazas: number } | null)?.max_plazas ?? 1
+
+    // Qué plazas ya tienen mercancía: asignar a alguien a una plaza vacía lo
+    // deja sin nada que vender, y eso se descubre hasta que hay un cliente
+    // enfrente. Mejor avisarlo en el momento de asignar.
+    if (plazas.length > 1) {
+      const { data: lotes } = await supabase
+        .from('lotes_producto')
+        .select('local_id')
+        .eq('negocio_id', negocio.id)
+        .eq('activo', true)
+        .gt('cantidad_actual', 0)
+        .not('local_id', 'is', null)
+      plazasConStock = [...new Set((lotes ?? []).map((l) => l.local_id as string))]
+    }
   }
 
   const tieneMultiplasPlazas = plazas.length > 1 || maxPlazas > 1
@@ -258,6 +273,7 @@ export default async function ConfiguracionPage() {
                           userId={m.user_id}
                           localIdActual={m.local_id}
                           plazas={plazas}
+                          plazasConStock={plazasConStock}
                         />
                       )}
                       <SelectorRolEmpleado

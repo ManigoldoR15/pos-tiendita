@@ -17,6 +17,7 @@ test.use({ storageState: STORAGE })
 test.describe('Alta de stock directo en una plaza', () => {
   const admin = adminSupabase()
   let negocioId: string
+  let duenoId: string
   let plazaA: string
   let plazaB: string
   let nombrePlazaA: string
@@ -35,7 +36,9 @@ test.describe('Alta de stock directo en una plaza', () => {
   })
 
   test.beforeAll(async () => {
-    negocioId = JSON.parse(fs.readFileSync(FIXTURE, 'utf-8')).negocioId
+    const fixture = JSON.parse(fs.readFileSync(FIXTURE, 'utf-8'))
+    negocioId = fixture.negocioId
+    duenoId = fixture.duenoId
 
     // El selector de plaza solo aparece con dos o más: se reutilizan las del
     // negocio de pruebas y se completan si hiciera falta.
@@ -170,6 +173,53 @@ test.describe('Alta de stock directo en una plaza', () => {
 
     // La plaza llega preseleccionada: el dueño solo captura la mercancía
     await expect(page.locator('select[name="local_id"]')).toHaveValue(plazaA)
+  })
+
+  test('el POS de una plaza vacía explica que la mercancía está en otro lado', async ({ page }) => {
+    // Producto con stock solo en plazaB: desde plazaA debe verse "Agotado aquí"
+    const { data: prod } = await admin.from('productos').insert({
+      negocio_id: negocioId, nombre: `${PRODUCTO} solo en B`, precio_venta: 1000,
+      existencias: 0, unidad_medida: 'pieza', activo: true,
+    }).select('id').single()
+    creados.push(prod!.id)
+    await admin.from('lotes_producto').insert({
+      negocio_id: negocioId, producto_id: prod!.id, cantidad: 9, cantidad_actual: 9,
+      fecha_recepcion: new Date().toISOString().slice(0, 10), ubicacion: 'ambiente',
+      local_id: plazaB, activo: true,
+    })
+
+    const { data: prev } = await admin.from('usuarios_negocio').select('local_id')
+      .eq('negocio_id', negocioId).eq('user_id', duenoId).maybeSingle()
+    await admin.from('usuarios_negocio').update({ local_id: plazaA })
+      .eq('negocio_id', negocioId).eq('user_id', duenoId)
+
+    try {
+      await page.goto('/pos')
+      const tarjeta = page.locator('button', { hasText: `${PRODUCTO} solo en B` }).first()
+      await expect(tarjeta).toContainText('Agotado aquí')
+      await expect(tarjeta).toContainText('9 en otra plaza')
+    } finally {
+      await admin.from('usuarios_negocio').update({ local_id: prev?.local_id ?? null })
+        .eq('negocio_id', negocioId).eq('user_id', duenoId)
+    }
+  })
+
+  test('la plaza vacía ofrece traer mercancía y abre la transferencia apuntada ahí', async ({ page }) => {
+    // plazaB tiene stock en este punto; se usa una plaza recién creada y vacía
+    const { data: vacia } = await admin.from('locales')
+      .insert({ negocio_id: negocioId, nombre: 'QA Plaza Vacía', activo: true })
+      .select('id').single()
+
+    try {
+      await page.goto(`/plazas/${vacia!.id}`)
+      await page.getByRole('link', { name: /Traer mercancía del general/i }).click()
+
+      await expect(page).toHaveURL(new RegExp(`/plazas/stock\\?hacia=${vacia!.id}`))
+      // El formulario ya viene abierto y con el destino puesto
+      await expect(page.locator('select[name="hacia"]')).toHaveValue(vacia!.id)
+    } finally {
+      await admin.from('locales').delete().eq('id', vacia!.id)
+    }
   })
 
   test('un local_id de otro negocio no se guarda en el lote', async ({ page }) => {

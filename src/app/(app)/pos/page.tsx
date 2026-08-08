@@ -64,15 +64,28 @@ export default async function PosPage() {
       }
     }
 
-    productosVisibles = productosVisibles.map((p) => ({
-      ...p,
-      existencias: stockProducto.get(p.id) ?? 0,
-      variantes: (p.variantes ?? []).map((v) => ({
-        ...v,
-        existencias: stockVariante.get(v.id) ?? 0,
-      })),
-    }))
+    // Cuánto hay del producto fuera de esta plaza (general u otra plaza). Sin
+    // esto, un empleado en una plaza vacía ve todo "Agotado" y concluye que el
+    // sistema falla, cuando la mercancía existe y solo está en otro lado.
+    productosVisibles = productosVisibles.map((p) => {
+      const aqui = stockProducto.get(p.id) ?? 0
+      return {
+        ...p,
+        existencias: aqui,
+        existenciasFuera: Math.max(Number(p.existencias) - aqui, 0),
+        variantes: (p.variantes ?? []).map((v) => ({
+          ...v,
+          existencias: stockVariante.get(v.id) ?? 0,
+        })),
+      }
+    })
   }
+
+  // Para el aviso de arriba: cuántos productos tienen mercancía fuera de la plaza
+  const productosFuera = plaza
+    ? productosVisibles.filter((p) => (p as { existenciasFuera?: number }).existenciasFuera! > 0).length
+    : 0
+  const plazaVacia = plaza ? productosVisibles.every((p) => Number(p.existencias) <= 0) : false
 
   type ListaItem = { producto_id: string; precio: number }
   type Lista = { id: string; nombre: string; items: Record<string, number> }
@@ -91,6 +104,8 @@ export default async function PosPage() {
       metodosPago={metodosPago ?? []}
       negocioNombre={negocio.nombre}
       plazaNombre={plaza?.nombre ?? null}
+      plazaVacia={plazaVacia}
+      productosFuera={productosFuera}
       listas={listas}
       muestreoPeriodoId={muestreoActivo?.id ?? null}
       moduloApartados={modulos.apartados}
