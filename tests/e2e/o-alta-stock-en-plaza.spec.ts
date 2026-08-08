@@ -134,6 +134,33 @@ test.describe('Alta de stock directo en una plaza', () => {
     expect(Number(lotes![0].cantidad_actual)).toBe(9)
   })
 
+  test('desde la plaza, "Producto nuevo" da de alta con la plaza ya puesta', async ({ page }) => {
+    const nombre = `${PRODUCTO} desde plaza`
+    await page.goto(`/plazas/${plazaA}`)
+    await page.getByRole('link', { name: /Producto nuevo/i }).click()
+
+    await expect(page).toHaveURL(new RegExp(`/productos/nuevo\\?plaza=${plazaA}`))
+    // El título dice a dónde va y el selector llega elegido: nada que recordar
+    await expect(page.getByRole('heading', { name: new RegExp(`Nuevo producto en ${nombrePlazaA}`, 'i') })).toBeVisible()
+    await expect(page.locator('select[name="local_id"]')).toHaveValue(plazaA)
+
+    await page.fill('input[name="nombre"]', nombre)
+    await page.fill('input[name="precio_venta"]', '18')
+    await page.fill('input[placeholder="Ej: 24"]', '6')
+    await page.getByRole('button', { name: /Guardar producto/i }).click()
+    await expect(page).toHaveURL(/\/productos(\?|$)/, { timeout: 20000 })
+
+    const { data: prod } = await admin
+      .from('productos').select('id').eq('negocio_id', negocioId).eq('nombre', nombre).single()
+    creados.push(prod!.id)
+
+    const { data: lotes } = await admin
+      .from('lotes_producto').select('cantidad_actual, local_id')
+      .eq('producto_id', prod!.id).eq('activo', true)
+    expect(lotes![0].local_id).toBe(plazaA)
+    expect(Number(lotes![0].cantidad_actual)).toBe(6)
+  })
+
   test('desde la plaza, "Agregar stock" abre la compra con esa plaza puesta', async ({ page }) => {
     await page.goto(`/plazas/${plazaA}`)
     await expect(page).not.toHaveURL(/login/)

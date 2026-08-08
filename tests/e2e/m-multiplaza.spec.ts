@@ -135,8 +135,10 @@ test.describe('Multi-plaza: inventario, transferencias y POS por plaza', () => {
 
     const tarjeta = page.locator('button', { hasText: PRODUCTO }).first()
     await expect(tarjeta).toBeVisible()
-    await expect(tarjeta).toContainText('8')
-    await expect(tarjeta).not.toContainText('19')
+    // Sobre el texto del stock, no sobre todo el botón: el nombre lleva un
+    // timestamp que puede contener el número que se está descartando.
+    await expect(tarjeta).toContainText('8 disp.')
+    await expect(tarjeta).not.toContainText('19 disp.')
   })
 
   test('sin plaza asignada el POS sigue mostrando el total del negocio', async ({ page }) => {
@@ -148,6 +150,6 @@ test.describe('Multi-plaza: inventario, transferencias y POS por plaza', () => {
 
     const tarjeta = page.locator('button', { hasText: PRODUCTO }).first()
     await expect(tarjeta).toBeVisible()
-    await expect(tarjeta).toContainText('19')
+    await expect(tarjeta).toContainText('19 disp.')
   })
 })

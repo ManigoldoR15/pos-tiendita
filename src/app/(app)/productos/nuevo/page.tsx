@@ -8,9 +8,15 @@ import { seedCategoriasIfEmpty } from '../../caducidad/actions'
 import ProductoForm from '../producto-form'
 import { crearProductoAction } from '../actions'
 
-export default async function NuevoProductoPage() {
+export default async function NuevoProductoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ plaza?: string }>
+}) {
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
+
+  const { plaza: plazaPedida } = await searchParams
 
   const rol = await getRolActual()
   const modulos = await getModulos()
@@ -40,15 +46,20 @@ export default async function NuevoProductoPage() {
       .order('nombre'),
   ])
 
+  // Al llegar desde una plaza, el producto nace ahí sin que el dueño tenga que
+  // acordarse de cambiar el selector. Un id ajeno se ignora.
+  const plazaDestino = (plazas ?? []).find((p) => p.id === plazaPedida)
+
   return (
     <ProductoForm
       action={crearProductoAction}
       categorias={categorias ?? []}
       categoriasPerecedero={categoriasPerecedero ?? []}
       plazas={plazas ?? []}
+      plazaInicial={plazaDestino?.id ?? ''}
       moduloVariantes={modulos.variantes}
       hoy={hoyMX()}
-      titulo="Nuevo producto"
+      titulo={plazaDestino ? `Nuevo producto en ${plazaDestino.nombre}` : 'Nuevo producto'}
     />
   )
 }

@@ -275,18 +275,31 @@ export default async function PlazaDetallePage({
         <div className="flex items-center gap-2 border-b px-5 py-4">
           <Package className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span className="text-sm font-semibold">Stock en esta plaza</span>
+        </div>
+
+        {/* Las dos formas de meter mercancía aquí: dar de alta algo que no está
+            en el catálogo, o registrar la llegada de algo que ya existe. */}
+        <div className="flex gap-2 border-b px-5 py-3">
           <Link
-            href={`/compras/nueva?plaza=${plaza.id}`}
-            className="ml-auto flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground transition hover:opacity-90"
+            href={`/productos/nuevo?plaza=${plaza.id}`}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition hover:opacity-90"
           >
             <PackagePlus className="h-3.5 w-3.5" />
+            Producto nuevo
+          </Link>
+          <Link
+            href={`/compras/nueva?plaza=${plaza.id}`}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border bg-card px-3 py-2 text-xs font-bold transition hover:bg-accent"
+          >
+            <Package className="h-3.5 w-3.5" />
             Agregar stock
           </Link>
         </div>
         {stock.length === 0 ? (
           <p className="px-5 py-6 text-sm text-muted-foreground">
-            Sin stock asignado. Con <strong>Agregar stock</strong> registras mercancía
-            que llega directo aquí, o mueve lo que ya tienes desde el inventario general.
+            Sin stock asignado. <strong>Producto nuevo</strong> da de alta mercancía que
+            no está en tu catálogo; <strong>Agregar stock</strong> registra la llegada de
+            algo que ya existe. También puedes mover lo que tengas en el general.
           </p>
         ) : (
           <div className="divide-y">

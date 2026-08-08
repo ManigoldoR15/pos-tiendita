@@ -29,6 +29,8 @@ type ProductoFormProps = {
   titulo: string
   /** plazas activas del negocio; con dos o más se elige dónde nace el stock */
   plazas?: Plaza[]
+  /** plaza preseleccionada al entrar desde /plazas/[id] */
+  plazaInicial?: string
   /** true si el negocio tiene el módulo de variantes (giros tipo ropa) */
   moduloVariantes?: boolean
   /** variantes existentes, solo para mostrar al editar */
@@ -57,6 +59,7 @@ export default function ProductoForm({
   hoy = '',
   titulo,
   plazas = [],
+  plazaInicial = '',
   moduloVariantes = false,
   variantesActuales = [],
   inicial = {},
@@ -364,12 +367,15 @@ export default function ProductoForm({
           </div>
         )}
 
-        {/* Plaza donde entra el stock inicial — solo al crear y con varias plazas */}
-        {esNuevo && plazas.length > 1 && (
+        {/* Plaza donde entra el stock inicial — solo al crear. Con una sola plaza
+            se pinta igual si se llegó desde ella, para no mandar su stock al
+            general en silencio. */}
+        {esNuevo && (plazas.length > 1 || plazaInicial) && (
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium">¿Dónde entra este inventario?</label>
             <select
               name="local_id"
+              defaultValue={plazaInicial}
               className="rounded-lg border border-input bg-background px-3 py-3 text-base outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">General (sin plaza)</option>
