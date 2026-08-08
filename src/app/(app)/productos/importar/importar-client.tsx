@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils'
 import { formatMXN } from '@/lib/dinero'
 import { importarProductosAction } from './actions'
 
+type Plaza = { id: string; nombre: string }
+
 export type FilaImport = {
   nombre: string
   precio_venta: number     // centavos
@@ -78,12 +80,13 @@ async function parsearArchivo(file: File): Promise<FilaImport[]> {
   return []
 }
 
-export default function ImportarProductosClient() {
+export default function ImportarProductosClient({ plazas = [] }: { plazas?: Plaza[] }) {
   const [filas, setFilas] = useState<FilaImport[] | null>(null)
   const [cargando, setCargando] = useState(false)
   const [importando, setImportando] = useState(false)
   const [resultado, setResultado] = useState<{ ok: number; errores: number } | null>(null)
   const [archivoNombre, setArchivoNombre] = useState('')
+  const [localId, setLocalId] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   async function handleFile(file: File) {
@@ -107,7 +110,7 @@ export default function ImportarProductosClient() {
     if (validas.length === 0) return
 
     setImportando(true)
-    const res = await importarProductosAction(validas)
+    const res = await importarProductosAction(validas, localId || null)
     setImportando(false)
     setResultado(res)
     setFilas(null)
@@ -115,6 +118,7 @@ export default function ImportarProductosClient() {
 
   const filasValidas = filas?.filter((f) => !f.error) ?? []
   const filasConError = filas?.filter((f) => f.error) ?? []
+  const plazaElegida = plazas.find((p) => p.id === localId)
 
   if (resultado) {
     return (
@@ -122,7 +126,8 @@ export default function ImportarProductosClient() {
         <CheckCircle className="mx-auto mb-3 h-12 w-12 text-emerald-500" />
         <p className="text-lg font-bold">Importación completada</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          {resultado.ok} productos importados correctamente.
+          {resultado.ok} productos importados correctamente
+          {plazaElegida ? ` en ${plazaElegida.nombre}` : ''}.
           {resultado.errores > 0 && ` ${resultado.errores} filas omitidas por errores.`}
         </p>
         <div className="mt-6 flex justify-center gap-3">
@@ -265,6 +270,28 @@ export default function ImportarProductosClient() {
               </p>
             )}
           </div>
+
+          {/* Plaza destino del stock importado — solo con varias plazas */}
+          {plazas.length > 1 && (
+            <div className="rounded-xl border bg-card p-4 shadow-sm">
+              <label className="text-sm font-medium">¿Dónde entra este inventario?</label>
+              <select
+                name="local_id"
+                value={localId}
+                onChange={(e) => setLocalId(e.target.value)}
+                className="mt-1.5 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">General (sin plaza)</option>
+                {plazas.map((p) => (
+                  <option key={p.id} value={p.id}>{p.nombre}</option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Aplica a todo el archivo. Después puedes mover lo que haga falta desde
+                Plazas → Inventario.
+              </p>
+            </div>
+          )}
 
           <div className="flex gap-3 justify-end">
             <Button variant="outline" onClick={() => { setFilas(null); setArchivoNombre('') }}>

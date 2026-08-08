@@ -1,10 +1,19 @@
 import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import ImportarProductosClient from './importar-client'
 
 export default async function ImportarProductosPage() {
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
+
+  const supabase = await createClient()
+  const { data: plazas } = await supabase
+    .from('locales')
+    .select('id, nombre')
+    .eq('negocio_id', negocio.id)
+    .eq('activo', true)
+    .order('nombre')
 
   return (
     <div>
@@ -15,7 +24,7 @@ export default async function ImportarProductosPage() {
         </p>
       </div>
 
-      <ImportarProductosClient />
+      <ImportarProductosClient plazas={plazas ?? []} />
     </div>
   )
 }

@@ -22,6 +22,14 @@ test.describe('Importar catálogo: el stock importado se puede cobrar', () => {
   let csvPath: string
   let productoId: string
 
+  // El aviso de GPS es un toast fijo abajo a la derecha; con el selector de
+  // plaza en la previsualización llega a tapar el botón de importar.
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      try { localStorage.setItem('_gps_no', String(Date.now())) } catch {}
+    })
+  })
+
   test.beforeAll(async () => {
     negocioId = JSON.parse(fs.readFileSync(FIXTURE, 'utf-8')).negocioId
     csvPath = path.join(os.tmpdir(), `qa-import-${Date.now()}.csv`)

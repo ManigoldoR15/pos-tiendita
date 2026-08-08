@@ -84,6 +84,32 @@ async function resolverCategoria(
   return { categoria_id: data.id }
 }
 
+/**
+ * Plaza elegida en el formulario, verificada contra el negocio. null = general
+ * (sin plaza), que es el destino por omisión y el único que existía antes del
+ * multi-plaza. Se valida aquí porque lotes_producto no comprueba que el local
+ * pertenezca al negocio: sin esto, un local_id ajeno se guardaría tal cual.
+ */
+async function resolverLocalId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  negocioId: string,
+  formData: FormData,
+): Promise<{ local_id: string | null } | { error: string }> {
+  const localId = (formData.get('local_id') as string)?.trim() || null
+  if (!localId) return { local_id: null }
+
+  const { data } = await supabase
+    .from('locales')
+    .select('id')
+    .eq('id', localId)
+    .eq('negocio_id', negocioId)
+    .eq('activo', true)
+    .maybeSingle()
+
+  if (!data) return { error: 'La plaza seleccionada no existe o está inactiva.' }
+  return { local_id: localId }
+}
+
 type VarianteCapturada = { valor1: string; valor2: string | null; cantidad: number }
 
 export async function crearProductoAction(
@@ -147,6 +173,11 @@ export async function crearProductoAction(
   const cat = await resolverCategoria(supabase, negocio.id, resultado.categoria_id, resultado.nueva_categoria_nombre)
   if ('error' in cat) return cat
 
+  // Plaza donde nace el stock inicial. Sin plazas el select no se pinta y esto
+  // queda en null, que es exactamente el comportamiento de siempre.
+  const local = await resolverLocalId(supabase, negocio.id, formData)
+  if ('error' in local) return local
+
   const { nueva_categoria_nombre: _, ...campos } = resultado
   const { data: producto, error } = await supabase
     .from('productos')
@@ -205,6 +236,7 @@ export async function crearProductoAction(
           fecha_recepcion: hoyMx,
           ubicacion: 'ambiente',
           fecha_caducidad: null,
+          local_id: local.local_id,
           notas: 'Existencia inicial de la variante',
         })),
       )
@@ -227,6 +259,7 @@ export async function crearProductoAction(
         fecha_caducidad: l.fecha_caducidad,
         notas: l.notas,
         notas_merma: l.notas_merma ?? null,
+        local_id: local.local_id,
       })),
     )
 
@@ -297,9 +330,11 @@ export async function agregarLoteAction(
     return { error: 'Agrega al menos un lote con cantidad mayor a 0' }
   }
 
-  const localId = (formData.get('local_id') as string) || null
-
   const supabase = await createClient()
+
+  const local = await resolverLocalId(supabase, negocio.id, formData)
+  if ('error' in local) return local
+
   const { error } = await supabase.from('lotes_producto').insert(
     lotes.map((l) => ({
       negocio_id: negocio.id,
@@ -313,7 +348,7 @@ export async function agregarLoteAction(
       fecha_caducidad: l.fecha_caducidad,
       notas: l.notas,
       notas_merma: l.notas_merma ?? null,
-      local_id: localId,
+      local_id: local.local_id,
     })),
   )
 

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import {
-  ArrowLeft, Users, Package, ShoppingCart, Receipt, Clock, MapPin,
+  ArrowLeft, Users, Package, PackagePlus, ShoppingCart, Receipt, Clock, MapPin,
   TrendingUp, ChevronRight, CircleDollarSign,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
@@ -276,16 +276,17 @@ export default async function PlazaDetallePage({
           <Package className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span className="text-sm font-semibold">Stock en esta plaza</span>
           <Link
-            href="/plazas/stock"
-            className="ml-auto flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            href={`/compras/nueva?plaza=${plaza.id}`}
+            className="ml-auto flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground transition hover:opacity-90"
           >
-            Ver inventario / transferir <ChevronRight className="h-3 w-3" />
+            <PackagePlus className="h-3.5 w-3.5" />
+            Agregar stock
           </Link>
         </div>
         {stock.length === 0 ? (
           <p className="px-5 py-6 text-sm text-muted-foreground">
-            Sin stock asignado. Transfiere mercancía desde los lotes de cada producto,
-            o registra una compra eligiendo esta plaza.
+            Sin stock asignado. Con <strong>Agregar stock</strong> registras mercancía
+            que llega directo aquí, o mueve lo que ya tienes desde el inventario general.
           </p>
         ) : (
           <div className="divide-y">
@@ -303,6 +304,12 @@ export default async function PlazaDetallePage({
             )}
           </div>
         )}
+        <Link
+          href="/plazas/stock"
+          className="flex items-center gap-1 border-t px-5 py-3 text-xs font-medium text-primary hover:bg-accent"
+        >
+          Ver inventario / transferir entre plazas <ChevronRight className="h-3 w-3" />
+        </Link>
       </div>
 
       {/* Ventas recientes */}

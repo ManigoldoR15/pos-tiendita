@@ -6,11 +6,28 @@ import type { FilaImport } from './importar-client'
 
 export async function importarProductosAction(
   filas: FilaImport[],
+  localId?: string | null,
 ): Promise<{ ok: number; errores: number }> {
   const negocio = await getNegocioActual()
   if (!negocio) return { ok: 0, errores: filas.length }
 
   const supabase = await createClient()
+
+  // Plaza donde entra todo el catálogo importado. Se verifica contra el negocio
+  // porque lotes_producto no comprueba la pertenencia del local; un id que no
+  // sea de aquí entra como null (general) en vez de guardarse a ciegas.
+  let local_id: string | null = null
+  if (localId) {
+    const { data } = await supabase
+      .from('locales')
+      .select('id')
+      .eq('id', localId)
+      .eq('negocio_id', negocio.id)
+      .eq('activo', true)
+      .maybeSingle()
+    local_id = data?.id ?? null
+  }
+
   let ok = 0
   let errores = 0
 
@@ -76,6 +93,7 @@ export async function importarProductosAction(
           cantidad_actual: x.cantidad,
           fecha_recepcion: hoyMx,
           ubicacion: 'ambiente',
+          local_id,
           notas: 'Stock inicial de importación',
           activo: true,
         }))

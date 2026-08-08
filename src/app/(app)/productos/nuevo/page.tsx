@@ -20,7 +20,7 @@ export default async function NuevoProductoPage() {
 
   const supabase = await createClient()
 
-  const [{ data: categorias }, { data: categoriasPerecedero }] = await Promise.all([
+  const [{ data: categorias }, { data: categoriasPerecedero }, { data: plazas }] = await Promise.all([
     supabase
       .from('categorias_producto')
       .select('id, nombre')
@@ -32,6 +32,12 @@ export default async function NuevoProductoPage() {
       .eq('negocio_id', negocio!.id)
       .order('orden')
       .order('nombre'),
+    supabase
+      .from('locales')
+      .select('id, nombre')
+      .eq('negocio_id', negocio!.id)
+      .eq('activo', true)
+      .order('nombre'),
   ])
 
   return (
@@ -39,6 +45,7 @@ export default async function NuevoProductoPage() {
       action={crearProductoAction}
       categorias={categorias ?? []}
       categoriasPerecedero={categoriasPerecedero ?? []}
+      plazas={plazas ?? []}
       moduloVariantes={modulos.variantes}
       hoy={hoyMX()}
       titulo="Nuevo producto"

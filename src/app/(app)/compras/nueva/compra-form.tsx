@@ -39,11 +39,14 @@ export default function CompraForm({
   productos,
   proveedores,
   plazas = [],
+  plazaInicial = '',
   hoy,
 }: {
   productos: Producto[]
   proveedores: Proveedor[]
   plazas?: Plaza[]
+  /** plaza preseleccionada al entrar desde /plazas/[id] */
+  plazaInicial?: string
   hoy: string
 }) {
   const [error, action, pending] = useActionState(registrarCompraAction, null)
@@ -200,6 +203,7 @@ export default function CompraForm({
               <label className="text-sm font-medium">Plaza donde entra (opcional)</label>
               <select
                 name="local_id"
+                defaultValue={plazaInicial}
                 className="w-full rounded-xl border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">— Sin plaza específica —</option>

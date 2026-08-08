@@ -45,13 +45,13 @@ export default function ReabastoForm({ action, producto, categoriasPerecedero, p
               name="local_id"
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="">Pool global (sin plaza)</option>
+              <option value="">General (sin plaza)</option>
               {plazas.map((p) => (
                 <option key={p.id} value={p.id}>{p.nombre}</option>
               ))}
             </select>
             <p className="text-xs text-muted-foreground">
-              Pool global = disponible para ventas sin filtro de plaza.
+              General = disponible para ventas sin filtro de plaza.
             </p>
           </div>
         )}

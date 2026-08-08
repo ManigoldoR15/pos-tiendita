@@ -10,9 +10,15 @@ import CompraForm from './compra-form'
 
 const DIAS_COBERTURA = 7
 
-export default async function NuevaCompraPage() {
+export default async function NuevaCompraPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ plaza?: string }>
+}) {
   const negocio = await getNegocioActual()
   if (!negocio) redirect('/crear-negocio')
+
+  const { plaza: plazaPedida } = await searchParams
 
   const supabase = await createClient()
   const hoy = hoyMX()
@@ -52,6 +58,10 @@ export default async function NuevaCompraPage() {
       .eq('activo', true)
       .order('nombre'),
   ])
+
+  // Plaza preseleccionada al llegar desde /plazas/[id]. Si el id no es de este
+  // negocio simplemente no se preselecciona nada.
+  const plazaInicial = (plazas ?? []).some((p) => p.id === plazaPedida) ? plazaPedida! : ''
 
   // Velocidad de venta últimos 30 días para productos en alerta
   const alertaIds = (productosAlerta ?? []).map((p) => p.id)
@@ -159,6 +169,7 @@ export default async function NuevaCompraPage() {
         productos={productos ?? []}
         proveedores={proveedores ?? []}
         plazas={plazas ?? []}
+        plazaInicial={plazaInicial}
         hoy={hoyMX()}
       />
     </div>
