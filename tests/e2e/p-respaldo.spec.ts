@@ -69,6 +69,44 @@ test.describe('Respaldo descargable del negocio', () => {
       expect(resumen.some((r) => String(r['Dato']) === 'Total vendido')).toBe(true)
     })
 
+    test('la copia técnica trae los datos crudos y completos', async ({ page }) => {
+      await page.goto('/configuracion')
+      const [descarga] = await Promise.all([
+        page.waitForEvent('download'),
+        page.getByRole('button', { name: /Copia técnica/i }).click(),
+      ])
+
+      expect(descarga.suggestedFilename()).toMatch(/^respaldo-.*\.json$/)
+      const json = JSON.parse(fs.readFileSync(await descarga.path(), 'utf-8'))
+
+      // Metadatos para que un restaurador futuro sepa qué está leyendo
+      expect(json._meta.version).toBeGreaterThanOrEqual(1)
+      expect(json._meta.negocio.id).toBeTruthy()
+      expect(json._meta.moneda).toBe('MXN')
+
+      // Todas las tablas que sostienen el negocio, incluidas las que el xlsx
+      // no lleva porque no se leen a mano
+      for (const t of [
+        'productos', 'lotes_producto', 'ventas', 'venta_items', 'clientes',
+        'gastos', 'cortes_caja', 'locales', 'metodos_pago', 'compras',
+        'variantes_producto', 'categorias_producto',
+      ]) {
+        expect(Array.isArray(json[t])).toBe(true)
+      }
+      expect(json.productos.length).toBeGreaterThan(0)
+      expect(json.ventas.length).toBeGreaterThan(0)
+
+      // Crudo de verdad: centavos enteros, ids y fechas ISO — lo contrario del xlsx
+      const prod = json.productos[0]
+      expect(prod.id).toMatch(/^[0-9a-f]{8}-/)
+      expect(Number.isInteger(prod.precio_venta)).toBe(true)
+      expect(json.ventas[0].created_at).toContain('T')
+
+      // venta_items no debe arrastrar el join que se usó para filtrarlo
+      expect(json.venta_items[0]).not.toHaveProperty('ventas')
+      expect(json.venta_items[0]).toHaveProperty('venta_id')
+    })
+
     test('tras descargar, recuerda la fecha en el dispositivo', async ({ page }) => {
       await page.goto('/configuracion')
       await Promise.all([
@@ -86,6 +124,9 @@ test.describe('Respaldo descargable del negocio', () => {
     test('no puede descargar el negocio completo', async ({ page }) => {
       const res = await page.request.get('/api/export/respaldo')
       expect(res.status()).toBe(403)
+      // Ni por la puerta de atrás del formato técnico
+      const resJson = await page.request.get('/api/export/respaldo?formato=json')
+      expect(resJson.status()).toBe(403)
 
       await page.goto('/configuracion')
       // Ni siquiera ve la tarjeta (configuración lo redirige, pero por si acaso)

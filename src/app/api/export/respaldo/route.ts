@@ -4,19 +4,26 @@ import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
 import { getRolActual } from '@/lib/rol'
 
+/** Sube cuando cambie la forma del JSON, para que un restaurador futuro sepa
+ *  qué está leyendo. */
+const VERSION_RESPALDO = 1
+
 /**
- * Respaldo completo del negocio en un solo archivo, para que el dueño lo guarde
- * en su teléfono o computadora. Si la base se cae o se corrompe, sus números no
- * se van con ella.
+ * Respaldo completo del negocio, para que el dueño lo guarde en su teléfono o
+ * computadora. Si la base se cae o se corrompe, sus números no se van con ella.
+ *
+ * Dos formatos, con propósitos distintos:
+ *   - .xlsx (default): para leerlo. Fechas en hora de México, montos en pesos,
+ *     nombres en vez de uuid. Lo abre un tendero desde el celular.
+ *   - ?formato=json: para restaurar. Filas crudas tal cual están en la base
+ *     (montos en centavos, todos los campos, ids y nulos). Ilegible a
+ *     propósito: su valor es la fidelidad, no la presentación.
  *
  * A diferencia de las otras exportaciones, esta NO se cierra tras el módulo de
  * exportación: poder llevarse los propios datos no es una función de paga.
  * Solo el dueño lo descarga — un empleado no debe llevarse el negocio completo.
- *
- * Va con ids reales para que el respaldo sirva también para reconstruir las
- * relaciones (qué venta corresponde a qué detalle), no solo para leerlo.
  */
-export async function GET() {
+export async function GET(request: Request) {
   const negocio = await getNegocioActual()
   if (!negocio) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
@@ -27,6 +34,72 @@ export async function GET() {
 
   const supabase = await createClient()
   const n = negocio.id
+  const hoyMx = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
+  const archivo = (ext: string) =>
+    `respaldo-${negocio.nombre.replace(/[^a-zA-Z0-9]+/g, '-')}-${hoyMx}.${ext}`
+
+  // ── Formato técnico: filas crudas, sin maquillar ────────────────────────
+  if (new URL(request.url).searchParams.get('formato') === 'json') {
+    const tabla = async (nombre: string) =>
+      (await supabase.from(nombre).select('*').eq('negocio_id', n)).data ?? []
+
+    const [
+      productosRaw, variantes, lotesRaw, ventasRaw, clientesRaw, abonosRaw,
+      gastosRaw, cortesRaw, localesRaw, proveedoresRaw, categoriasProd,
+      categoriasGasto, metodosPago, compras, comprasItems, transferencias,
+    ] = await Promise.all([
+      tabla('productos'), tabla('variantes_producto'), tabla('lotes_producto'),
+      tabla('ventas'), tabla('clientes'), tabla('abonos'), tabla('gastos'),
+      tabla('cortes_caja'), tabla('locales'), tabla('proveedores'),
+      tabla('categorias_producto'), tabla('categorias_gasto'), tabla('metodos_pago'),
+      tabla('compras'), tabla('compras_items'), tabla('transferencias_inventario'),
+    ])
+
+    // venta_items no lleva negocio_id: se acota por las ventas del negocio
+    const { data: itemsRaw } = await supabase
+      .from('venta_items').select('*, ventas!inner(negocio_id)').eq('ventas.negocio_id', n)
+    const venta_items = (itemsRaw ?? []).map((i) => {
+      const { ventas: _descartar, ...fila } = i as Record<string, unknown>
+      return fila
+    })
+
+    const respaldo = {
+      _meta: {
+        version: VERSION_RESPALDO,
+        generado: new Date().toISOString(),
+        negocio: { id: negocio.id, nombre: negocio.nombre },
+        moneda: 'MXN',
+        nota:
+          'Montos en centavos enteros, tal como los guarda la base. Fechas en UTC (ISO 8601). ' +
+          'Este archivo es para restaurar el sistema, no para leerlo: usa el .xlsx para consultarlo.',
+      },
+      productos: productosRaw,
+      variantes_producto: variantes,
+      lotes_producto: lotesRaw,
+      ventas: ventasRaw,
+      venta_items,
+      clientes: clientesRaw,
+      abonos: abonosRaw,
+      gastos: gastosRaw,
+      cortes_caja: cortesRaw,
+      locales: localesRaw,
+      proveedores: proveedoresRaw,
+      categorias_producto: categoriasProd,
+      categorias_gasto: categoriasGasto,
+      metodos_pago: metodosPago,
+      compras,
+      compras_items: comprasItems,
+      transferencias_inventario: transferencias,
+    }
+
+    return new NextResponse(JSON.stringify(respaldo, null, 2), {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${archivo('json')}"`,
+        'Cache-Control': 'no-store',
+      },
+    })
+  }
 
   const [
     { data: productos }, { data: lotes }, { data: ventas }, { data: items },
@@ -273,13 +346,11 @@ export async function GET() {
   }
 
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
-  const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
-  const filename = `respaldo-${negocio.nombre.replace(/[^a-zA-Z0-9]+/g, '-')}-${hoy}.xlsx`
 
   return new NextResponse(buf, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Disposition': `attachment; filename="${archivo('xlsx')}"`,
       'Cache-Control': 'no-store',
     },
   })

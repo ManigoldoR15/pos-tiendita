@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Download, ShieldCheck, AlertTriangle } from 'lucide-react'
+import { Download, ShieldCheck, AlertTriangle, FileJson } from 'lucide-react'
 
 const CLAVE = '_ultimo_respaldo'
 /** A partir de una semana sin respaldar, se avisa. */
@@ -26,10 +26,11 @@ export default function BotonRespaldo() {
     : null
   const haceFalta = dias === null || dias >= DIAS_AVISO
 
-  function descargar() {
+  function descargar(formato: 'xlsx' | 'json' = 'xlsx') {
     setDescargando(true)
     // Descarga directa: el navegador la maneja como cualquier archivo
-    window.location.href = '/api/export/respaldo'
+    window.location.href =
+      formato === 'json' ? '/api/export/respaldo?formato=json' : '/api/export/respaldo'
     const ahora = new Date().toISOString()
     try { localStorage.setItem(CLAVE, ahora) } catch {}
     setUltimo(ahora)
@@ -50,13 +51,29 @@ export default function BotonRespaldo() {
       </p>
 
       <button
-        onClick={descargar}
+        onClick={() => descargar('xlsx')}
         disabled={descargando}
         className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
       >
         <Download className="h-4 w-4" />
         {descargando ? 'Preparando archivo…' : 'Descargar respaldo'}
       </button>
+
+      {/* Copia técnica: mismos datos sin maquillar, para restaurar el sistema.
+          Va en segundo plano a propósito — al dueño le sirve el de arriba. */}
+      <button
+        onClick={() => descargar('json')}
+        disabled={descargando}
+        className="flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium text-muted-foreground transition hover:bg-accent disabled:opacity-60"
+      >
+        <FileJson className="h-3.5 w-3.5" />
+        Copia técnica (JSON)
+      </button>
+      <p className="text-xs text-muted-foreground">
+        El respaldo de arriba es el que puedes abrir y leer. La copia técnica trae los
+        mismos datos en crudo: no es para consultarla, es la que sirve para reconstruir
+        el sistema si algún día hace falta. Guarda las dos.
+      </p>
 
       {ultimo ? (
         <p className={`flex items-center gap-1.5 text-xs ${haceFalta ? 'font-medium text-orange-600 dark:text-orange-400' : 'text-muted-foreground'}`}>
