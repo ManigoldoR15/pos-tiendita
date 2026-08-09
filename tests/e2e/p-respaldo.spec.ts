@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import * as path from 'path'
+import * as fs from 'fs'
 import * as XLSX from 'xlsx'
 
 const DUENO = path.join(__dirname, '../.auth/dueno.json')
@@ -32,7 +33,8 @@ test.describe('Respaldo descargable del negocio', () => {
       expect(descarga.suggestedFilename()).toMatch(/^respaldo-.*\.xlsx$/)
 
       const ruta = await descarga.path()
-      const wb = XLSX.readFile(ruta)
+      // cellStyles: sin esto los anchos de columna no se releen del archivo
+      const wb = XLSX.read(fs.readFileSync(ruta), { cellStyles: true })
       // Las hojas que sostienen el negocio
       for (const hoja of ['Resumen', 'Productos', 'Ventas', 'Detalle de ventas', 'Clientes', 'Gastos', 'Cortes de caja']) {
         expect(wb.SheetNames).toContain(hoja)
@@ -41,9 +43,30 @@ test.describe('Respaldo descargable del negocio', () => {
       // Y traen datos de verdad, no hojas vacías
       const productos = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets['Productos'])
       expect(productos.length).toBeGreaterThan(0)
-      expect(productos[0]).toHaveProperty('Nombre')
+      expect(productos[0]).toHaveProperty('Producto')
       // Los montos van en pesos, no en centavos: un precio de catálogo es < 100000
       expect(Number(productos[0]['Precio venta'])).toBeLessThan(100000)
+
+      // ── Que el archivo se pueda leer, no solo que exista ──────────────
+      // Lo primero que se ve es información, no un uuid
+      expect(Object.keys(productos[0])[0]).not.toBe('id')
+
+      const ventas = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets['Ventas'])
+      expect(ventas.length).toBeGreaterThan(0)
+      // Fecha legible en hora de México (08/08/2026 07:14 p.m.), no ISO en UTC
+      expect(String(ventas[0]['Fecha'])).toMatch(/^\d{2}\/\d{2}\/\d{4}/)
+      expect(String(ventas[0]['Fecha'])).not.toContain('T')
+      // Personas por su nombre, no por su uuid
+      expect(String(ventas[0]['Vendedor'])).not.toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-/)
+      expect(ventas[0]).toHaveProperty('Cliente')
+
+      // Anchos de columna definidos: sin esto todo sale aplastado
+      expect(wb.Sheets['Ventas']['!cols']).toBeDefined()
+
+      // La portada dice desde cuándo hay historial
+      const resumen = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets['Resumen'])
+      expect(resumen.some((r) => String(r['Dato']) === 'Historial desde')).toBe(true)
+      expect(resumen.some((r) => String(r['Dato']) === 'Total vendido')).toBe(true)
     })
 
     test('tras descargar, recuerda la fecha en el dispositivo', async ({ page }) => {
