@@ -194,6 +194,19 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
     setTimeout(() => setAlertaStock(null), 3000)
   }
 
+  // Cuánto se puede vender del producto a granel que se está capturando, ya
+  // descontando lo que ese mismo producto lleve en el carrito.
+  const granelEnCarrito = granelPendiente
+    ? carrito.find((i) => i.lineaId === `${granelPendiente.id}|`)?.cantidad ?? 0
+    : 0
+  const granelDisponible = granelPendiente
+    ? Math.max(Number(granelPendiente.existencias) - granelEnCarrito, 0)
+    : 0
+  const granelExcede =
+    granelPendiente !== null &&
+    granelCantidad.trim() !== '' &&
+    parseFloat(granelCantidad) > granelDisponible
+
   function agregarProducto(producto: Producto) {
     if (producto.existencias <= 0) return
     if (producto.tiene_variantes) {
@@ -272,33 +285,19 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
     const cantidad = parseFloat(granelCantidad)
     if (isNaN(cantidad) || cantidad <= 0) return
     const lineaGranel = `${granelPendiente.id}|`
-    const disponible = Number(granelPendiente.existencias)
+
+    // Si no alcanza, no se agrega nada: recortar la cantidad en silencio hace
+    // que el mostrador teclee 3 kg y el carrito muestre otro número. El modal
+    // se queda abierto con el aviso a la vista para corregirlo.
+    if (granelExcede) {
+      mostrarAlertaStock(
+        `Solo quedan ${formatCantidad(granelDisponible, granelPendiente.unidad_medida)} de ${granelPendiente.nombre}`,
+      )
+      return
+    }
+
     setCarrito((prev) => {
       const existe = prev.find((i) => i.lineaId === lineaGranel)
-      // Mismo tope que pieza y variantes: sin esto el carrito acepta más de lo
-      // que hay y el error revienta hasta el cobro, con el cliente enfrente.
-      const enCarrito = existe?.cantidad ?? 0
-      if (enCarrito + cantidad > disponible) {
-        mostrarAlertaStock(
-          `Solo quedan ${formatCantidad(disponible, granelPendiente.unidad_medida)} de ${granelPendiente.nombre}`,
-        )
-        const tope = Math.max(disponible, minCantidad(granelPendiente.unidad_medida))
-        if (disponible <= enCarrito) return prev
-        return existe
-          ? prev.map((i) => (i.lineaId === lineaGranel ? { ...i, cantidad: tope } : i))
-          : [...prev, {
-              lineaId: lineaGranel,
-              productoId: granelPendiente.id,
-              varianteId: null,
-              varianteTexto: null,
-              maxStock: disponible,
-              nombre: granelPendiente.nombre,
-              precio: getPrecioEfectivo(granelPendiente),
-              cantidad: tope,
-              fiado: false,
-              unidad: granelPendiente.unidad_medida,
-            }]
-      }
       if (existe) {
         return prev.map((i) =>
           i.lineaId === lineaGranel ? { ...i, cantidad: i.cantidad + cantidad } : i,
@@ -1021,37 +1020,55 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
               <Scale className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-bold">¿Cuánto vendes?</h2>
             </div>
-            <p className="text-sm text-muted-foreground">{granelPendiente.nombre}</p>
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-sm text-muted-foreground">{granelPendiente.nombre}</p>
+              <p className="shrink-0 text-xs font-medium text-muted-foreground">
+                Disponible: {formatCantidad(granelDisponible, granelPendiente.unidad_medida)}
+              </p>
+            </div>
             <div className="relative">
               <input
                 autoFocus
                 type="number"
                 min={minCantidad(granelPendiente.unidad_medida)}
+                max={granelDisponible || undefined}
                 step={stepCantidad(granelPendiente.unidad_medida)}
                 placeholder="0"
                 value={granelCantidad}
                 onChange={(e) => setGranelCantidad(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && confirmarGranel()}
-                className="w-full rounded-lg border border-input bg-background px-3 py-3 pr-16 text-xl font-bold outline-none focus:ring-2 focus:ring-ring"
+                className={cn(
+                  'w-full rounded-lg border bg-background px-3 py-3 pr-16 text-xl font-bold outline-none focus:ring-2',
+                  granelExcede
+                    ? 'border-destructive focus:ring-destructive'
+                    : 'border-input focus:ring-ring',
+                )}
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
                 {granelPendiente.unidad_medida}
               </span>
             </div>
-            {granelCantidad && parseFloat(granelCantidad) > 0 && (
+            {granelExcede ? (
+              // El aviso vive aquí, no en un mensaje que se borra a los 3 s:
+              // el mostrador tiene que verlo mientras corrige el número.
+              <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+                Solo hay {formatCantidad(granelDisponible, granelPendiente.unidad_medida)}
+                {granelEnCarrito > 0 && ' sin contar lo que ya llevas en el carrito'}. Ajusta la cantidad.
+              </p>
+            ) : granelCantidad && parseFloat(granelCantidad) > 0 ? (
               // getPrecioEfectivo: con una lista de precios activa, la vista previa
               // debe enseñar el mismo número que va a aparecer en el carrito.
               <p className="text-sm font-medium text-primary">
                 Subtotal: {formatMXN(Math.round(getPrecioEfectivo(granelPendiente) * parseFloat(granelCantidad)))}
               </p>
-            )}
+            ) : null}
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setGranelPendiente(null)}>
                 Cancelar
               </Button>
               <Button
                 className="flex-1"
-                disabled={!granelCantidad || parseFloat(granelCantidad) <= 0}
+                disabled={!granelCantidad || parseFloat(granelCantidad) <= 0 || granelExcede}
                 onClick={confirmarGranel}
               >
                 Agregar

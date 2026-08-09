@@ -135,20 +135,28 @@ test.describe('Cobro rápido: billetes comunes y tope de granel', () => {
     await page.getByRole('button', { name: 'Cancelar' }).click()
   })
 
-  test('granel: pedir más de lo que hay lo topa al stock y avisa', async ({ page }) => {
+  test('granel: pedir más de lo que hay avisa y NO cambia el número a escondidas', async ({ page }) => {
     await page.goto('/pos')
     await page.locator('button').filter({ hasText: GRANEL }).first().click()
 
-    // Modal de granel: pedir 5 kg cuando solo hay 2
     const cantidad = page.locator('input[placeholder="0"]')
     await expect(cantidad).toBeVisible()
+    // El disponible se ve antes de teclear
+    await expect(page.getByText(/Disponible: 2 kg/)).toBeVisible()
+
+    // Pedir 5 kg cuando solo hay 2: avisa dentro del modal y bloquea Agregar,
+    // en vez de meter 2 al carrito como si nada (lo que confundió al mostrador)
     await cantidad.fill('5')
+    await expect(page.getByText(/Solo hay 2 kg/)).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Agregar' })).toBeDisabled()
+
+    // Al corregir, se agrega exactamente lo tecleado
+    await cantidad.fill('1.5')
+    await expect(page.getByRole('button', { name: 'Agregar' })).toBeEnabled()
     await page.getByRole('button', { name: 'Agregar' }).click()
 
-    // Avisa y deja el carrito en el máximo real, no en lo pedido
-    await expect(page.getByText(/Solo quedan 2/)).toBeVisible()
-    await expect(page.locator('input[type="number"][step="0.001"], input[type="number"][step="0.01"]').first())
-      .toHaveValue('2')
+    const enCarrito = page.locator('input[type="number"][step="0.001"]').first()
+    await expect(enCarrito).toHaveValue('1.5')
   })
 })
 
