@@ -8,6 +8,15 @@ import { formatUnidad } from '@/lib/dinero'
 /** '' = pool global (stock sin plaza asignada) */
 export type Lugar = { id: string; nombre: string; color: string }
 
+/**
+ * "Todavía no elijo origen" necesita un valor propio: el pool global YA usa ''
+ * como id, así que si el placeholder también valiera '', elegir
+ * "General (sin plaza)" sería indistinguible de no haber elegido nada —y el
+ * campo de cantidad se quedaba bloqueado justo en el caso más común, mover del
+ * general a una plaza.
+ */
+const SIN_ELEGIR = '__sin_elegir__'
+
 export type Linea = {
   /** productoId + '|' + varianteId — lo que espera la server action */
   key: string
@@ -30,24 +39,25 @@ export default function TransferirForm({
   const [state, action, pending] = useActionState(transferirStockAction, null)
   const [abierto, setAbierto] = useState(Boolean(destinoInicial))
   const [lineaKey, setLineaKey] = useState('')
-  const [desde, setDesde] = useState('')
+  const [desde, setDesde] = useState(SIN_ELEGIR)
   const [hacia, setHacia] = useState(destinoInicial)
 
   useEffect(() => {
     if (state?.ok) {
       setAbierto(false)
       setLineaKey('')
-      setDesde('')
+      setDesde(SIN_ELEGIR)
     }
   }, [state])
 
   const linea = lineas.find((l) => l.key === lineaKey)
+  const origenElegido = desde !== SIN_ELEGIR
   const origenes = linea ? lugares.filter((lu) => (linea.stock[lu.id] ?? 0) > 0) : []
-  const disponible = linea ? (linea.stock[desde] ?? 0) : 0
+  const disponible = linea && origenElegido ? (linea.stock[desde] ?? 0) : 0
   const destinos = lugares.filter((lu) => lu.id !== desde)
-  // El destino no puede ser el mismo que el origen: si se cruzan, gana el origen
-  // recién elegido y el destino se vacía para que el dueño lo vuelva a decidir.
-  const haciaEfectivo = hacia === desde ? '' : hacia
+  // El destino no puede ser el origen. Si el guardado ya no está en la lista
+  // (porque se eligió como origen), cae al primer destino válido.
+  const haciaEfectivo = destinos.some((d) => d.id === hacia) ? hacia : (destinos[0]?.id ?? '')
 
   if (!abierto) {
     return (
@@ -92,7 +102,7 @@ export default function TransferirForm({
           value={lineaKey}
           onChange={(e) => {
             setLineaKey(e.target.value)
-            setDesde('')
+            setDesde(SIN_ELEGIR)
           }}
           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
         >
@@ -113,7 +123,7 @@ export default function TransferirForm({
             disabled={!linea}
             className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
           >
-            <option value="">— Origen —</option>
+            <option value={SIN_ELEGIR}>— Origen —</option>
             {origenes.map((lu) => (
               <option key={lu.id || 'pool'} value={lu.id}>
                 {lu.nombre} ({formatUnidad(linea!.stock[lu.id] ?? 0, linea!.unidad)})
@@ -141,7 +151,7 @@ export default function TransferirForm({
 
       <div className="space-y-1">
         <label className="text-xs text-muted-foreground">
-          Cantidad {linea && desde && `— disponible: ${formatUnidad(disponible, linea.unidad)}`}
+          Cantidad {linea && origenElegido && `— disponible: ${formatUnidad(disponible, linea.unidad)}`}
         </label>
         <input
           name="cantidad"
@@ -150,7 +160,7 @@ export default function TransferirForm({
           min="0.001"
           max={disponible || undefined}
           required
-          disabled={!linea || !desde}
+          disabled={!linea || !origenElegido}
           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
         />
       </div>
@@ -163,7 +173,7 @@ export default function TransferirForm({
 
       <button
         type="submit"
-        disabled={pending || !linea || !desde}
+        disabled={pending || !linea || !origenElegido}
         className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
       >
         {pending ? 'Moviendo…' : 'Transferir'}

@@ -57,6 +57,60 @@ export default async function ReporteInventarioPage({
     ? todos.filter((p) => p.categorias_producto?.nombre === cat)
     : todos
 
+  // ── Desglose por plaza ──────────────────────────────────────────────────
+  // El reporte siempre fue del total del negocio. Con varias plazas, el dueño
+  // necesita saber cuánto de ese total está en cada una y cuánto sigue en el
+  // general — es la diferencia entre "tengo 40 Cocas" y "puedo vender 40 aquí".
+  const { data: plazasData } = await supabase
+    .from('locales')
+    .select('id, nombre, color')
+    .eq('negocio_id', negocio.id)
+    .eq('activo', true)
+    .order('created_at')
+
+  const plazas = (plazasData ?? []) as { id: string; nombre: string; color: string }[]
+  const hayPlazas = plazas.length > 0
+
+  type ResumenLugar = { nombre: string; color: string; unidades: number; valorVenta: number; productos: number }
+  const porLugar = new Map<string, ResumenLugar>()
+
+  if (hayPlazas) {
+    const { data: lotes } = await supabase
+      .from('lotes_producto')
+      .select('producto_id, local_id, cantidad_actual')
+      .eq('negocio_id', negocio.id)
+      .eq('activo', true)
+      .gt('cantidad_actual', 0)
+
+    const GENERAL = '__general__'
+    porLugar.set(GENERAL, { nombre: 'General (sin plaza)', color: '#94a3b8', unidades: 0, valorVenta: 0, productos: 0 })
+    for (const p of plazas) {
+      porLugar.set(p.id, { nombre: p.nombre, color: p.color, unidades: 0, valorVenta: 0, productos: 0 })
+    }
+
+    const precioDe = new Map(todos.map((p) => [p.id, p.precio_venta]))
+    const enLista = new Set(lista.map((p) => p.id))
+    const productosVistos = new Map<string, Set<string>>()
+
+    for (const lote of lotes ?? []) {
+      if (!enLista.has(lote.producto_id)) continue // respeta el filtro de categoría
+      const clave = lote.local_id ?? GENERAL
+      const r = porLugar.get(clave)
+      if (!r) continue // lote de una plaza desactivada
+      const cantidad = Number(lote.cantidad_actual)
+      r.unidades += cantidad
+      r.valorVenta += (precioDe.get(lote.producto_id) ?? 0) * cantidad
+      if (!productosVistos.has(clave)) productosVistos.set(clave, new Set())
+      productosVistos.get(clave)!.add(lote.producto_id)
+    }
+    for (const [clave, set] of productosVistos) {
+      const r = porLugar.get(clave)
+      if (r) r.productos = set.size
+    }
+  }
+
+  const resumenLugares = [...porLugar.values()].filter((r) => r.unidades > 0)
+
   // Métricas
   const totalProductos = lista.length
   const totalUnidades = lista.reduce((s, p) => s + p.existencias, 0)
@@ -180,6 +234,48 @@ export default async function ReporteInventarioPage({
           <p className="text-sm text-orange-700 dark:text-orange-400">
             {sinStock > 0 && <><strong>{sinStock}</strong> producto{sinStock > 1 ? 's' : ''} sin stock. </>}
             {productosStockBajo > 0 && <><strong>{productosStockBajo}</strong> con stock bajo.</>}
+          </p>
+        </div>
+      )}
+
+      {/* ── Dónde está el inventario ── */}
+      {resumenLugares.length > 0 && (
+        <div className="rounded-xl border bg-card overflow-hidden mb-4">
+          <h2 className="font-semibold text-sm px-4 py-3 border-b">
+            Dónde está este inventario
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 border-b">
+                <tr>
+                  <th className="px-4 py-2 text-left font-medium text-muted-foreground">Lugar</th>
+                  <th className="px-3 py-2 text-center font-medium text-muted-foreground">Productos</th>
+                  <th className="px-3 py-2 text-center font-medium text-muted-foreground">Unidades</th>
+                  <th className="px-4 py-2 text-right font-medium text-muted-foreground">Valor (venta)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {resumenLugares.map((r) => (
+                  <tr key={r.nombre}>
+                    <td className="px-4 py-2 font-medium">
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: r.color }} />
+                        {r.nombre}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-center tabular-nums">{r.productos}</td>
+                    <td className="px-3 py-2 text-center tabular-nums">
+                      {r.unidades.toLocaleString('es-MX', { maximumFractionDigits: 3 })}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">{formatMXN(r.valorVenta)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="border-t px-4 py-2 text-xs text-muted-foreground">
+            Lo que está en <strong>General</strong> no lo puede vender un empleado con plaza
+            asignada hasta que lo muevas a su plaza.
           </p>
         </div>
       )}

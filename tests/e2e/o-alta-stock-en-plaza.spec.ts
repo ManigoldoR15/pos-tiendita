@@ -222,6 +222,55 @@ test.describe('Alta de stock directo en una plaza', () => {
     }
   })
 
+  test('transferir DESDE el general deja capturar la cantidad y mueve el stock', async ({ page }) => {
+    // El caso más común y el que estaba roto: el pool global usa '' como id y
+    // el placeholder del select valía '' también, así que elegir "General"
+    // contaba como "no elegí nada" y el campo de cantidad quedaba bloqueado.
+    const nombre = `${PRODUCTO} en general`
+    const { data: prod } = await admin.from('productos').insert({
+      negocio_id: negocioId, nombre, precio_venta: 1000,
+      existencias: 0, unidad_medida: 'pieza', activo: true,
+    }).select('id').single()
+    creados.push(prod!.id)
+    await admin.from('lotes_producto').insert({
+      negocio_id: negocioId, producto_id: prod!.id, cantidad: 10, cantidad_actual: 10,
+      fecha_recepcion: new Date().toISOString().slice(0, 10), ubicacion: 'ambiente',
+      local_id: null, activo: true, // nace en el general, como todo
+    })
+
+    await page.goto('/plazas/stock')
+    await page.getByRole('button', { name: /Transferir stock entre plazas/i }).click()
+    await page.selectOption('select[name="linea"]', `${prod!.id}|`)
+    await page.selectOption('select[name="desde"]', '') // General (sin plaza)
+
+    // Antes de la corrección este input seguía deshabilitado
+    const cantidad = page.locator('input[name="cantidad"]')
+    await expect(cantidad).toBeEnabled()
+    await expect(page.getByText(/disponible: 10/)).toBeVisible()
+
+    await page.selectOption('select[name="hacia"]', plazaA)
+    await cantidad.fill('4')
+    await page.getByRole('button', { name: /^Transferir$/ }).click()
+    await expect(page.getByText(/Stock transferido/i)).toBeVisible({ timeout: 15000 })
+
+    const { data: lotes } = await admin
+      .from('lotes_producto').select('local_id, cantidad_actual')
+      .eq('producto_id', prod!.id).eq('activo', true).gt('cantidad_actual', 0)
+    const enPlaza = (lotes ?? []).filter((l) => l.local_id === plazaA)
+      .reduce((s, l) => s + Number(l.cantidad_actual), 0)
+    const enGeneral = (lotes ?? []).filter((l) => l.local_id === null)
+      .reduce((s, l) => s + Number(l.cantidad_actual), 0)
+    expect(enPlaza).toBe(4)
+    expect(enGeneral).toBe(6)
+  })
+
+  test('el reporte de inventario desglosa dónde está el stock', async ({ page }) => {
+    await page.goto('/reportes/inventario')
+    await expect(page.getByRole('heading', { name: /Dónde está este inventario/i })).toBeVisible()
+    // Aparece el general y al menos una plaza con stock
+    await expect(page.getByText('General (sin plaza)').first()).toBeVisible()
+  })
+
   test('un local_id de otro negocio no se guarda en el lote', async ({ page }) => {
     const nombre = `${PRODUCTO} ajeno`
     await page.goto('/productos/nuevo')

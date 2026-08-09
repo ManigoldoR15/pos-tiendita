@@ -47,6 +47,9 @@ export async function transferirStockAction(
   const cantidad = Number(formData.get('cantidad'))
 
   if (!productoId) return { error: 'Elige el producto que vas a mover' }
+  // El formulario marca "sin elegir" con un centinela para no confundirlo con
+  // el pool global, cuyo id es '' (ver transferir-form).
+  if (desde.startsWith('__')) return { error: 'Elige de dónde vas a mover la mercancía' }
   if (!Number.isFinite(cantidad) || cantidad <= 0) {
     return { error: 'La cantidad debe ser mayor que cero' }
   }

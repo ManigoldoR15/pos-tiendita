@@ -151,3 +151,42 @@ test.describe('Cobro rápido: billetes comunes y tope de granel', () => {
       .toHaveValue('2')
   })
 })
+
+/**
+ * El detalle de una venta debe contar la historia completa: a quién se le
+ * vendió, quién la hizo y en qué caja cayó. La página existía pero la consulta
+ * nunca pedía esos campos, así que solo mostraba productos y totales.
+ */
+test.describe('Detalle de venta: cliente, vendedor y caja', () => {
+  const admin = adminSupabase()
+  let negocioId: string
+  let ventaId: string
+
+  test.beforeAll(async () => {
+    negocioId = JSON.parse(fs.readFileSync(FIXTURE, 'utf-8')).negocioId
+    const { data } = await admin
+      .from('ventas').select('id')
+      .eq('negocio_id', negocioId).eq('estado', 'completada')
+      .order('created_at', { ascending: false }).limit(1).single()
+    ventaId = data!.id
+  })
+
+  test('la ficha muestra quién vendió, a quién y en qué caja', async ({ page }) => {
+    await page.goto(`/ventas/${ventaId}`)
+    await expect(page).not.toHaveURL(/login/)
+
+    // Acotado al contenido: el menú también tiene un enlace "Caja"
+    const ficha = page.getByRole('main')
+    await expect(ficha.getByText('Cliente', { exact: true })).toBeVisible()
+    await expect(ficha.getByText('La hizo', { exact: true })).toBeVisible()
+    await expect(ficha.getByText('Caja', { exact: true })).toBeVisible()
+
+    // Los renglones traen valor, no quedan en blanco
+    await expect(
+      ficha.getByText(/Público en general|·/).first(),
+    ).toBeVisible()
+    await expect(
+      ficha.getByText(/Turno de|Venta fuera de turno/),
+    ).toBeVisible()
+  })
+})

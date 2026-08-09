@@ -26,7 +26,10 @@ export default async function DetalleVentaPage({
     .from('ventas')
     .select(`
       id, total, descuento, pago_recibido, cambio, created_at, estado, notas,
+      vendedor_id, corte_id, es_fiado,
       metodos_pago(nombre),
+      clientes(id, nombre, telefono),
+      locales(nombre, color),
       venta_items(
         id, cantidad, precio_unitario, subtotal,
         productos(nombre, precio_costo)
@@ -37,6 +40,30 @@ export default async function DetalleVentaPage({
     .single()
 
   if (!venta) notFound()
+
+  // Quién la hizo y en qué caja cayó: la venta guarda vendedor_id y corte_id,
+  // pero los nombres viven en auth y en cortes_caja.
+  const [{ data: miembros }, { data: corte }] = await Promise.all([
+    supabase.rpc('get_miembros_basico', { p_negocio_id: negocio.id }),
+    venta.corte_id
+      ? supabase
+          .from('cortes_caja')
+          .select('id, fecha_apertura, fecha_cierre, estado, abierto_por')
+          .eq('id', venta.corte_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
+
+  const nombreDe = (uid: string | null) => {
+    if (!uid) return null
+    const m = (miembros as { user_id: string; email: string }[] | null)?.find((x) => x.user_id === uid)
+    return m?.email.split('@')[0] ?? 'usuario dado de baja'
+  }
+
+  const cliente = venta.clientes as unknown as { id: string; nombre: string; telefono: string | null } | null
+  const plaza = venta.locales as unknown as { nombre: string; color: string } | null
+  const vendedor = nombreDe(venta.vendedor_id)
+  const cajero = nombreDe((corte as { abierto_por?: string } | null)?.abierto_por ?? null)
 
   const metodoPago =
     (venta.metodos_pago as unknown as { nombre: string } | null)?.nombre ?? '—'
@@ -104,6 +131,54 @@ export default async function DetalleVentaPage({
             <Printer className="h-4 w-4" />
             58mm
           </Link>
+        </div>
+      </div>
+
+      {/* Quién, a quién y dónde — lo que convierte el ticket en historial */}
+      <div className="card-soft divide-y text-sm">
+        <div className="flex items-center gap-3 px-4 py-2.5">
+          <span className="w-28 shrink-0 text-muted-foreground">Cliente</span>
+          {cliente ? (
+            <Link href={`/clientes/${cliente.id}`} className="min-w-0 flex-1 truncate font-medium text-primary hover:underline">
+              {cliente.nombre}{cliente.telefono ? ` · ${cliente.telefono}` : ''}
+            </Link>
+          ) : (
+            <span className="text-muted-foreground">Público en general</span>
+          )}
+          {venta.es_fiado && (
+            <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+              Fiada
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 px-4 py-2.5">
+          <span className="w-28 shrink-0 text-muted-foreground">La hizo</span>
+          <span className="min-w-0 flex-1 truncate font-medium">
+            {vendedor ?? 'Sin vendedor registrado'}
+          </span>
+        </div>
+
+        {plaza && (
+          <div className="flex items-center gap-3 px-4 py-2.5">
+            <span className="w-28 shrink-0 text-muted-foreground">Plaza</span>
+            <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate font-medium">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: plaza.color }} />
+              {plaza.nombre}
+            </span>
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 px-4 py-2.5">
+          <span className="w-28 shrink-0 text-muted-foreground">Caja</span>
+          {corte ? (
+            <Link href={`/turnos/${venta.corte_id}`} className="min-w-0 flex-1 truncate font-medium text-primary hover:underline">
+              Turno de {cajero ?? 'desconocido'}
+              {(corte as { estado?: string }).estado === 'abierto' ? ' · abierta' : ''}
+            </Link>
+          ) : (
+            <span className="text-muted-foreground">Venta fuera de turno</span>
+          )}
         </div>
       </div>
 
