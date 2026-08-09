@@ -15,6 +15,7 @@ import { eliminarEmpleadoAction } from './actions-empleados'
 import SelectorRolEmpleado from './selector-rol-empleado'
 import SelectorPlazaEmpleado from './selector-plaza-empleado'
 import EditarDatosEmpleado from './editar-datos-empleado'
+import BotonRespaldo from './boton-respaldo'
 import { Button } from '@/components/ui/button'
 import { Trash2, MapPin, ChevronRight, CreditCard } from 'lucide-react'
 import { estadoSuscripcion, ETIQUETA_ESTADO } from '@/lib/suscripcion'
@@ -150,6 +151,9 @@ export default async function ConfiguracionPage() {
           />
         </section>
       )}
+
+      {/* — Respaldo (solo dueño) ——————————————————————————— */}
+      {rolActual === 'dueno' && <BotonRespaldo />}
 
       {/* — Plazas (solo dueño, solo si tiene más de 1 o puede tener más) ————— */}
       {rolActual === 'dueno' && tieneMultiplasPlazas && (
