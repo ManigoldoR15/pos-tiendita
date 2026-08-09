@@ -1,0 +1,16 @@
+-- Rollback de 075_venta_cae_en_caja_de_su_plaza.sql
+--
+-- Devuelve la selección del corte al comportamiento anterior (cualquier corte
+-- abierto, LIMIT 1 sin orden). Para aplicarlo, re-ejecuta la migración 075
+-- sustituyendo el bloque del SELECT del corte por:
+--
+--   SELECT id INTO v_corte_id
+--   FROM   cortes_caja
+--   WHERE  negocio_id = p_negocio_id
+--     AND  estado     = 'abierto'
+--   LIMIT 1;
+--
+-- No se duplica aquí la función completa a propósito: es idéntica a la de la
+-- migración 075 salvo ese bloque, y mantener dos copias de 300 líneas invita a
+-- que diverjan. Nota: revertir esto reintroduce la mezcla de cajas cuando hay
+-- más de una abierta — solo tiene sentido si también se limita max_cajas a 1.
