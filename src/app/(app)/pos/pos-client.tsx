@@ -79,11 +79,13 @@ type Props = {
   plazaVacia?: boolean
   /** cuántos productos tienen mercancía fuera de la plaza */
   productosFuera?: number
+  /** false para empleados: /productos/nuevo los redirige */
+  puedeCrearProductos?: boolean
   listas: ListaPrecio[]
   muestreoPeriodoId: string | null
 }
 
-export default function PosClient({ productos, categorias, metodosPago, negocioNombre, plazaNombre = null, plazaVacia = false, productosFuera = 0, listas, muestreoPeriodoId, moduloApartados = false }: Props) {
+export default function PosClient({ productos, categorias, metodosPago, negocioNombre, plazaNombre = null, plazaVacia = false, productosFuera = 0, puedeCrearProductos = false, listas, muestreoPeriodoId, moduloApartados = false }: Props) {
   const [modo, setModo] = useState<'tactil' | 'mostrador'>('tactil')
   const [carrito, setCarrito] = useState<ItemCarrito[]>([])
   const [busqueda, setBusqueda] = useState('')
@@ -270,8 +272,33 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
     const cantidad = parseFloat(granelCantidad)
     if (isNaN(cantidad) || cantidad <= 0) return
     const lineaGranel = `${granelPendiente.id}|`
+    const disponible = Number(granelPendiente.existencias)
     setCarrito((prev) => {
       const existe = prev.find((i) => i.lineaId === lineaGranel)
+      // Mismo tope que pieza y variantes: sin esto el carrito acepta más de lo
+      // que hay y el error revienta hasta el cobro, con el cliente enfrente.
+      const enCarrito = existe?.cantidad ?? 0
+      if (enCarrito + cantidad > disponible) {
+        mostrarAlertaStock(
+          `Solo quedan ${formatCantidad(disponible, granelPendiente.unidad_medida)} de ${granelPendiente.nombre}`,
+        )
+        const tope = Math.max(disponible, minCantidad(granelPendiente.unidad_medida))
+        if (disponible <= enCarrito) return prev
+        return existe
+          ? prev.map((i) => (i.lineaId === lineaGranel ? { ...i, cantidad: tope } : i))
+          : [...prev, {
+              lineaId: lineaGranel,
+              productoId: granelPendiente.id,
+              varianteId: null,
+              varianteTexto: null,
+              maxStock: disponible,
+              nombre: granelPendiente.nombre,
+              precio: getPrecioEfectivo(granelPendiente),
+              cantidad: tope,
+              fiado: false,
+              unidad: granelPendiente.unidad_medida,
+            }]
+      }
       if (existe) {
         return prev.map((i) =>
           i.lineaId === lineaGranel ? { ...i, cantidad: i.cantidad + cantidad } : i,
@@ -703,13 +730,31 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
 
         <div className="md:flex-1 md:overflow-y-auto">
           {productosFiltrados.length === 0 ? (
-            <p className="mt-12 text-center text-muted-foreground">
-              {busqueda
-                ? `Sin resultados para "${busqueda}".`
-                : categoriaActiva
-                ? 'No hay productos en esta categoría.'
-                : 'No hay productos activos.'}
-            </p>
+            productos.length === 0 ? (
+              // Catálogo vacío de verdad (negocio recién creado): decir el
+              // siguiente paso, no dejar la pantalla muerta.
+              <div className="mt-12 flex flex-col items-center gap-3 text-center">
+                <p className="text-muted-foreground">
+                  Aún no tienes productos. El POS se llena solo cuando des de alta tu mercancía.
+                </p>
+                {puedeCrearProductos && (
+                  <a
+                    href="/productos/nuevo"
+                    className="rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90"
+                  >
+                    Dar de alta mi primer producto
+                  </a>
+                )}
+              </div>
+            ) : (
+              <p className="mt-12 text-center text-muted-foreground">
+                {busqueda
+                  ? `Sin resultados para "${busqueda}".`
+                  : categoriaActiva
+                  ? 'No hay productos en esta categoría.'
+                  : 'No hay productos activos.'}
+              </p>
+            )
           ) : (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
               {productosFiltrados.map((producto) => {
@@ -994,8 +1039,10 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
               </span>
             </div>
             {granelCantidad && parseFloat(granelCantidad) > 0 && (
+              // getPrecioEfectivo: con una lista de precios activa, la vista previa
+              // debe enseñar el mismo número que va a aparecer en el carrito.
               <p className="text-sm font-medium text-primary">
-                Subtotal: {formatMXN(Math.round(granelPendiente.precio_venta * parseFloat(granelCantidad)))}
+                Subtotal: {formatMXN(Math.round(getPrecioEfectivo(granelPendiente) * parseFloat(granelCantidad)))}
               </p>
             )}
             <div className="flex gap-2">
@@ -1332,6 +1379,27 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
             {esEfectivo && effectiveMontoPagar > 0 && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Dinero recibido (opcional)</label>
+                {/* Billetes comunes: un toque en vez de teclear. "Exacto" = pagó justo. */}
+                <div className="grid grid-cols-5 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setPagoRecibido((effectiveMontoPagar / 100).toFixed(2))}
+                    className="rounded-lg border py-2 text-xs font-bold transition-colors hover:bg-accent"
+                  >
+                    Exacto
+                  </button>
+                  {[50, 100, 200, 500].map((billete) => (
+                    <button
+                      key={billete}
+                      type="button"
+                      onClick={() => setPagoRecibido(String(billete))}
+                      disabled={billete * 100 < effectiveMontoPagar}
+                      className="rounded-lg border py-2 text-xs font-bold transition-colors hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      ${billete}
+                    </button>
+                  ))}
+                </div>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                     $

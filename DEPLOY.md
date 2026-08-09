@@ -13,18 +13,23 @@
 
 ## Variables de entorno en Railway
 
-Solo se necesitan **2 variables** en producción. La app usa RLS de Supabase; no hay service_role en `src/`.
+Se necesitan **3 variables** en producción:
 
 | Variable | Dónde obtenerla |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase Dashboard → Settings → API → **Project URL** |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Dashboard → Settings → API → **anon public** |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard → Settings → API → **service_role** |
 
 > ⚠️ `NEXT_PUBLIC_*` se incrustan en el bundle **al momento del build**.
 > Configúralas en Railway **antes** del primer deploy (o antes de hacer redeploy).
 
-> ⛔ `SUPABASE_SERVICE_ROLE_KEY` **no va a Railway**. Se usa solo en tests.
-> La service_role key nunca debe estar expuesta en el servidor de producción.
+> 🔐 `SUPABASE_SERVICE_ROLE_KEY` la usan **solo acciones de servidor** (crear
+> cuentas de empleados desde Configuración, borrar usuarios huérfanos desde el
+> panel de superadmin). Vive en `src/lib/supabase/service.ts`, que importa
+> `server-only`: si alguien la importara desde un componente cliente, el build
+> falla — nunca llega al navegador. Sin esta variable, el alta de empleados
+> truena en producción.
 
 ---
 

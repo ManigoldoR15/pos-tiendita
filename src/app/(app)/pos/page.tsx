@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getNegocioActual } from '@/lib/negocio'
+import { getRolActual } from '@/lib/rol'
 import PosClient from './pos-client'
 import { getModulos } from '@/lib/modulos'
 import { getPlazaActual } from '@/lib/plaza'
@@ -12,6 +13,7 @@ export default async function PosPage() {
   if (!negocio) redirect('/crear-negocio')
 
   const plaza = await getPlazaActual()
+  const rol = await getRolActual()
   const supabase = await createClient()
   const [{ data: productos }, { data: categorias }, { data: metodosPago }, { data: listasRaw }, muestreoActivo] = await Promise.all([
     supabase
@@ -106,6 +108,7 @@ export default async function PosPage() {
       plazaNombre={plaza?.nombre ?? null}
       plazaVacia={plazaVacia}
       productosFuera={productosFuera}
+      puedeCrearProductos={rol !== 'empleado'}
       listas={listas}
       muestreoPeriodoId={muestreoActivo?.id ?? null}
       moduloApartados={modulos.apartados}
