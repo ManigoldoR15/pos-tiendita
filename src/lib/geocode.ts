@@ -30,9 +30,13 @@ export async function autoUbicarNegocios(
 const MAX_GEOCODE_POR_CARGA = 3
 
 /**
- * Geocodifica (una sola vez) los negocios que tienen `ubicacion` escrita pero
- * aún no tienen coordenadas. Usa Nominatim (OpenStreetMap, gratis, 1 req/s).
- * Marca `geo_intentado_en` aunque falle para no reintentar en cada carga.
+ * Geocodifica los negocios con `ubicacion` escrita que aún no tienen una
+ * coordenada sacada de esa dirección. Usa Nominatim (OpenStreetMap, gratis,
+ * 1 req/s). Marca `geo_intentado_en` aunque falle para no reintentar en cada
+ * carga; el trigger de la migración 077 lo limpia si corrigen la dirección.
+ *
+ * Incluye a los que ya tienen coordenada estimada por IP: la dirección escrita
+ * manda sobre la IP (que solo acierta la ciudad, y a veces ni eso).
  */
 export async function geocodificarNegociosPendientes(): Promise<void> {
   const svc = createServiceClient()
@@ -40,8 +44,8 @@ export async function geocodificarNegociosPendientes(): Promise<void> {
     .from('negocios')
     .select('id, nombre, ubicacion')
     .not('ubicacion', 'is', null)
-    .is('lat', null)
     .is('geo_intentado_en', null)
+    .or('geo_fuente.is.null,geo_fuente.eq.auto_ip')
     .limit(MAX_GEOCODE_POR_CARGA)
 
   if (!pendientes || pendientes.length === 0) return
@@ -70,11 +74,12 @@ export async function geocodificarNegociosPendientes(): Promise<void> {
       // fallo silencioso — queda marcado como intentado
     }
 
+    // Si falló, solo se sella el intento: NO se borran las coordenadas que ya
+    // tuviera (la estimación por IP es mala, pero es mejor que nada en el mapa).
     await svc
       .from('negocios')
       .update({
-        lat, lon,
-        geo_fuente: lat != null ? 'direccion' : null,
+        ...(lat != null && lon != null ? { lat, lon, geo_fuente: 'direccion' } : {}),
         geo_intentado_en: new Date().toISOString(),
       })
       .eq('id', n.id)
