@@ -70,6 +70,20 @@ export async function actualizarSuscripcionAction(
   if (!negocioId || !plan || !nombreNegocio) return { error: 'Datos incompletos.' }
   if (!['compra', 'prueba', 'mensual', 'anual'].includes(plan)) return { error: 'Plan inválido.' }
 
+  // La suscripción va primero: es la que valida el plan. Al revés, un plan
+  // rechazado dejaba los datos del negocio ya guardados y el botón en error,
+  // así que el panel mostraba una cosa y el aviso decía otra.
+  const { error: rpcError } = await supabase.rpc('actualizar_suscripcion', {
+    p_negocio_id:         negocioId,
+    p_plan:               plan,
+    p_suscripcion_inicio: inicio,
+    p_suscripcion_fin:    fin,
+    p_suspendido:         suspendido,
+    p_notas_admin:        notasAdmin,
+  })
+
+  if (rpcError) return { error: `Error al actualizar suscripción: ${rpcError.message}` }
+
   const { error: updateError } = await supabase
     .from('negocios')
     .update({
@@ -82,17 +96,6 @@ export async function actualizarSuscripcionAction(
     .eq('id', negocioId)
 
   if (updateError) return { error: `Error al actualizar negocio: ${updateError.message}` }
-
-  const { error: rpcError } = await supabase.rpc('actualizar_suscripcion', {
-    p_negocio_id:         negocioId,
-    p_plan:               plan,
-    p_suscripcion_inicio: inicio,
-    p_suscripcion_fin:    fin,
-    p_suspendido:         suspendido,
-    p_notas_admin:        notasAdmin,
-  })
-
-  if (rpcError) return { error: `Error al actualizar suscripción: ${rpcError.message}` }
 
   revalidatePath('/superadmin/negocios')
   revalidatePath(`/superadmin/negocios/${negocioId}`)
