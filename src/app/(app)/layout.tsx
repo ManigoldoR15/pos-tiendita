@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { STOCK_MINIMO } from '@/lib/constantes'
 import NavBar from '@/components/nav-bar'
 import GpsTracker from '@/components/gps-tracker'
+import AyudaSeccion from '@/components/ayuda-seccion'
 import { getRolActual } from '@/lib/rol'
 import { isSuperAdmin } from '@/lib/superadmin'
 import { getModulos } from '@/lib/modulos'
@@ -56,10 +57,13 @@ export default async function AppLayout({
 
   const banner = temaActivo as { emoji: string; banner_texto: string | null } | null
 
+  // El modo tutorial se recuerda por usuario en este navegador, igual que el tema
+  const { data: { user } } = await supabase.auth.getUser()
+  const ayudaKey = user ? `ayuda:${user.id}` : 'ayuda'
+
   // Avisos del jefe sin leer (empleados/admins): leído se controla por usuario
   let avisosNoLeidos = 0
   if (rol !== 'dueno') {
-    const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       const [{ data: msgs }, { data: lecs }] = await Promise.all([
         supabase
@@ -96,7 +100,10 @@ export default async function AppLayout({
         esSuperAdmin={superAdmin}
         modulos={modulos}
       />
-      <main className="mx-auto max-w-6xl px-4 py-6 pb-24 md:pb-8 print:max-w-none print:px-8 print:py-4">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-6 pb-24 md:pb-8 print:max-w-none print:px-8 print:py-4">
+        <AyudaSeccion storageKey={ayudaKey} rol={rol} />
+        {children}
+      </main>
     </div>
   )
 }

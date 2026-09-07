@@ -16,6 +16,7 @@ import SelectorRolEmpleado from './selector-rol-empleado'
 import SelectorPlazaEmpleado from './selector-plaza-empleado'
 import EditarDatosEmpleado from './editar-datos-empleado'
 import BotonRespaldo from './boton-respaldo'
+import SwitchTutorial from './switch-tutorial'
 import { Button } from '@/components/ui/button'
 import { Trash2, MapPin, ChevronRight, CreditCard } from 'lucide-react'
 import { estadoSuscripcion, ETIQUETA_ESTADO } from '@/lib/suscripcion'
@@ -48,6 +49,10 @@ export default async function ConfiguracionPage() {
   const rolActual = await getRolActual()
   if (rolActual !== 'dueno') redirect('/')
   const modulos = await getModulos()
+
+  // El modo tutorial se recuerda por usuario en este navegador, igual que el tema
+  const { data: { user: usuarioActual } } = await supabase.auth.getUser()
+  const ayudaKey = usuarioActual ? `ayuda:${usuarioActual.id}` : 'ayuda'
 
   const { data: metodos } = await supabase
     .from('metodos_pago')
@@ -123,6 +128,9 @@ export default async function ConfiguracionPage() {
         </div>
         <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
       </Link>
+
+      {/* — Modo tutorial ———————————————————————— */}
+      <SwitchTutorial storageKey={ayudaKey} />
 
       {/* — Negocio ———————————————————————— */}
       <section className="card-soft p-5 space-y-4">
