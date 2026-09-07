@@ -52,9 +52,14 @@ export default function SuscripcionForm({ negocio: n }: Props) {
             <input
               name="ubicacion"
               defaultValue={n.ubicacion ?? ''}
-              placeholder="Ciudad, Estado"
+              placeholder="Pega la ubicación de WhatsApp, o Ciudad, Estado"
               className={inputCls}
             />
+            <p className="mt-1.5 text-[11px] leading-snug text-slate-500">
+              Pega las coordenadas o el link de Google Maps que te mande el
+              cliente y el pin queda exacto. Si escribes solo la ciudad, el mapa
+              la marca al centro del municipio — puede errarle por kilómetros.
+            </p>
           </div>
         </div>
 
