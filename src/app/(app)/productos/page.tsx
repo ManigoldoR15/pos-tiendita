@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { getColorCategoria } from '@/lib/colores-categoria'
 import Buscador from '@/components/buscador'
-import { eliminarProductoAction } from './actions'
+import AccionesProducto from './acciones-producto'
 
 const PAGE_SIZE = 48
 
@@ -276,7 +276,11 @@ export default async function ProductosPage({
                 )}
 
                 {/* Acciones */}
-                <div className="flex gap-1">
+                <AccionesProducto
+                  productoId={producto.id}
+                  nombre={producto.nombre}
+                  activo={producto.activo}
+                >
                   <Button variant="outline" size="sm" asChild className="flex-1">
                     <Link href={`/productos/${producto.id}/editar`}>
                       <Pencil className="h-3 w-3" />
@@ -288,18 +292,7 @@ export default async function ProductosPage({
                       <PackagePlus className="h-3 w-3" />
                     </Link>
                   </Button>
-                  <form action={eliminarProductoAction} data-action="eliminar-producto">
-                    <input type="hidden" name="id" value={producto.id} />
-                    <Button
-                      type="submit"
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                    >
-                      ✕
-                    </Button>
-                  </form>
-                </div>
+                </AccionesProducto>
               </div>
             )
           })}

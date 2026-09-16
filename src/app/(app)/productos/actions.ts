@@ -301,11 +301,43 @@ export async function editarProductoAction(
   redirect('/productos')
 }
 
-export async function eliminarProductoAction(formData: FormData): Promise<void> {
+export type EliminarProductoState = { error: string; puedeOcultar: boolean } | null
+
+export async function eliminarProductoAction(
+  _prev: EliminarProductoState,
+  formData: FormData,
+): Promise<EliminarProductoState> {
   const id = formData.get('id') as string
   const supabase = await createClient()
-  await supabase.from('productos').delete().eq('id', id)
+  const { error } = await supabase.from('productos').delete().eq('id', id)
+
+  if (error) {
+    // 23503: el producto ya aparece en ventas u otros movimientos. Borrarlo
+    // rompería ese historial, así que se ofrece ocultarlo en su lugar.
+    if (error.code === '23503') {
+      return {
+        error: 'Este producto ya tiene ventas y no se puede borrar. Puedes ocultarlo para que ya no salga al cobrar.',
+        puedeOcultar: true,
+      }
+    }
+    return { error: 'No se pudo borrar el producto. Intenta de nuevo.', puedeOcultar: false }
+  }
+
   revalidatePath('/productos')
+  return null
+}
+
+export async function ocultarProductoAction(
+  _prev: EliminarProductoState,
+  formData: FormData,
+): Promise<EliminarProductoState> {
+  const id = formData.get('id') as string
+  const supabase = await createClient()
+  const { error } = await supabase.from('productos').update({ activo: false }).eq('id', id)
+
+  if (error) return { error: 'No se pudo ocultar el producto. Intenta de nuevo.', puedeOcultar: true }
+  revalidatePath('/productos')
+  return null
 }
 
 export type LoteState = { error: string } | null
