@@ -45,3 +45,23 @@ export async function asignarCodigosAction(
   revalidatePath('/productos')
   return asignados
 }
+
+/** Prende o apaga "le imprimo etiqueta" de un producto. */
+export async function marcarEtiquetaAction(
+  productoId: string,
+  llevaEtiqueta: boolean,
+): Promise<{ error: string } | null> {
+  const negocio = await getNegocioActual()
+  if (!negocio) return { error: 'Sin negocio activo' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('productos')
+    .update({ lleva_etiqueta: llevaEtiqueta })
+    .eq('id', productoId)
+    .eq('negocio_id', negocio.id)
+  if (error) return { error: 'No se pudo guardar. Intenta de nuevo.' }
+
+  revalidatePath('/productos/etiquetas')
+  return null
+}

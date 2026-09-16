@@ -72,6 +72,19 @@ export const AYUDA_SECCIONES: Record<string, Ayuda> = {
       'Baja primero el archivo de ejemplo. Respeta los títulos de las columnas y no vas a tener problema.',
   },
 
+  '/productos/etiquetas': {
+    titulo: 'Etiquetas: el código de barras para lo que no lo trae',
+    queEs:
+      'Los quesos, el granel o lo que preparas tú no traen código de barras. Aquí les imprimes una etiqueta para pegársela y cobrarlos con el lector.',
+    puedes: [
+      'Prender el interruptor de los productos a los que les pones etiqueta',
+      'Elegir cuántas etiquetas quieres de cada uno',
+      'Imprimirlas en hoja carta y recortarlas',
+    ],
+    empiezaPor:
+      'Entra a "Todos" y prende el interruptor de los productos que no traen código de fábrica. La próxima vez ya te salen solos.',
+  },
+
   '/ventas': {
     titulo: 'Ventas: el historial de lo que has cobrado',
     queEs:

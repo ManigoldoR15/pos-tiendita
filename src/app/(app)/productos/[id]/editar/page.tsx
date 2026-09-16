@@ -16,7 +16,7 @@ export default async function EditarProductoPage({
   const [{ data: producto }, { data: categorias }] = await Promise.all([
     supabase
       .from('productos')
-      .select('id, nombre, precio_venta, precio_costo, categoria_id, existencias, codigo_barras, activo, unidad_medida, tara, tiene_variantes, atributo1, atributo2')
+      .select('id, nombre, precio_venta, precio_costo, categoria_id, existencias, codigo_barras, lleva_etiqueta, activo, unidad_medida, tara, tiene_variantes, atributo1, atributo2')
       .eq('id', id)
       .eq('negocio_id', negocio!.id)
       .single(),

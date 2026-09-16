@@ -2,19 +2,29 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import JsBarcode from 'jsbarcode'
-import { Printer, Minus, Plus, Barcode, Search } from 'lucide-react'
+import { Printer, Minus, Plus, Barcode, Search, Tag } from 'lucide-react'
 import { formatMXN } from '@/lib/dinero'
-import { asignarCodigosAction } from './actions'
+import { cn } from '@/lib/utils'
+import { Switch } from '@/components/ui/switch'
+import { asignarCodigosAction, marcarEtiquetaAction } from './actions'
 
 type Producto = {
   id: string
   nombre: string
   precio_venta: number
   codigo_barras: string | null
+  lleva_etiqueta: boolean
 }
 
 export default function EtiquetasClient({ productos }: { productos: Producto[] }) {
   const [busqueda, setBusqueda] = useState('')
+  const [verTodos, setVerTodos] = useState(false)
+  const [marcados, setMarcados] = useState<Record<string, boolean>>(
+    Object.fromEntries(productos.map((p) => [p.id, p.lleva_etiqueta])),
+  )
+  // Los que se apagan estando en "Con etiqueta" se quedan a la vista (atenuados)
+  // hasta cambiar de pestaña, para que un toque por error se pueda regresar.
+  const [recienApagados, setRecienApagados] = useState<Set<string>>(new Set())
   const [cantidades, setCantidades] = useState<Record<string, number>>({})
   const [codigos, setCodigos] = useState<Record<string, string>>(
     Object.fromEntries(productos.filter((p) => p.codigo_barras).map((p) => [p.id, p.codigo_barras!])),
@@ -23,21 +33,60 @@ export default function EtiquetasClient({ productos }: { productos: Producto[] }
   const [trabajando, setTrabajando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const totalMarcados = productos.filter((p) => marcados[p.id]).length
+
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
-    if (!q) return productos
-    return productos.filter((p) => p.nombre.toLowerCase().includes(q))
-  }, [busqueda, productos])
+    return productos.filter((p) => {
+      if (q && !p.nombre.toLowerCase().includes(q)) return false
+      return verTodos || marcados[p.id] || recienApagados.has(p.id)
+    })
+  }, [busqueda, productos, verTodos, marcados, recienApagados])
 
   const seleccion = productos.filter((p) => (cantidades[p.id] ?? 0) > 0)
   const totalEtiquetas = seleccion.reduce((s, p) => s + (cantidades[p.id] ?? 0), 0)
+  const marcadosVisibles = filtrados.filter((p) => marcados[p.id])
+
+  function cambiarPestana(todos: boolean) {
+    setVerTodos(todos)
+    setRecienApagados(new Set())
+  }
+
+  async function marcar(id: string, valor: boolean) {
+    setError(null)
+    setMarcados((prev) => ({ ...prev, [id]: valor }))
+    if (!valor && !verTodos) setRecienApagados((prev) => new Set(prev).add(id))
+    if (!valor) setCantidad(id, 0)
+    const res = await marcarEtiquetaAction(id, valor)
+    if (res?.error) {
+      setMarcados((prev) => ({ ...prev, [id]: !valor }))
+      setError(res.error)
+    }
+  }
+
+  function setCantidad(id: string, n: number) {
+    setListo(false)
+    setCantidades((prev) => ({ ...prev, [id]: Math.max(0, Math.min(99, n)) }))
+  }
 
   function cambiar(id: string, delta: number) {
+    const n = (cantidades[id] ?? 0) + delta
+    // Pedirle etiquetas a un producto lo deja marcado para la próxima vez
+    if (delta > 0 && !marcados[id]) void marcar(id, true)
+    setCantidad(id, n)
+  }
+
+  function unaDeCada() {
     setListo(false)
-    setCantidades((prev) => {
-      const n = Math.max(0, Math.min(99, (prev[id] ?? 0) + delta))
-      return { ...prev, [id]: n }
-    })
+    setCantidades((prev) => ({
+      ...prev,
+      ...Object.fromEntries(marcadosVisibles.map((p) => [p.id, Math.max(1, prev[p.id] ?? 0)])),
+    }))
+  }
+
+  function limpiar() {
+    setListo(false)
+    setCantidades({})
   }
 
   async function generar() {
@@ -82,6 +131,37 @@ export default function EtiquetasClient({ productos }: { productos: Producto[] }
     <>
       {/* ── Selección (no se imprime) ── */}
       <div className="space-y-4 print:hidden">
+        {/* Pestañas: los marcados o todo el catálogo */}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => cambiarPestana(false)}
+            className={cn(
+              'flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
+              !verTodos ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+            )}
+          >
+            <Tag className="h-3.5 w-3.5" />
+            Con etiqueta ({totalMarcados})
+          </button>
+          <button
+            type="button"
+            onClick={() => cambiarPestana(true)}
+            className={cn(
+              'rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
+              verTodos ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+            )}
+          >
+            Todos ({productos.length})
+          </button>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          {verTodos
+            ? 'Prende el interruptor de los productos a los que les imprimes etiqueta. Se guarda solo y la próxima vez ya salen en "Con etiqueta".'
+            : 'Si falta alguno, búscalo en "Todos" y préndele su interruptor. Apágalo si el producto ya trae su código de fábrica.'}
+        </p>
+
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -92,11 +172,41 @@ export default function EtiquetasClient({ productos }: { productos: Producto[] }
           />
         </div>
 
+        {marcadosVisibles.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={unaDeCada}
+              className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
+            >
+              Poner 1 a cada uno
+            </button>
+            {totalEtiquetas > 0 && (
+              <button
+                type="button"
+                onClick={limpiar}
+                className="rounded-lg border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent transition-colors"
+              >
+                Quitar todas
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="card-soft divide-y max-h-[420px] overflow-y-auto">
           {filtrados.map((p) => {
             const qty = cantidades[p.id] ?? 0
+            const marcado = marcados[p.id] ?? false
             return (
-              <div key={p.id} className="flex items-center gap-3 px-4 py-2.5">
+              <div
+                key={p.id}
+                className={cn('flex items-center gap-3 px-4 py-2.5', !marcado && !verTodos && 'opacity-50')}
+              >
+                <Switch
+                  checked={marcado}
+                  onChange={(v) => void marcar(p.id, v)}
+                  label={`Le imprimo etiqueta a ${p.nombre}`}
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{p.nombre}</p>
                   <p className="text-xs text-muted-foreground">
@@ -126,7 +236,22 @@ export default function EtiquetasClient({ productos }: { productos: Producto[] }
             )
           })}
           {filtrados.length === 0 && (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">Sin resultados</p>
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+              {busqueda ? (
+                'Sin resultados'
+              ) : (
+                <>
+                  <p>Todavía no marcas productos para etiqueta.</p>
+                  <button
+                    type="button"
+                    onClick={() => cambiarPestana(true)}
+                    className="mt-2 font-medium text-primary hover:underline"
+                  >
+                    Ver todos los productos y elegir
+                  </button>
+                </>
+              )}
+            </div>
           )}
         </div>
 

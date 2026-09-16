@@ -12,7 +12,7 @@ export default async function EtiquetasPage() {
   const supabase = await createClient()
   const { data: productos } = await supabase
     .from('productos')
-    .select('id, nombre, precio_venta, codigo_barras')
+    .select('id, nombre, precio_venta, codigo_barras, lleva_etiqueta')
     .eq('negocio_id', negocio.id)
     .eq('activo', true)
     .order('nombre')
@@ -29,14 +29,16 @@ export default async function EtiquetasPage() {
         </Link>
         <h1 className="mt-2 text-2xl font-black tracking-tight">Etiquetas de código de barras</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Elige productos y cuántas etiquetas quieres de cada uno. A los productos sin código
-          se les genera uno automáticamente. Imprime en hoja tamaño carta y recorta.
+          Aquí salen los productos a los que les imprimes etiqueta. Elige cuántas quieres de
+          cada uno; a los que no tienen código se les genera uno solo. Imprime en hoja
+          tamaño carta y recorta.
         </p>
       </div>
 
       <EtiquetasClient
         productos={(productos ?? []) as {
           id: string; nombre: string; precio_venta: number; codigo_barras: string | null
+          lleva_etiqueta: boolean
         }[]}
       />
     </div>

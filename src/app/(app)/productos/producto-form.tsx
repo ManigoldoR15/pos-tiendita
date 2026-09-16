@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { centavosATexto } from '@/lib/dinero'
 import ComboboxCategoria from '@/components/combobox-categoria'
 import CapturaLotes from '@/components/captura-lotes'
+import { Switch } from '@/components/ui/switch'
 import type { ProductoState } from './actions'
 
 type Categoria = { id: string; nombre: string }
@@ -43,6 +44,7 @@ type ProductoFormProps = {
     categoria_id?: string | null
     existencias?: number
     codigo_barras?: string | null
+    lleva_etiqueta?: boolean
     activo?: boolean
     unidad_medida?: string
     tara?: number | null
@@ -77,6 +79,12 @@ export default function ProductoForm({
     { valor1: '', valor2: '', cantidad: '' },
   ])
   const esNuevo = !inicial.id
+  // Sin código de fábrica = hay que imprimirle etiqueta. Mientras no lo toque a
+  // mano, el interruptor sigue al código que se va escribiendo.
+  const [llevaEtiqueta, setLlevaEtiqueta] = useState(
+    inicial.lleva_etiqueta ?? !inicial.codigo_barras,
+  )
+  const [etiquetaTocada, setEtiquetaTocada] = useState(!esNuevo)
 
   function setFila(i: number, campo: keyof VarianteFila, valor: string) {
     setFilas((f) => f.map((row, idx) => (idx === i ? { ...row, [campo]: valor } : row)))
@@ -207,11 +215,35 @@ export default function ProductoForm({
           <input
             name="codigo_barras"
             defaultValue={inicial.codigo_barras ?? ''}
+            onChange={(e) => {
+              if (!etiquetaTocada) setLlevaEtiqueta(!e.target.value.trim())
+            }}
             placeholder="Escanea o escribe el código EAN"
             autoComplete="off"
             className="rounded-lg border border-input bg-background px-3 py-3 text-base font-mono outline-none focus:ring-2 focus:ring-ring"
           />
           <p className="text-xs text-muted-foreground">Se usa en modo mostrador del POS con escáner</p>
+        </div>
+
+        {/* Lleva etiqueta impresa */}
+        <div className="flex items-center gap-3 rounded-xl border border-input p-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium">Le imprimo etiqueta</p>
+            <p className="text-xs text-muted-foreground">
+              {llevaEtiqueta
+                ? 'Saldrá en la lista de Etiquetas para imprimirle su código de barras.'
+                : 'No saldrá en Etiquetas. Apágalo si el producto ya trae su código de fábrica.'}
+            </p>
+          </div>
+          <Switch
+            checked={llevaEtiqueta}
+            onChange={(v) => {
+              setLlevaEtiqueta(v)
+              setEtiquetaTocada(true)
+            }}
+            label="Le imprimo etiqueta"
+          />
+          <input type="hidden" name="lleva_etiqueta" value={llevaEtiqueta ? 'true' : 'false'} />
         </div>
 
         {/* Categoría */}

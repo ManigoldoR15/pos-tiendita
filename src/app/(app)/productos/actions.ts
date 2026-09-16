@@ -29,6 +29,7 @@ function validarFormProducto(formData: FormData): {
   categoria_id: string | null
   nueva_categoria_nombre: string | null
   codigo_barras: string | null
+  lleva_etiqueta: boolean
   activo: boolean
   unidad_medida: string
   tara: number | null
@@ -46,6 +47,7 @@ function validarFormProducto(formData: FormData): {
   const categoria_id = (formData.get('categoria_id') as string) || null
   const nueva_categoria_nombre = (formData.get('nueva_categoria_nombre') as string)?.trim() || null
   const codigo_barras = (formData.get('codigo_barras') as string)?.trim() || null
+  const lleva_etiqueta = formData.get('lleva_etiqueta') === 'true'
   const activo = formData.get('activo') === 'on'
 
   const unidad_medida = (formData.get('unidad_medida') as string) || 'pieza'
@@ -64,7 +66,7 @@ function validarFormProducto(formData: FormData): {
     }
   }
 
-  return { nombre, precio_venta, precio_costo, categoria_id, nueva_categoria_nombre, codigo_barras, activo, unidad_medida, tara }
+  return { nombre, precio_venta, precio_costo, categoria_id, nueva_categoria_nombre, codigo_barras, lleva_etiqueta, activo, unidad_medida, tara }
 }
 
 async function resolverCategoria(
