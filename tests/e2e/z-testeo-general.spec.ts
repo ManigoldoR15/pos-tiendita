@@ -284,7 +284,7 @@ test.describe('5. Catálogo de productos', () => {
     await page.waitForLoadState('networkidle')
     await screenshot(page, '05-productos')
 
-    await expect(page.getByRole('heading', { name: /productos/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Productos', exact: true })).toBeVisible()
     // Botón "+ Nuevo" → /productos/nuevo
     await expect(page.locator('a[href="/productos/nuevo"]')).toBeVisible()
   })

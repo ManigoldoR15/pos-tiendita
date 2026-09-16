@@ -63,16 +63,22 @@ test.describe('Venta táctil: agregar producto, cobrar, verificar stock', () => 
     // Open payment modal
     await cobrarBtn.click()
 
-    // Select first available payment method in modal
-    const metodoBtn = page.locator('button').filter({ hasText: /efectivo|tarjeta|transferencia/i }).first()
+    // El método de pago se busca DENTRO del modal: la tarjeta del modo tutorial
+    // tiene el texto "Cobrar en efectivo, tarjeta o transferencia", y sin acotar
+    // el ámbito esto clickeaba la ayuda en vez del método.
+    const modal = page.locator('div').filter({ has: page.getByRole('heading', { name: 'Cobrar venta' }) }).last()
+    const metodoBtn = modal.locator('button').filter({ hasText: /efectivo|tarjeta|transferencia/i }).first()
     await expect(metodoBtn).toBeVisible({ timeout: 3000 })
     await metodoBtn.click()
     await page.waitForTimeout(200)
 
     // Confirm sale
-    await page.locator('button').filter({ hasText: /confirmar/i }).click()
+    await page.getByRole('button', { name: 'Confirmar' }).click()
 
-    await expect(page.locator('text=/registrada|cambio/i').first()).toBeVisible({ timeout: 10000 })
+    // Solo "¡Venta registrada!" prueba que se vendió. El texto anterior
+    // (/registrada|cambio/i) también lo cumplía la tarjeta de ayuda, así que
+    // esta prueba pasaba en verde sin haber registrado una sola venta.
+    await expect(page.getByText('¡Venta registrada!')).toBeVisible({ timeout: 10000 })
   })
 
   test('stock se decrementó en la base', async () => {
@@ -123,7 +129,7 @@ test.describe('Cobro rápido: billetes comunes y tope de granel', () => {
 
     // Efectivo es el método por default; los billetes están a un toque
     await page.getByRole('button', { name: 'Exacto' }).click()
-    await expect(page.getByText('Cambio')).toBeVisible()
+    await expect(page.getByText('Cambio', { exact: true })).toBeVisible()
     await expect(page.getByText('$0.00').first()).toBeVisible()
 
     // Un billete pone su monto tal cual en el campo
@@ -157,6 +163,51 @@ test.describe('Cobro rápido: billetes comunes y tope de granel', () => {
 
     const enCarrito = page.locator('input[type="number"][step="0.001"]').first()
     await expect(enCarrito).toHaveValue('1.5')
+  })
+
+  // Bug reportado desde el mostrador: se teclea el peso en el renglón del
+  // carrito, la pantalla enseña un precio, y la venta se registra con otra
+  // cantidad. La casilla era un input controlado que reescribía cada tecla con
+  // un mínimo forzado, así que "0.5" kg se convertía en 0.0015 kg.
+  // OJO: con fill() esto NO se reproduce — el valor se pone de un golpe. Hay que
+  // teclear carácter por carácter, que es lo que hace una persona.
+  test('granel: teclear el peso en el carrito registra lo tecleado, no un numero mutilado', async ({ page }) => {
+    await page.goto('/pos')
+    await page.locator('button').filter({ hasText: GRANEL }).first().click()
+    await page.locator('input[placeholder="0"]').fill('1.5')
+    await page.getByRole('button', { name: 'Agregar' }).click()
+
+    const enCarrito = page.locator('input[type="number"][step="0.001"]').first()
+    await expect(enCarrito).toHaveValue('1.5')
+
+    await enCarrito.click()
+    await page.keyboard.press('ControlOrMeta+a')
+    await enCarrito.pressSequentially('0.5', { delay: 80 })
+
+    await expect(enCarrito).toHaveValue('0.5')
+    // $50/kg x 0.5 kg = $25.00. Con el bug quedaba en 0.0015 kg -> $0.08
+    await expect(page.locator('button').filter({ hasText: 'Cobrar $25.00' })).toBeVisible()
+  })
+
+  test('granel: pasarse del stock desde el carrito avisa y deja la cantidad anterior', async ({ page }) => {
+    await page.goto('/pos')
+    await page.locator('button').filter({ hasText: GRANEL }).first().click()
+    await page.locator('input[placeholder="0"]').fill('1')
+    await page.getByRole('button', { name: 'Agregar' }).click()
+
+    const enCarrito = page.locator('input[type="number"][step="0.001"]').first()
+    await expect(enCarrito).toHaveValue('1')
+
+    // Solo hay 2 kg: pedir 9 avisa y NO se recorta a 2 a escondidas
+    await enCarrito.click()
+    await page.keyboard.press('ControlOrMeta+a')
+    await enCarrito.pressSequentially('9', { delay: 80 })
+    await expect(page.getByText(/Solo quedan 2 kg/)).toBeVisible()
+
+    // Al salir de la casilla vuelve a verse la cantidad que de verdad se cobra
+    await page.locator('body').click()
+    await expect(enCarrito).toHaveValue('1')
+    await expect(page.locator('button').filter({ hasText: 'Cobrar $50.00' })).toBeVisible()
   })
 })
 

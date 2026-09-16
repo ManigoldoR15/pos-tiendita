@@ -28,3 +28,21 @@ export function parseCantidad(valor: string, unidad: string): number {
   if (unidad === 'pieza') return Math.max(1, Math.floor(n))
   return Math.max(minCantidad(unidad), n)
 }
+
+/**
+ * Lo que el mostrador va tecleando en una casilla de cantidad, convertido a
+ * número — o null mientras todavía no es un número usable ("", "0.", "-").
+ *
+ * Existe por un bug real: la casilla del carrito es un input controlado con
+ * value={item.cantidad}, y cada tecla escribía de vuelta un valor saneado con
+ * un mínimo forzado. Al teclear "0.5" en un producto por kg, el "0" se
+ * convertía en 0.001 antes de alcanzar a escribir el resto, y acababa
+ * registrando 0.0015 kg. Devolver null deja que el texto a medias siga en
+ * pantalla sin tocar el carrito hasta que signifique algo.
+ */
+export function cantidadTecleada(texto: string, unidad: string): number | null {
+  const n = parseFloat(texto)
+  if (!Number.isFinite(n) || n <= 0) return null
+  if (unidad === 'pieza') return Math.floor(n) || null
+  return n
+}

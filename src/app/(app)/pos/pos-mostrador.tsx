@@ -9,7 +9,7 @@ import TicketImprimible, { imprimirTicket, type DatosTicket } from '@/components
 import { registrarVentaAction, buscarClientesAction, crearClienteAction } from './actions'
 import type { ClienteSugerido } from './actions'
 import type { Producto, MetodoPago } from './pos-client'
-import { esGranel, formatCantidad, stepCantidad, minCantidad } from '@/lib/unidades'
+import { esGranel, formatCantidad, stepCantidad, minCantidad, cantidadTecleada } from '@/lib/unidades'
 
 type Item = {
   productoId: string
@@ -294,17 +294,40 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
     })
   }
 
-  function setCantidadDirecta(id: string, valor: number) {
-    setTicket((prev) => {
-      const item = prev.find((i) => i.productoId === id)
-      if (!item) return prev
-      const prod = productos.find((p) => p.id === id)
-      const maxStock = prod ? Number(prod.existencias) : Infinity
-      const nueva = esGranel(item.unidad)
-        ? Math.min(maxStock, Math.max(minCantidad(item.unidad), valor || minCantidad(item.unidad)))
-        : Math.min(maxStock, Math.max(1, Math.floor(valor) || 1))
-      return prev.map((i) => (i.productoId === id ? { ...i, cantidad: nueva } : i))
-    })
+  // Igual que en el POS táctil: mientras se teclea manda este texto y no
+  // item.cantidad, porque reescribir cada tecla con un mínimo forzado convertía
+  // "0.5" kg en 0.0015 kg.
+  const [cantidadEditando, setCantidadEditando] = useState<{ id: string; texto: string } | null>(null)
+
+  function textoCantidad(item: Item) {
+    return cantidadEditando?.id === item.productoId
+      ? cantidadEditando.texto
+      : String(item.cantidad)
+  }
+
+  function escribirCantidad(item: Item, texto: string) {
+    setCantidadEditando({ id: item.productoId, texto })
+
+    const valor = cantidadTecleada(texto, item.unidad)
+    if (valor === null) return // texto a medias: no se toca el ticket
+
+    const prod = productos.find((p) => p.id === item.productoId)
+    const maxStock = prod ? Number(prod.existencias) : Infinity
+
+    // Se avisa en vez de recortar en silencio.
+    if (valor > maxStock) {
+      setScanError(`Solo quedan ${formatCantidad(maxStock, item.unidad)} de ${item.nombre}`)
+      setTimeout(() => setScanError(''), 3000)
+      return
+    }
+
+    setTicket((prev) =>
+      prev.map((i) => (i.productoId === item.productoId ? { ...i, cantidad: valor } : i)),
+    )
+  }
+
+  function terminarEdicionCantidad() {
+    setCantidadEditando(null)
   }
 
   function quitarUltima() {
@@ -522,8 +545,9 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
                             type="number"
                             min="1"
                             step="1"
-                            value={item.cantidad}
-                            onChange={(e) => setCantidadDirecta(item.productoId, parseInt(e.target.value, 10))}
+                            value={textoCantidad(item)}
+                            onChange={(e) => escribirCantidad(item, e.target.value)}
+                            onBlur={terminarEdicionCantidad}
                             onFocus={(e) => e.target.select()}
                             className="w-12 rounded-md border bg-background py-1 text-center font-mono font-bold outline-none focus:ring-2 focus:ring-ring"
                           />
@@ -540,8 +564,9 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
                             type="number"
                             min={minCantidad(item.unidad)}
                             step={stepCantidad(item.unidad)}
-                            value={item.cantidad}
-                            onChange={(e) => setCantidadDirecta(item.productoId, parseFloat(e.target.value))}
+                            value={textoCantidad(item)}
+                            onChange={(e) => escribirCantidad(item, e.target.value)}
+                            onBlur={terminarEdicionCantidad}
                             onFocus={(e) => e.target.select()}
                             className="w-16 rounded-md border bg-background py-1 text-center font-mono font-bold outline-none focus:ring-2 focus:ring-ring"
                           />

@@ -11,7 +11,7 @@ import TicketImprimible, { imprimirTicket, type DatosTicket } from '@/components
 import { registrarVentaAction, buscarClientesAction, crearClienteAction, getPreciosEspecialesPOSAction, crearApartadoAction } from './actions'
 import type { ClienteSugerido } from './actions'
 import PosMostrador from './pos-mostrador'
-import { esGranel, formatCantidad, stepCantidad, minCantidad } from '@/lib/unidades'
+import { esGranel, formatCantidad, stepCantidad, minCantidad, cantidadTecleada } from '@/lib/unidades'
 import { EstatusCliente } from '@/components/estatus-cliente'
 import MuestreoForm from './muestreo-form'
 
@@ -350,15 +350,42 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
     })
   }
 
-  function setCantidadDirecta(lineaId: string, valor: number) {
-    setCarrito((prev) => {
-      const item = prev.find((i) => i.lineaId === lineaId)
-      if (!item) return prev
-      const nueva = esGranel(item.unidad)
-        ? Math.min(item.maxStock, Math.max(minCantidad(item.unidad), valor || minCantidad(item.unidad)))
-        : Math.min(item.maxStock, Math.max(1, Math.floor(valor) || 1))
-      return prev.map((i) => (i.lineaId === lineaId ? { ...i, cantidad: nueva } : i))
-    })
+  // Lo que se está tecleando en la casilla de cantidad de una línea. Mientras
+  // dura la edición manda este texto, no item.cantidad: si el input controlado
+  // reescribe cada tecla con un valor saneado, "0.5" kg se vuelve 0.0015.
+  const [cantidadEditando, setCantidadEditando] = useState<{ lineaId: string; texto: string } | null>(null)
+
+  function textoCantidad(item: ItemCarrito) {
+    return cantidadEditando?.lineaId === item.lineaId
+      ? cantidadEditando.texto
+      : String(item.cantidad)
+  }
+
+  function escribirCantidad(item: ItemCarrito, texto: string) {
+    setCantidadEditando({ lineaId: item.lineaId, texto })
+
+    const valor = cantidadTecleada(texto, item.unidad)
+    if (valor === null) return // "", "0.", "." — todavía no dice nada, no se toca el carrito
+
+    // Pasarse de stock se avisa, no se recorta a escondidas: recortar hace que
+    // el mostrador teclee 3 kg, cobre 2.5 y nadie se entere. Mismo criterio que
+    // el modal de granel.
+    if (valor > item.maxStock) {
+      mostrarAlertaStock(
+        `Solo quedan ${formatCantidad(item.maxStock, item.unidad)} de ${item.nombre}${item.varianteTexto ? ` (${item.varianteTexto})` : ''}`,
+      )
+      return
+    }
+
+    setCarrito((prev) =>
+      prev.map((i) => (i.lineaId === item.lineaId ? { ...i, cantidad: valor } : i)),
+    )
+  }
+
+  // Al salir de la casilla se suelta el texto a medias y vuelve a mandar la
+  // cantidad que sí quedó registrada, que es la que se va a cobrar.
+  function terminarEdicionCantidad() {
+    setCantidadEditando(null)
   }
 
   // Total efectivo considerando precios especiales del cliente seleccionado.
@@ -889,8 +916,9 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                             type="number"
                             min="1"
                             step="1"
-                            value={item.cantidad}
-                            onChange={(e) => setCantidadDirecta(item.lineaId, parseInt(e.target.value, 10))}
+                            value={textoCantidad(item)}
+                            onChange={(e) => escribirCantidad(item, e.target.value)}
+                            onBlur={terminarEdicionCantidad}
                             onFocus={(e) => e.target.select()}
                             className="w-12 rounded-md border bg-background py-1 text-center text-sm font-bold outline-none focus:ring-2 focus:ring-ring"
                           />
@@ -907,8 +935,9 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
                             type="number"
                             min={minCantidad(item.unidad)}
                             step={stepCantidad(item.unidad)}
-                            value={item.cantidad}
-                            onChange={(e) => setCantidadDirecta(item.lineaId, parseFloat(e.target.value))}
+                            value={textoCantidad(item)}
+                            onChange={(e) => escribirCantidad(item, e.target.value)}
+                            onBlur={terminarEdicionCantidad}
                             onFocus={(e) => e.target.select()}
                             className="w-16 rounded-md border bg-background py-1 text-center text-sm font-bold outline-none focus:ring-2 focus:ring-ring"
                           />
