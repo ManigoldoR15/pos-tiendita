@@ -202,3 +202,80 @@ test.describe('Dos cajas abiertas: cada venta cae en la caja de su plaza', () =>
     await admin.from('negocios').update({ max_cajas: 5 }).eq('id', negocioId)
   })
 })
+
+/**
+ * Movimientos del cajón (migración 084). Sacar o meter dinero que no es venta,
+ * gasto ni compra: sin esto la única salida era inventar un gasto falso, que
+ * ensucia los reportes de gastos y las ganancias.
+ */
+test.describe('Movimientos del cajón: sacar y meter dinero', () => {
+  const admin = adminSupabase()
+  let negocioId: string
+  let duenoId: string
+  let corteId: string
+
+  test.beforeAll(async () => {
+    const fixture = JSON.parse(fs.readFileSync(FIXTURE, 'utf-8'))
+    negocioId = fixture.negocioId
+    duenoId = fixture.duenoId
+
+    await admin
+      .from('cortes_caja')
+      .update({ estado: 'cerrado', fecha_cierre: new Date().toISOString(), monto_contado: 0, diferencia: 0, monto_esperado: 0 })
+      .eq('negocio_id', negocioId)
+      .eq('estado', 'abierto')
+
+    const { data } = await admin.from('cortes_caja').insert({
+      negocio_id: negocioId, abierto_por: duenoId, monto_inicial: 50000, estado: 'abierto', local_id: null,
+    }).select('id').single()
+    corteId = data!.id
+  })
+
+  test.afterAll(async () => {
+    await admin.from('movimientos_caja').delete().eq('corte_id', corteId)
+    await admin.from('cortes_caja').delete().eq('id', corteId)
+  })
+
+  test('sacar dinero descuenta del efectivo esperado y queda con su motivo', async ({ page }) => {
+    await page.goto('/corte')
+    await page.waitForLoadState('networkidle')
+
+    await page.getByRole('button', { name: 'Sacar dinero' }).click()
+    await page.locator('input[type="number"]').first().fill('300')
+    await page.getByPlaceholder(/me llevé/i).fill('me llevé para el banco')
+    await page.getByRole('button', { name: /^Sacar/ }).click()
+
+    // El movimiento queda a la vista con su motivo, no solo como un número
+    await expect(page.getByText('me llevé para el banco')).toBeVisible({ timeout: 8000 })
+    await expect(page.getByText('Dinero que sacaste')).toBeVisible()
+
+    // Y de verdad bajó lo que debe haber en caja: 500 − 300 = 200
+    await expect(page.getByText('Debe haber en caja')).toBeVisible()
+    const { data: mov } = await admin
+      .from('movimientos_caja')
+      .select('tipo, monto, motivo')
+      .eq('corte_id', corteId)
+      .single()
+    expect(mov!.tipo).toBe('retiro')
+    expect(mov!.monto).toBe(30000)
+    expect(mov!.motivo).toBe('me llevé para el banco')
+  })
+
+  test('el cierre cuadra en cero contando el retiro', async ({ page }) => {
+    await page.goto('/corte')
+    await page.waitForLoadState('networkidle')
+
+    // Fondo 500 − retiro 300 = 200 esperados
+    await page.locator('input[name="monto_contado"]').fill('200')
+    await page.locator('button').filter({ hasText: /confirmar cierre/i }).click()
+    await page.waitForTimeout(1500)
+
+    const { data: corte } = await admin
+      .from('cortes_caja')
+      .select('monto_esperado, diferencia')
+      .eq('id', corteId)
+      .single()
+    expect(corte!.monto_esperado).toBe(20000)
+    expect(corte!.diferencia).toBe(0)
+  })
+})

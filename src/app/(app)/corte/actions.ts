@@ -9,6 +9,34 @@ import { notificar } from '@/lib/notificaciones'
 
 export type CorteState = { error: string } | null
 
+/**
+ * Sacar o meter dinero del cajón cuando no es venta, gasto ni compra: el dueño
+ * que se lleva dinero, o el que pone cambio de su bolsa. Sin esto la única
+ * salida era inventar un gasto falso, que ensucia gastos y ganancias.
+ * La RPC exige caja abierta, motivo escrito y rol de dueño/administrador.
+ */
+export async function registrarMovimientoCajaAction(params: {
+  tipo: 'retiro' | 'ingreso'
+  monto: number
+  motivo: string
+}): Promise<{ error: string } | { ok: true }> {
+  const negocio = await getNegocioActual()
+  if (!negocio) return { error: 'No hay negocio activo' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('registrar_movimiento_caja', {
+    p_negocio_id: negocio.id,
+    p_tipo: params.tipo,
+    p_monto: params.monto,
+    p_motivo: params.motivo,
+  })
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/corte')
+  return { ok: true }
+}
+
 export async function abrirCorteAction(
   _prev: CorteState,
   formData: FormData,

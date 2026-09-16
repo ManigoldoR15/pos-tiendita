@@ -31,15 +31,28 @@ export default async function ImprimirCortePage({
   if (!corte) notFound()
   if (corte.estado !== 'cerrado') redirect('/corte')
 
-  const { data: ventas } = await supabase
-    .from('ventas')
-    .select('id, total, created_at, estado, metodos_pago(nombre)')
-    .eq('corte_id', id)
-    .order('created_at', { ascending: true })
+  const [{ data: ventas }, { data: movimientos }] = await Promise.all([
+    supabase
+      .from('ventas')
+      .select('id, total, created_at, estado, metodos_pago(nombre)')
+      .eq('corte_id', id)
+      .order('created_at', { ascending: true }),
+    // El papel que se firma tiene que decir quién sacó dinero y para qué; si no,
+    // el retiro solo vive en pantalla y no sirve de comprobante.
+    supabase
+      .from('movimientos_caja')
+      .select('id, tipo, monto, motivo, creado_en')
+      .eq('corte_id', id)
+      .order('creado_en', { ascending: true }),
+  ])
 
   const lista = ventas ?? []
   const completadas = lista.filter((v) => v.estado === 'completada')
   const totalVentas = completadas.reduce((s, v) => s + v.total, 0)
+
+  const movs = movimientos ?? []
+  const totalRetiros = movs.filter((m) => m.tipo === 'retiro').reduce((s, m) => s + m.monto, 0)
+  const totalIngresos = movs.filter((m) => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0)
 
   return (
     <div className="mx-auto max-w-lg">
@@ -82,6 +95,12 @@ export default async function ImprimirCortePage({
         <h2 className="font-semibold mb-3">Resumen de caja</h2>
         <Fila label="Fondo inicial" value={formatMXN(corte.monto_inicial)} />
         <Fila label={`Ventas (${completadas.length})`} value={formatMXN(totalVentas)} />
+        {totalIngresos > 0 && (
+          <Fila label="Dinero que se metió" value={`+${formatMXN(totalIngresos)}`} />
+        )}
+        {totalRetiros > 0 && (
+          <Fila label="Dinero que se sacó" value={`−${formatMXN(totalRetiros)}`} color="text-destructive" />
+        )}
         <Fila label="Monto esperado" value={formatMXN(corte.monto_esperado ?? 0)} bold />
         <Fila label="Monto contado" value={formatMXN(corte.monto_contado ?? 0)} />
         <div className="border-t pt-2">
@@ -138,6 +157,38 @@ export default async function ImprimirCortePage({
                 </td>
               </tr>
             </tfoot>
+          </table>
+        </div>
+      )}
+
+      {/* ── Movimientos del cajón ── */}
+      {movs.length > 0 && (
+        <div className="rounded-xl border bg-card overflow-hidden mb-4">
+          <h2 className="font-semibold px-4 py-3 border-b text-sm">
+            Movimientos del cajón ({movs.length})
+          </h2>
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 border-b">
+              <tr>
+                <th className="px-4 py-2 text-left font-medium text-muted-foreground">Hora</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Motivo</th>
+                <th className="px-4 py-2 text-right font-medium text-muted-foreground">Monto</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {movs.map((m) => (
+                <tr key={m.id}>
+                  <td className="px-4 py-2">{fmtHora(m.creado_en)}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{m.motivo}</td>
+                  <td className={cn(
+                    'px-4 py-2 text-right font-semibold',
+                    m.tipo === 'retiro' ? 'text-destructive' : 'text-green-600',
+                  )}>
+                    {m.tipo === 'retiro' ? '−' : '+'}{formatMXN(m.monto)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
           </table>
         </div>
       )}
