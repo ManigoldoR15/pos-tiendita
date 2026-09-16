@@ -53,23 +53,52 @@ export default async function CortePage() {
   let totalVentas = 0
   let numVentas = 0
   let ventasEfectivo = 0
+  let ventasOtrosMedios = 0
+  let totalFiado = 0
   let montoEsperado = 0
   let desgloseMedios: { nombre: string; total: number; num: number }[] = []
 
   if (corteAbierto) {
     const { data: ventas } = await supabase
       .from('ventas')
-      .select('total, metodo_pago_id, metodos_pago(nombre)')
+      .select('total, metodo_pago_id, metodos_pago(nombre), venta_items(subtotal, es_fiado)')
       .eq('corte_id', corteAbierto.id)
       .eq('estado', 'completada')
+
+    // Lo fiado no entra al cajón: al cobrar solo se pide (total - fiado), así que
+    // sumar el total completo marcaría un faltante del tamaño de lo que se fió.
+    // Misma fórmula que cerrar_corte() en la BD; si divergieran, la pantalla
+    // prometería un esperado distinto al del cierre.
+    const contadoDe = (v: { total: number; venta_items?: { subtotal: number; es_fiado: boolean }[] | null }) => {
+      const fiado = (v.venta_items ?? []).reduce((s, i) => (i.es_fiado ? s + i.subtotal : s), 0)
+      return Math.max(0, v.total - fiado)
+    }
 
     totalVentas = ventas?.reduce((s, v) => s + v.total, 0) ?? 0
     numVentas = ventas?.length ?? 0
     ventasEfectivo =
       ventas
         ?.filter((v) => v.metodo_pago_id === metodoPagoEfectivo?.id)
-        .reduce((s, v) => s + v.total, 0) ?? 0
-    montoEsperado = corteAbierto.monto_inicial + ventasEfectivo
+        .reduce((s, v) => s + contadoDe(v), 0) ?? 0
+    ventasOtrosMedios =
+      ventas
+        ?.filter((v) => v.metodo_pago_id !== metodoPagoEfectivo?.id)
+        .reduce((s, v) => s + contadoDe(v), 0) ?? 0
+    totalFiado = ventas?.reduce((s, v) => s + (v.total - contadoDe(v)), 0) ?? 0
+
+    // Abonos de apartados cobrados en efectivo: cerrar_corte los suma, así que
+    // la pantalla también, o el esperado del cierre saldría más alto.
+    let abonosApartadoEfectivo = 0
+    if (metodoPagoEfectivo?.id) {
+      const { data: abonos } = await supabase
+        .from('apartado_abonos')
+        .select('monto')
+        .eq('corte_id', corteAbierto.id)
+        .eq('metodo_pago_id', metodoPagoEfectivo.id)
+      abonosApartadoEfectivo = (abonos ?? []).reduce((s, a) => s + a.monto, 0)
+    }
+
+    montoEsperado = corteAbierto.monto_inicial + ventasEfectivo + abonosApartadoEfectivo
 
     // Agrupar por método de pago
     const medioMap = new Map<string, { nombre: string; total: number; num: number }>()
@@ -114,14 +143,27 @@ export default async function CortePage() {
             <KpiCorte
               label="Efectivo en caja"
               value={formatMXN(montoEsperado)}
-              sub="fondo + ventas efectivo"
+              sub="fondo + cobrado en efectivo"
             />
             <KpiCorte
               label="Otros medios"
-              value={formatMXN(totalVentas - ventasEfectivo)}
+              value={formatMXN(ventasOtrosMedios)}
               sub="tarjeta, SPEI…"
             />
           </div>
+
+          {/* Lo fiado se vendió pero no entró al cajón: sin esta línea el corte
+              parece faltante y el tendero cree que le robaron. */}
+          {totalFiado > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800/40 dark:bg-amber-950/20">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">
+                Se fió {formatMXN(totalFiado)} en este turno
+              </p>
+              <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-500">
+                Ese dinero no está en la caja todavía, por eso no se cuenta en el efectivo esperado.
+              </p>
+            </div>
+          )}
 
           {/* Desglose por método de pago */}
           {desgloseMedios.length > 0 && (
