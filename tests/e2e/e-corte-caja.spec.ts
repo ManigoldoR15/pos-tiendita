@@ -279,3 +279,79 @@ test.describe('Movimientos del cajón: sacar y meter dinero', () => {
     expect(corte!.diferencia).toBe(0)
   })
 })
+
+/**
+ * Corregir un movimiento mal capturado (migración 085). La 084 dejó la tabla
+ * sin editar ni borrar: quien tecleaba $3,000 en vez de $300 quedaba con la
+ * caja descuadrada y sin salida. Se cancela, no se borra — el rastro es el
+ * punto: si un retiro se pudiera desaparecer, volvería el agujero que la 084
+ * cerró.
+ */
+test.describe('Corregir un movimiento mal capturado', () => {
+  const admin = adminSupabase()
+  let negocioId: string
+  let duenoId: string
+  let corteId: string
+
+  test.beforeAll(async () => {
+    const fixture = JSON.parse(fs.readFileSync(FIXTURE, 'utf-8'))
+    negocioId = fixture.negocioId
+    duenoId = fixture.duenoId
+
+    await admin
+      .from('cortes_caja')
+      .update({ estado: 'cerrado', fecha_cierre: new Date().toISOString(), monto_contado: 0, diferencia: 0, monto_esperado: 0 })
+      .eq('negocio_id', negocioId)
+      .eq('estado', 'abierto')
+
+    const { data } = await admin.from('cortes_caja').insert({
+      negocio_id: negocioId, abierto_por: duenoId, monto_inicial: 50000, estado: 'abierto', local_id: null,
+    }).select('id').single()
+    corteId = data!.id
+  })
+
+  test.afterAll(async () => {
+    await admin.from('movimientos_caja').delete().eq('corte_id', corteId)
+    await admin.from('cortes_caja').delete().eq('id', corteId)
+  })
+
+  test('el dedazo se cancela, deja de contar, y sigue a la vista tachado', async ({ page }) => {
+    await page.goto('/corte')
+    await page.waitForLoadState('networkidle')
+
+    // Se teclea $3,000 donde eran $300
+    await page.getByRole('button', { name: 'Sacar dinero' }).click()
+    await page.locator('input[type="number"]').first().fill('3000')
+    await page.getByPlaceholder(/me llevé/i).fill('dedazo, eran 300')
+    await page.getByRole('button', { name: /^Sacar/ }).click()
+    await expect(page.getByText('dedazo, eran 300')).toBeVisible({ timeout: 8000 })
+
+    // Corregirlo
+    await page.getByRole('button', { name: 'Lo capturé mal' }).click()
+    await page.getByRole('button', { name: 'Sí, cancelar' }).click()
+
+    // Sigue a la vista, marcado — no desaparece
+    await expect(page.getByText('Cancelado — ya no cuenta en la caja')).toBeVisible({ timeout: 8000 })
+    await expect(page.getByText('dedazo, eran 300')).toBeVisible()
+
+    // La fila sigue en la base, con su marca
+    const { data: mov } = await admin
+      .from('movimientos_caja')
+      .select('monto, cancelado_en, cancelado_por')
+      .eq('corte_id', corteId)
+      .single()
+    expect(mov!.monto).toBe(300000)
+    expect(mov!.cancelado_en).not.toBeNull()
+    expect(mov!.cancelado_por).toBe(duenoId)
+
+    // Y la caja volvió a esperar el fondo completo: $500
+    await page.locator('input[name="monto_contado"]').fill('500')
+    await page.locator('button').filter({ hasText: /confirmar cierre/i }).click()
+    await page.waitForTimeout(1500)
+
+    const { data: corte } = await admin
+      .from('cortes_caja').select('monto_esperado, diferencia').eq('id', corteId).single()
+    expect(corte!.monto_esperado).toBe(50000)
+    expect(corte!.diferencia).toBe(0)
+  })
+})

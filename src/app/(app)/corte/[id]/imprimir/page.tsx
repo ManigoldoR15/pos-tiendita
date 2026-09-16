@@ -41,7 +41,7 @@ export default async function ImprimirCortePage({
     // el retiro solo vive en pantalla y no sirve de comprobante.
     supabase
       .from('movimientos_caja')
-      .select('id, tipo, monto, motivo, creado_en')
+      .select('id, tipo, monto, motivo, creado_en, cancelado_en')
       .eq('corte_id', id)
       .order('creado_en', { ascending: true }),
   ])
@@ -51,8 +51,11 @@ export default async function ImprimirCortePage({
   const totalVentas = completadas.reduce((s, v) => s + v.total, 0)
 
   const movs = movimientos ?? []
-  const totalRetiros = movs.filter((m) => m.tipo === 'retiro').reduce((s, m) => s + m.monto, 0)
-  const totalIngresos = movs.filter((m) => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0)
+  // Los cancelados se listan pero no suman — igual que en cerrar_corte(). Se
+  // imprimen tachados a propósito: el papel tiene que enseñar que existieron.
+  const vigentes = movs.filter((m) => m.cancelado_en === null)
+  const totalRetiros = vigentes.filter((m) => m.tipo === 'retiro').reduce((s, m) => s + m.monto, 0)
+  const totalIngresos = vigentes.filter((m) => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0)
 
   return (
     <div className="mx-auto max-w-lg">
@@ -176,18 +179,24 @@ export default async function ImprimirCortePage({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {movs.map((m) => (
-                <tr key={m.id}>
-                  <td className="px-4 py-2">{fmtHora(m.creado_en)}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{m.motivo}</td>
-                  <td className={cn(
-                    'px-4 py-2 text-right font-semibold',
-                    m.tipo === 'retiro' ? 'text-destructive' : 'text-green-600',
-                  )}>
-                    {m.tipo === 'retiro' ? '−' : '+'}{formatMXN(m.monto)}
-                  </td>
-                </tr>
-              ))}
+              {movs.map((m) => {
+                const cancelado = m.cancelado_en !== null
+                return (
+                  <tr key={m.id} className={cn(cancelado && 'opacity-50')}>
+                    <td className="px-4 py-2">{fmtHora(m.creado_en)}</td>
+                    <td className={cn('px-3 py-2 text-muted-foreground', cancelado && 'line-through')}>
+                      {m.motivo}
+                      {cancelado && <span className="ml-1 no-underline"> (cancelado)</span>}
+                    </td>
+                    <td className={cn(
+                      'px-4 py-2 text-right font-semibold',
+                      cancelado ? 'line-through' : m.tipo === 'retiro' ? 'text-destructive' : 'text-green-600',
+                    )}>
+                      {m.tipo === 'retiro' ? '−' : '+'}{formatMXN(m.monto)}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

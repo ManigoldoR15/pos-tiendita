@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import FormAbrirCorte from './form-abrir'
 import FormCerrarCorte from './form-cerrar'
 import FormMovimientoCaja from './form-movimiento'
+import ListaMovimientos, { type MovimientoCaja } from './lista-movimientos'
 
 import { fmtFechaHoraCorta } from '@/lib/fecha'
 function fmtFecha(iso: string) { return fmtFechaHoraCorta(iso) }
@@ -61,7 +62,7 @@ export default async function CortePage() {
   let comprasEfectivo = 0
   let ingresosCaja = 0
   let retirosCaja = 0
-  let movimientos: { id: string; tipo: string; monto: number; motivo: string }[] = []
+  let movimientos: MovimientoCaja[] = []
   let montoEsperado = 0
   let desgloseMedios: { nombre: string; total: number; num: number }[] = []
 
@@ -132,12 +133,13 @@ export default async function CortePage() {
     // dependen de que exista un método de pago llamado "Efectivo".
     const { data: movs } = await supabase
       .from('movimientos_caja')
-      .select('id, tipo, monto, motivo')
+      .select('id, tipo, monto, motivo, cancelado_en')
       .eq('corte_id', corteAbierto.id)
       .order('creado_en', { ascending: true })
     movimientos = movs ?? []
-    ingresosCaja = movimientos.filter((m) => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0)
-    retirosCaja = movimientos.filter((m) => m.tipo === 'retiro').reduce((s, m) => s + m.monto, 0)
+    const vigentes = movimientos.filter((m) => m.cancelado_en === null)
+    ingresosCaja = vigentes.filter((m) => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0)
+    retirosCaja = vigentes.filter((m) => m.tipo === 'retiro').reduce((s, m) => s + m.monto, 0)
 
     montoEsperado =
       corteAbierto.monto_inicial + ventasEfectivo + abonosApartadoEfectivo
@@ -269,33 +271,7 @@ export default async function CortePage() {
           {/* Sacar / meter dinero del cajón */}
           <FormMovimientoCaja />
 
-          {movimientos.length > 0 && (
-            <div className="card-soft overflow-hidden">
-              <div className="border-b px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Movimientos del cajón
-                </p>
-              </div>
-              <div className="divide-y">
-                {movimientos.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{m.motivo}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {m.tipo === 'retiro' ? 'Salió del cajón' : 'Entró al cajón'}
-                      </p>
-                    </div>
-                    <p className={cn(
-                      'shrink-0 font-bold tabular-nums',
-                      m.tipo === 'retiro' ? 'num-expense' : 'num-income',
-                    )}>
-                      {m.tipo === 'retiro' ? '−' : '+'}{formatMXN(m.monto)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <ListaMovimientos movimientos={movimientos} />
 
           {/* Formulario de cierre */}
           <div className="card-soft p-5">

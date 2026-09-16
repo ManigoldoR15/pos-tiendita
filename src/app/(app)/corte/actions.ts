@@ -37,6 +37,26 @@ export async function registrarMovimientoCajaAction(params: {
   return { ok: true }
 }
 
+/**
+ * Corregir un movimiento mal capturado: teclear $3,000 en vez de $300 dejaba la
+ * caja descuadrada sin salida. No se borra la fila — se marca y se tacha — o
+ * volvería a ser posible sacar dinero, registrar el retiro y desaparecerlo.
+ * La RPC solo deja hacerlo mientras la caja siga abierta.
+ */
+export async function cancelarMovimientoCajaAction(
+  movimientoId: string,
+): Promise<{ error: string } | { ok: true }> {
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('cancelar_movimiento_caja', {
+    p_movimiento_id: movimientoId,
+  })
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/corte')
+  return { ok: true }
+}
+
 export async function abrirCorteAction(
   _prev: CorteState,
   formData: FormData,
