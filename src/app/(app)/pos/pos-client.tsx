@@ -14,6 +14,7 @@ import PosMostrador from './pos-mostrador'
 import { esGranel, formatCantidad, stepCantidad, minCantidad, cantidadTecleada } from '@/lib/unidades'
 import { EstatusCliente } from '@/components/estatus-cliente'
 import MuestreoForm from './muestreo-form'
+import AvisoSinCaja from './aviso-sin-caja'
 
 export type Variante = {
   id: string
@@ -83,9 +84,11 @@ type Props = {
   puedeCrearProductos?: boolean
   listas: ListaPrecio[]
   muestreoPeriodoId: string | null
+  /** false: las ventas se guardan pero no entran a ningún corte */
+  hayCajaAbierta?: boolean
 }
 
-export default function PosClient({ productos, categorias, metodosPago, negocioNombre, plazaNombre = null, plazaVacia = false, productosFuera = 0, puedeCrearProductos = false, listas, muestreoPeriodoId, moduloApartados = false }: Props) {
+export default function PosClient({ productos, categorias, metodosPago, negocioNombre, plazaNombre = null, plazaVacia = false, productosFuera = 0, puedeCrearProductos = false, listas, muestreoPeriodoId, moduloApartados = false, hayCajaAbierta = true }: Props) {
   const [modo, setModo] = useState<'tactil' | 'mostrador'>('tactil')
   const [carrito, setCarrito] = useState<ItemCarrito[]>([])
   const [busqueda, setBusqueda] = useState('')
@@ -624,6 +627,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
         metodosPago={metodosPago}
         negocioNombre={negocioNombre}
         onCambiarModo={() => setModo('tactil')}
+        hayCajaAbierta={hayCajaAbierta}
       />
     )
   }
@@ -632,6 +636,11 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
     <div className="flex flex-col gap-4 md:flex-row md:h-[calc(100svh-7rem)]">
       {/* ── Grilla de productos ── */}
       <div className="flex min-w-0 flex-1 flex-col md:overflow-hidden">
+        {!hayCajaAbierta && (
+          <div className="mb-3">
+            <AvisoSinCaja />
+          </div>
+        )}
         {/* Toggle de modo */}
         {alertaStock && (
           <div className="mb-3 shrink-0 rounded-xl border border-orange-200 bg-orange-50 dark:border-orange-800/40 dark:bg-orange-950/20 px-4 py-2.5 text-sm font-medium text-orange-700 dark:text-orange-400">

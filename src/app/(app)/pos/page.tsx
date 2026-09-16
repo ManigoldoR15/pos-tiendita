@@ -15,7 +15,7 @@ export default async function PosPage() {
   const plaza = await getPlazaActual()
   const rol = await getRolActual()
   const supabase = await createClient()
-  const [{ data: productos }, { data: categorias }, { data: metodosPago }, { data: listasRaw }, muestreoActivo] = await Promise.all([
+  const [{ data: productos }, { data: categorias }, { data: metodosPago }, { data: listasRaw }, muestreoActivo, { count: cajasAbiertas }] = await Promise.all([
     supabase
       .from('productos')
       .select('id, nombre, precio_venta, precio_costo, existencias, categoria_id, codigo_barras, unidad_medida, tiene_variantes, atributo1, atributo2, variantes:variantes_producto(id, valor1, valor2, existencias, codigo_barras)')
@@ -40,6 +40,12 @@ export default async function PosPage() {
       .eq('activo', true)
       .order('nombre'),
     getMuestreoActivoAction(),
+    // registrar_venta usa cualquier caja abierta del negocio, así que basta con que haya una
+    supabase
+      .from('cortes_caja')
+      .select('id', { count: 'exact', head: true })
+      .eq('negocio_id', negocio.id)
+      .eq('estado', 'abierto'),
   ])
 
   // Con plaza asignada, la venta solo puede consumir lotes de esa plaza
@@ -112,6 +118,7 @@ export default async function PosPage() {
       listas={listas}
       muestreoPeriodoId={muestreoActivo?.id ?? null}
       moduloApartados={modulos.apartados}
+      hayCajaAbierta={(cajasAbiertas ?? 0) > 0}
     />
   )
 }

@@ -9,6 +9,7 @@ import TicketImprimible, { imprimirTicket, type DatosTicket } from '@/components
 import { registrarVentaAction, buscarClientesAction, crearClienteAction } from './actions'
 import type { ClienteSugerido } from './actions'
 import type { Producto, MetodoPago } from './pos-client'
+import AvisoSinCaja from './aviso-sin-caja'
 import { esGranel, formatCantidad, stepCantidad, minCantidad, cantidadTecleada } from '@/lib/unidades'
 
 type Item = {
@@ -27,11 +28,12 @@ type Props = {
   metodosPago: MetodoPago[]
   negocioNombre: string
   onCambiarModo: () => void
+  hayCajaAbierta?: boolean
 }
 
 const BILLETES = [50_00, 100_00, 200_00, 500_00]
 
-export default function PosMostrador({ productos, metodosPago, negocioNombre, onCambiarModo }: Props) {
+export default function PosMostrador({ productos, metodosPago, negocioNombre, onCambiarModo, hayCajaAbierta = true }: Props) {
   const [ticket, setTicket] = useState<Item[]>([])
   const metodoEfectivoInicial = metodosPago.find((m) => m.nombre.toLowerCase().includes('efectivo')) ?? metodosPago[0]
   const [metodoPagoId, setMetodoPagoId] = useState(metodoEfectivoInicial?.id ?? '')
@@ -467,6 +469,7 @@ export default function PosMostrador({ productos, metodosPago, negocioNombre, on
     <div className="flex flex-col gap-4 md:flex-row md:h-[calc(100svh-8rem)]">
       {/* ── Panel izquierdo: ticket ─────────────────────────────────────── */}
       <div className="flex flex-1 flex-col min-w-0 gap-3">
+        {!hayCajaAbierta && <AvisoSinCaja />}
         {/* Header con toggle de modo */}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <div className="flex rounded-lg border p-0.5 bg-muted/40">
