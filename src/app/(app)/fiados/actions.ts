@@ -10,6 +10,8 @@ export async function registrarAbonoAction(params: {
   monto: number
   venta_id?: string | null
   notas?: string
+  /** con qué pagó. Sin esto el abono no cuenta en el corte de caja. */
+  metodo_pago_id?: string | null
 }): Promise<{ error: string } | { ok: true }> {
   const negocio = await getNegocioActual()
   if (!negocio) return { error: 'No hay negocio activo' }
@@ -21,12 +23,14 @@ export async function registrarAbonoAction(params: {
     p_monto: params.monto,
     p_venta_id: params.venta_id ?? null,
     p_notas: params.notas ?? null,
+    p_metodo_pago_id: params.metodo_pago_id ?? null,
   })
 
   if (error) return { error: error.message }
 
   revalidatePath('/fiados')
   revalidatePath(`/fiados/${params.cliente_id}`)
+  revalidatePath('/corte')
   revalidatePath('/')
   return { ok: true }
 }

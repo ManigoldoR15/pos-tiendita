@@ -55,6 +55,8 @@ export default async function CortePage() {
   let ventasEfectivo = 0
   let ventasOtrosMedios = 0
   let totalFiado = 0
+  let abonosFiadoEfectivo = 0
+  let gastosEfectivo = 0
   let montoEsperado = 0
   let desgloseMedios: { nombre: string; total: number; num: number }[] = []
 
@@ -86,19 +88,37 @@ export default async function CortePage() {
         .reduce((s, v) => s + contadoDe(v), 0) ?? 0
     totalFiado = ventas?.reduce((s, v) => s + (v.total - contadoDe(v)), 0) ?? 0
 
-    // Abonos de apartados cobrados en efectivo: cerrar_corte los suma, así que
-    // la pantalla también, o el esperado del cierre saldría más alto.
+    // Todo lo demás que mueve el cajón. La pantalla tiene que dar el mismo
+    // número que cerrar_corte(), o promete un esperado y al cerrar aplica otro.
     let abonosApartadoEfectivo = 0
     if (metodoPagoEfectivo?.id) {
-      const { data: abonos } = await supabase
-        .from('apartado_abonos')
-        .select('monto')
-        .eq('corte_id', corteAbierto.id)
-        .eq('metodo_pago_id', metodoPagoEfectivo.id)
-      abonosApartadoEfectivo = (abonos ?? []).reduce((s, a) => s + a.monto, 0)
+      const [{ data: abApartado }, { data: abFiado }, { data: gastosCaja }] = await Promise.all([
+        supabase
+          .from('apartado_abonos')
+          .select('monto')
+          .eq('corte_id', corteAbierto.id)
+          .eq('metodo_pago_id', metodoPagoEfectivo.id),
+        // Clientes que vinieron a pagar su fiado: ese billete entró al cajón
+        supabase
+          .from('abonos')
+          .select('monto')
+          .eq('corte_id', corteAbierto.id)
+          .eq('metodo_pago_id', metodoPagoEfectivo.id),
+        // Gastos pagados del cajón: ese billete salió
+        supabase
+          .from('gastos')
+          .select('monto')
+          .eq('corte_id', corteAbierto.id)
+          .eq('metodo_pago_id', metodoPagoEfectivo.id),
+      ])
+      abonosApartadoEfectivo = (abApartado ?? []).reduce((s, a) => s + a.monto, 0)
+      abonosFiadoEfectivo = (abFiado ?? []).reduce((s, a) => s + a.monto, 0)
+      gastosEfectivo = (gastosCaja ?? []).reduce((s, g) => s + g.monto, 0)
     }
 
-    montoEsperado = corteAbierto.monto_inicial + ventasEfectivo + abonosApartadoEfectivo
+    montoEsperado =
+      corteAbierto.monto_inicial + ventasEfectivo + abonosApartadoEfectivo
+      + abonosFiadoEfectivo - gastosEfectivo
 
     // Agrupar por método de pago
     const medioMap = new Map<string, { nombre: string; total: number; num: number }>()
@@ -151,6 +171,30 @@ export default async function CortePage() {
               sub="tarjeta, SPEI…"
             />
           </div>
+
+          {/* De dónde sale el efectivo esperado. Sin este desglose el tendero ve
+              un número que no cuadra con sus ventas y no tiene cómo revisarlo. */}
+          {(abonosFiadoEfectivo > 0 || gastosEfectivo > 0) && (
+            <div className="card-soft divide-y">
+              <div className="px-4 py-2.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  De dónde sale el efectivo esperado
+                </p>
+              </div>
+              <Renglon label="Fondo inicial" valor={formatMXN(corteAbierto.monto_inicial)} />
+              <Renglon label="Cobrado en efectivo" valor={`+ ${formatMXN(ventasEfectivo)}`} />
+              {abonosFiadoEfectivo > 0 && (
+                <Renglon label="Fiados que te pagaron" valor={`+ ${formatMXN(abonosFiadoEfectivo)}`} />
+              )}
+              {gastosEfectivo > 0 && (
+                <Renglon label="Gastos pagados del cajón" valor={`− ${formatMXN(gastosEfectivo)}`} rojo />
+              )}
+              <div className="flex items-center justify-between px-4 py-2.5">
+                <p className="text-sm font-bold">Debe haber en caja</p>
+                <p className="font-black tabular-nums">{formatMXN(montoEsperado)}</p>
+              </div>
+            </div>
+          )}
 
           {/* Lo fiado se vendió pero no entró al cajón: sin esta línea el corte
               parece faltante y el tendero cree que le robaron. */}
@@ -252,6 +296,15 @@ export default async function CortePage() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function Renglon({ label, valor, rojo = false }: { label: string; valor: string; rojo?: boolean }) {
+  return (
+    <div className="flex items-center justify-between px-4 py-2.5">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className={cn('text-sm font-semibold tabular-nums', rojo && 'num-expense')}>{valor}</p>
     </div>
   )
 }

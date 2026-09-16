@@ -10,11 +10,20 @@ export default async function NuevoGastoPage() {
   if (!negocio) redirect('/crear-negocio')
 
   const supabase = await createClient()
-  const { data: categorias } = await supabase
-    .from('categorias_gasto')
-    .select('id, nombre')
-    .eq('negocio_id', negocio.id)
-    .order('orden')
+  const [{ data: categorias }, { data: metodosPago }] = await Promise.all([
+    supabase
+      .from('categorias_gasto')
+      .select('id, nombre')
+      .eq('negocio_id', negocio.id)
+      .order('orden'),
+    // Un gasto pagado en efectivo sale del cajón: sin esto el corte no lo resta
+    supabase
+      .from('metodos_pago')
+      .select('id, nombre')
+      .eq('negocio_id', negocio.id)
+      .eq('activo', true)
+      .order('nombre'),
+  ])
 
   const fechaHoy = hoyMX()
 
@@ -22,6 +31,7 @@ export default async function NuevoGastoPage() {
     <GastoForm
       action={crearGastoAction}
       categorias={categorias ?? []}
+      metodosPago={metodosPago ?? []}
       fechaHoy={fechaHoy}
     />
   )

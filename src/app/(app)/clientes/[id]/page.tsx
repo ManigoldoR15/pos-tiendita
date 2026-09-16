@@ -36,7 +36,7 @@ export default async function ClienteHubPage({
 
   if (!cliente) notFound()
 
-  const [preciosEspeciales, { data: productos }, { data: notas }, { data: abonos }, { data: historial }] =
+  const [preciosEspeciales, { data: productos }, { data: notas }, { data: abonos }, { data: historial }, { data: metodosPago }] =
     await Promise.all([
       listarPreciosEspecialesAction(clienteId),
 
@@ -73,6 +73,14 @@ export default async function ClienteHubPage({
         .eq('estado', 'completada')
         .order('created_at', { ascending: false })
         .limit(50),
+
+      // Para que el abono registre con qué pagó y entre al corte de caja
+      supabase
+        .from('metodos_pago')
+        .select('id, nombre')
+        .eq('negocio_id', negocio.id)
+        .eq('activo', true)
+        .order('nombre'),
     ])
 
   // Fiados
@@ -234,6 +242,7 @@ export default async function ClienteHubPage({
             fecha: n.created_at,
             deuda: n.deuda,
           }))}
+          metodosPago={metodosPago ?? []}
         />
       )}
 

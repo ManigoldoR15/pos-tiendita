@@ -22,6 +22,7 @@ export async function crearGastoAction(
   const descripcion = (formData.get('descripcion') as string)?.trim() || null
   const fecha = (formData.get('fecha') as string) || hoyMX()
   const es_personal = formData.get('es_personal') === 'on'
+  const metodo_pago_id = (formData.get('metodo_pago_id') as string) || null
 
   if (!categoria_id && !nueva_categoria_nombre) return { error: 'Selecciona o escribe una categoría' }
 
@@ -47,10 +48,14 @@ export async function crearGastoAction(
     descripcion,
     fecha,
     es_personal,
+    // El trigger de la 082 valida que sea de este negocio y engancha el gasto
+    // a la caja abierta cuando la fecha es la de hoy.
+    metodo_pago_id,
   })
 
   if (error) return { error: 'No se pudo guardar. Intenta de nuevo.' }
   revalidatePath('/gastos')
+  revalidatePath('/corte')
   redirect('/gastos')
 }
 

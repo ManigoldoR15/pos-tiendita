@@ -8,18 +8,25 @@ import { fmtFechaCorta } from '@/lib/fecha'
 import { registrarAbonoAction } from '../actions'
 
 type Nota = { ventaId: string; fecha: string; deuda: number }
+type MetodoPago = { id: string; nombre: string }
 
 type Props = {
   clienteId: string
   deudaTotal: number
   notasPendientes: Nota[]
+  /** métodos de pago del negocio; con esto el abono entra al corte de caja */
+  metodosPago?: MetodoPago[]
 }
 
-export default function FormAbono({ clienteId, deudaTotal, notasPendientes }: Props) {
+export default function FormAbono({ clienteId, deudaTotal, notasPendientes, metodosPago = [] }: Props) {
   const router = useRouter()
   const [monto, setMonto] = useState('')
   const [ventaId, setVentaId] = useState<string>('')
   const [notas, setNotas] = useState('')
+  // Cuando paga en efectivo, ese billete entra al cajón y tiene que contar en el
+  // corte. Por eso arranca en Efectivo, que es como paga casi todo el mundo.
+  const efectivoId = metodosPago.find((m) => m.nombre.toLowerCase().includes('efectivo'))?.id
+  const [metodoPagoId, setMetodoPagoId] = useState(efectivoId ?? metodosPago[0]?.id ?? '')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -37,6 +44,7 @@ export default function FormAbono({ clienteId, deudaTotal, notasPendientes }: Pr
       monto: montoNum,
       venta_id: ventaId || null,
       notas: notas.trim() || undefined,
+      metodo_pago_id: metodoPagoId || null,
     })
     setPending(false)
     if ('error' in result) {
@@ -57,6 +65,7 @@ export default function FormAbono({ clienteId, deudaTotal, notasPendientes }: Pr
       monto: deudaTotal,
       venta_id: null,
       notas: 'Saldo total',
+      metodo_pago_id: metodoPagoId || null,
     })
     setPending(false)
     if ('error' in result) {
@@ -106,6 +115,25 @@ export default function FormAbono({ clienteId, deudaTotal, notasPendientes }: Pr
           Máximo: {formatMXN(maxMonto)}
         </p>
       </div>
+
+      {/* Cómo pagó — define si el dinero entra al cajón */}
+      {metodosPago.length > 0 && (
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">¿Cómo te pagó?</label>
+          <select
+            value={metodoPagoId}
+            onChange={(e) => setMetodoPagoId(e.target.value)}
+            className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+          >
+            {metodosPago.map((m) => (
+              <option key={m.id} value={m.id}>{m.nombre}</option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Si te paga en efectivo, el dinero se suma a la caja del turno.
+          </p>
+        </div>
+      )}
 
       {/* Notas */}
       <div className="space-y-1.5">

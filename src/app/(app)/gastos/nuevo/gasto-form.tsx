@@ -7,16 +7,21 @@ import ComboboxCategoria from '@/components/combobox-categoria'
 import type { GastoState } from '../actions'
 
 type Categoria = { id: string; nombre: string }
+type MetodoPago = { id: string; nombre: string }
 
 export default function GastoForm({
   action,
   categorias,
+  metodosPago = [],
   fechaHoy,
 }: {
   action: (prev: GastoState, formData: FormData) => Promise<GastoState>
   categorias: Categoria[]
+  /** con qué se pagó; en efectivo sale del cajón y el corte lo descuenta */
+  metodosPago?: MetodoPago[]
   fechaHoy: string
 }) {
+  const efectivoId = metodosPago.find((m) => m.nombre.toLowerCase().includes('efectivo'))?.id
   const [state, formAction, pending] = useActionState(action, null)
 
   return (
@@ -58,6 +63,25 @@ export default function GastoForm({
         </div>
 
         {/* Descripción */}
+        {/* Cómo se pagó — define si el dinero sale del cajón */}
+        {metodosPago.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">¿Cómo lo pagaste?</label>
+            <select
+              name="metodo_pago_id"
+              defaultValue={efectivoId ?? metodosPago[0]?.id}
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+            >
+              {metodosPago.map((m) => (
+                <option key={m.id} value={m.id}>{m.nombre}</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Si lo pagaste en efectivo del cajón, se descuenta de la caja del turno.
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium">Descripción (opcional)</label>
           <input
