@@ -47,6 +47,9 @@ export async function registrarVentaAction(params: {
   pago_recibido: number | null
   descuento?: number
   cliente_id?: string | null
+  /** Lista de precios activa en el POS. Sin esto la BD cobraría precio_venta
+   *  aunque la pantalla y el ticket muestren el precio de la lista. */
+  lista_precio_id?: string | null
 }): Promise<{ venta_id: string } | { error: string }> {
   const negocio = await getNegocioActual()
   if (!negocio) return { error: 'No hay negocio activo' }
@@ -69,6 +72,7 @@ export async function registrarVentaAction(params: {
     p_descuento: params.descuento ?? 0,
     p_vendedor_id: user?.id ?? null,
     p_local_id: localId,
+    p_lista_precio_id: params.lista_precio_id ?? null,
   })
 
   if (error) return { error: error.message }

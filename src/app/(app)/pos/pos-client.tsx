@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { ShoppingCart, Plus, Minus, Trash2, CheckCircle, Search, X, AlertTriangle, User, Monitor, Grid3x3, Printer, HandCoins, Scale } from 'lucide-react'
 import { STOCK_MINIMO } from '@/lib/constantes'
 import { Button } from '@/components/ui/button'
@@ -390,29 +390,34 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
       }[]
   }, [carrito, preciosEspeciales, clienteSeleccionado, productos])
 
+  // Precio que va a cobrar la BD, renglón por renglón. Debe dar lo mismo que
+  // registrar_venta: el precio especial se calcula desde precio_venta y le gana
+  // a la lista; sin precio especial manda item.precio, que ya trae el de la
+  // lista activa. Antes esto ignoraba la lista en TODOS los renglones en cuanto
+  // un solo producto tenía precio especial.
+  const precioCobrado = useCallback((item: { productoId: string; precio: number }) => {
+    const esp = preciosEspeciales[item.productoId]
+    if (!esp) return item.precio
+    const prod = productos.find((p) => p.id === item.productoId)
+    return calcPrecioEspecial(prod?.precio_venta ?? item.precio, esp)
+  }, [preciosEspeciales, productos])
+
   const effectiveTotal = useMemo(() => {
     if (itemsConEspecial.length === 0) return total
-    const base = carrito.reduce((sum, item) => {
-      const esp = preciosEspeciales[item.productoId]
-      const prod = productos.find((p) => p.id === item.productoId)
-      const precioBase = prod?.precio_venta ?? item.precio
-      const precio = esp ? calcPrecioEspecial(precioBase, esp) : precioBase
-      return sum + Math.round(precio * item.cantidad)
-    }, 0)
+    const base = carrito.reduce(
+      (sum, item) => sum + Math.round(precioCobrado(item) * item.cantidad),
+      0,
+    )
     return Math.max(0, base - descuentoCentavos)
-  }, [itemsConEspecial, carrito, preciosEspeciales, productos, descuentoCentavos, total])
+  }, [itemsConEspecial, carrito, precioCobrado, descuentoCentavos, total])
 
   const effectiveFiado = useMemo(() => {
     if (itemsConEspecial.length === 0) return totalFiado
-    return carrito.reduce((sum, item) => {
-      if (!item.fiado) return sum
-      const esp = preciosEspeciales[item.productoId]
-      const prod = productos.find((p) => p.id === item.productoId)
-      const precioBase = prod?.precio_venta ?? item.precio
-      const precio = esp ? calcPrecioEspecial(precioBase, esp) : precioBase
-      return sum + Math.round(precio * item.cantidad)
-    }, 0)
-  }, [itemsConEspecial, carrito, preciosEspeciales, productos, totalFiado])
+    return carrito.reduce(
+      (sum, item) => (item.fiado ? sum + Math.round(precioCobrado(item) * item.cantidad) : sum),
+      0,
+    )
+  }, [itemsConEspecial, carrito, precioCobrado, totalFiado])
 
   const effectiveMontoPagar = Math.max(0, effectiveTotal - effectiveFiado)
   const effectiveCambio = pagoRecibido.trim() ? pagoEnCentavos - effectiveMontoPagar : null
@@ -507,6 +512,7 @@ export default function PosClient({ productos, categorias, metodosPago, negocioN
       pago_recibido: esEfectivo && pagoRecibido.trim() ? pagoEnCentavos : null,
       descuento: descuentoCentavos,
       cliente_id: clienteSeleccionado?.id ?? null,
+      lista_precio_id: listaActivaId,
     })
 
     setProcesando(false)

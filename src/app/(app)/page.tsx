@@ -471,14 +471,16 @@ export default async function DashboardPage({
   const ticketPromedio = numVentas > 0 ? Math.round(totalVentas / numVentas) : 0
   const totalGastos =
     gastos?.filter((g) => !g.es_personal).reduce((s, g) => s + g.monto, 0) ?? 0
-  const utilidad = totalVentas - totalGastos
-
   const costoVentas = (items ?? []).reduce((s, item) => {
     const pc = (item.productos as unknown as { nombre: string; precio_costo: number | null } | null)
       ?.precio_costo ?? 0
     return s + item.cantidad * pc
   }, 0)
   const gananciaBruta = totalVentas - costoVentas
+  // Lo que de verdad le queda al tendero: hay que descontar lo que costó la
+  // mercancía vendida, no solo los gastos. Sin eso el número salía inflado por
+  // el costo completo del inventario que se movió.
+  const utilidad = gananciaBruta - totalGastos
   const margenPct = totalVentas > 0 ? Math.round((gananciaBruta / totalVentas) * 100) : null
 
   // ── Meta del mes ─────────────────────────────────────────────────────────
@@ -686,7 +688,7 @@ export default async function DashboardPage({
         <KpiCard
           label="Utilidad neta"
           value={formatMXN(utilidad)}
-          sub="ventas − gastos"
+          sub="ganancia bruta − gastos"
           accent={utilidad >= 0 ? 'emerald' : 'red'}
         />
       </div>
