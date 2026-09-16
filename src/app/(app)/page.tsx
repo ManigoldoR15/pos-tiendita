@@ -413,7 +413,7 @@ export default async function DashboardPage({
       .select('meta_ventas')
       .eq('negocio_id', negocio.id)
       .eq('mes', mesInicio)
-      .single(),
+      .maybeSingle(),
 
     supabase
       .from('ventas')

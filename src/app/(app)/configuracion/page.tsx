@@ -78,7 +78,7 @@ export default async function ConfiguracionPage() {
         .select('meta_ventas')
         .eq('negocio_id', negocio.id)
         .eq('mes', mes)
-        .single(),
+        .maybeSingle(),
       supabase
         .from('locales')
         .select('id, nombre, color, activo')
