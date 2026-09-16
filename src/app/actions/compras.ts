@@ -49,6 +49,7 @@ export async function registrarCompraAction(
   }
 
   const local_id = (formData.get('local_id') as string) || null
+  const metodo_pago_id = (formData.get('metodo_pago_id') as string) || null
 
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('registrar_compra', {
@@ -58,6 +59,9 @@ export async function registrarCompraAction(
     p_notas:        notas,
     p_items:        items,
     p_local_id:     local_id,
+    // El trigger de la 083 valida que sea de este negocio y engancha la compra
+    // a la caja abierta cuando la fecha es la de hoy.
+    p_metodo_pago_id: metodo_pago_id,
   })
 
   if (error) return error.message
@@ -106,5 +110,6 @@ export async function registrarCompraAction(
   revalidatePath('/productos')
   revalidatePath('/pos')
   revalidatePath('/caducidad')
+  revalidatePath('/corte')
   redirect(`/compras/${data}`)
 }

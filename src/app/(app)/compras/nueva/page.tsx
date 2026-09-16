@@ -30,6 +30,7 @@ export default async function NuevaCompraPage({
     { data: proveedores },
     { data: productosAlerta },
     { data: plazas },
+    { data: metodosPago },
   ] = await Promise.all([
     supabase
       .from('productos')
@@ -53,6 +54,14 @@ export default async function NuevaCompraPage({
       .limit(10),
     supabase
       .from('locales')
+      .select('id, nombre')
+      .eq('negocio_id', negocio.id)
+      .eq('activo', true)
+      .order('nombre'),
+    // Pagar la mercancía en efectivo saca dinero del cajón: sin esto el corte
+    // no lo descuenta y marca sobrante.
+    supabase
+      .from('metodos_pago')
       .select('id, nombre')
       .eq('negocio_id', negocio.id)
       .eq('activo', true)
@@ -170,6 +179,7 @@ export default async function NuevaCompraPage({
         proveedores={proveedores ?? []}
         plazas={plazas ?? []}
         plazaInicial={plazaInicial}
+        metodosPago={metodosPago ?? []}
         hoy={hoyMX()}
       />
     </div>

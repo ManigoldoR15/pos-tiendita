@@ -57,6 +57,7 @@ export default async function CortePage() {
   let totalFiado = 0
   let abonosFiadoEfectivo = 0
   let gastosEfectivo = 0
+  let comprasEfectivo = 0
   let montoEsperado = 0
   let desgloseMedios: { nombre: string; total: number; num: number }[] = []
 
@@ -92,7 +93,7 @@ export default async function CortePage() {
     // número que cerrar_corte(), o promete un esperado y al cerrar aplica otro.
     let abonosApartadoEfectivo = 0
     if (metodoPagoEfectivo?.id) {
-      const [{ data: abApartado }, { data: abFiado }, { data: gastosCaja }] = await Promise.all([
+      const [{ data: abApartado }, { data: abFiado }, { data: gastosCaja }, { data: comprasCaja }] = await Promise.all([
         supabase
           .from('apartado_abonos')
           .select('monto')
@@ -110,15 +111,22 @@ export default async function CortePage() {
           .select('monto')
           .eq('corte_id', corteAbierto.id)
           .eq('metodo_pago_id', metodoPagoEfectivo.id),
+        // Mercancía pagada del cajón: ese billete también salió
+        supabase
+          .from('compras')
+          .select('total')
+          .eq('corte_id', corteAbierto.id)
+          .eq('metodo_pago_id', metodoPagoEfectivo.id),
       ])
       abonosApartadoEfectivo = (abApartado ?? []).reduce((s, a) => s + a.monto, 0)
       abonosFiadoEfectivo = (abFiado ?? []).reduce((s, a) => s + a.monto, 0)
       gastosEfectivo = (gastosCaja ?? []).reduce((s, g) => s + g.monto, 0)
+      comprasEfectivo = (comprasCaja ?? []).reduce((s, c) => s + c.total, 0)
     }
 
     montoEsperado =
       corteAbierto.monto_inicial + ventasEfectivo + abonosApartadoEfectivo
-      + abonosFiadoEfectivo - gastosEfectivo
+      + abonosFiadoEfectivo - gastosEfectivo - comprasEfectivo
 
     // Agrupar por método de pago
     const medioMap = new Map<string, { nombre: string; total: number; num: number }>()
@@ -174,7 +182,7 @@ export default async function CortePage() {
 
           {/* De dónde sale el efectivo esperado. Sin este desglose el tendero ve
               un número que no cuadra con sus ventas y no tiene cómo revisarlo. */}
-          {(abonosFiadoEfectivo > 0 || gastosEfectivo > 0) && (
+          {(abonosFiadoEfectivo > 0 || gastosEfectivo > 0 || comprasEfectivo > 0) && (
             <div className="card-soft divide-y">
               <div className="px-4 py-2.5">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -188,6 +196,9 @@ export default async function CortePage() {
               )}
               {gastosEfectivo > 0 && (
                 <Renglon label="Gastos pagados del cajón" valor={`− ${formatMXN(gastosEfectivo)}`} rojo />
+              )}
+              {comprasEfectivo > 0 && (
+                <Renglon label="Mercancía pagada del cajón" valor={`− ${formatMXN(comprasEfectivo)}`} rojo />
               )}
               <div className="flex items-center justify-between px-4 py-2.5">
                 <p className="text-sm font-bold">Debe haber en caja</p>

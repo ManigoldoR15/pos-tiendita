@@ -26,6 +26,11 @@ type Plaza = {
   nombre: string
 }
 
+type MetodoPago = {
+  id: string
+  nombre: string
+}
+
 type LineaCompra = {
   producto: Producto
   cantidad: number
@@ -40,6 +45,7 @@ export default function CompraForm({
   proveedores,
   plazas = [],
   plazaInicial = '',
+  metodosPago = [],
   hoy,
 }: {
   productos: Producto[]
@@ -47,8 +53,11 @@ export default function CompraForm({
   plazas?: Plaza[]
   /** plaza preseleccionada al entrar desde /plazas/[id] */
   plazaInicial?: string
+  /** con qué se pagó; en efectivo sale del cajón y el corte lo descuenta */
+  metodosPago?: MetodoPago[]
   hoy: string
 }) {
+  const efectivoId = metodosPago.find((m) => m.nombre.toLowerCase().includes('efectivo'))?.id
   const [error, action, pending] = useActionState(registrarCompraAction, null)
   const router = useRouter()
 
@@ -216,6 +225,25 @@ export default function CompraForm({
             </div>
           )}
         </div>
+
+        {metodosPago.length > 0 && (
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">¿Cómo la pagaste?</label>
+            <select
+              name="metodo_pago_id"
+              defaultValue={efectivoId ?? metodosPago[0]?.id}
+              className="w-full rounded-xl border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              {metodosPago.map((m) => (
+                <option key={m.id} value={m.id}>{m.nombre}</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Si la pagaste en efectivo del cajón, se descuenta de la caja del turno.
+              No la captures otra vez en Gastos: contaría doble.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <label className="text-sm font-medium">Notas (opcional)</label>
